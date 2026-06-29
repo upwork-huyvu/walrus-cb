@@ -1,0 +1,33 @@
+# ===== Root .gitignore (cool-bath monorepo) =====
+
+.DS_Store
+node_modules/
+
+# ---- Secrets / SDK (TUYỆT ĐỐI KHÔNG commit) ----
+# Keys + SDK do client cấp
+docs/sdk/keys.txt
+docs/sdk/**/*.zip
+docs/sdk/**/*.tar.gz
+docs/sdk/Android_SDK/
+docs/sdk/iOS_SDK/
+
+# env (chỉ commit *.example)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Tuya security files (binary, per-app)
+**/security-algorithm*.aar
+**/ios_core_sdk.tar.gz
+**/ThingSmartCryption*
+packages/tuya-react-native/example/ios/Build/
+packages/tuya-react-native/example/android/app/libs/
+
+# build outputs
+**/dist/
+**/lib/
+**/.next/
+**/*.tsbuildinfo
+
+# LƯU Ý: example/android/gradle.properties hiện chứa THING_SMART_APPKEY/SECRET (dev).
+# Trước khi commit, chuyển 2 key đó sang ~/.gradle/gradle.properties (global, ngoài repo).

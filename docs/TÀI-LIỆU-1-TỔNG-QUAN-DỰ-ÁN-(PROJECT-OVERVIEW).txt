@@ -1,0 +1,26 @@
+1. Tên dự án: Phát triển ứng dụng điều khiển bể đá lạnh (Tuya Smart Ice Bath App)
+.
+2. Mục tiêu dự án: Xây dựng một ứng dụng di động hoàn chỉnh (MVP) để thay thế ứng dụng Smart Life/Tuya hiện tại, cho phép người dùng kết nối và điều khiển trực tiếp thiết bị bể đá lạnh (ice bath) thông qua giao diện tùy chỉnh
+.
+3. Công nghệ sử dụng (Tech Stack):
+Mobile App: React Native sử dụng React Native CLI (bắt buộc để tương thích với Tuya SDK, không dùng Expo)
+.
+IoT Integration: Tuya Smart App SDK (hỗ trợ cả WiFi và Bluetooth)
+.
+Backend & Database: Supabase (Xác thực người dùng và lưu trữ dữ liệu)
+.
+Hosting: Vercel (Triển khai các API backend)
+.
+Notifications: Firebase Cloud Messaging (FCM) cho thông báo đẩy
+.
+4. Các tính năng chính:
+Ghép nối thiết bị (In-app Pairing): Cho phép người dùng quét và kết nối thiết bị với WiFi/Bluetooth ngay trong app
+.
+Điều khiển thông minh: Theo dõi nhiệt độ hiện tại, điều chỉnh nhiệt độ mục tiêu, điều khiển đèn, khử trùng UV và rã đông
+.
+Hệ thống tài khoản: Đăng nhập qua Email, Google và Apple Sign-in
+.
+Tính năng bổ trợ: Đồng hồ đếm ngược "Into the Cold", bảng tổng hợp hoạt động, nhắc nhở thay bộ lọc và quản lý ngôi nhà
+.
+Quản trị (Admin Panel): Giao diện web quản lý danh sách người dùng, thiết bị liên kết và dữ liệu sử dụng cơ bản
+.

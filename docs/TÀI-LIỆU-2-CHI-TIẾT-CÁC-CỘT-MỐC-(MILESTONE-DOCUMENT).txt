@@ -1,0 +1,47 @@
+Dự án được chia làm 3 Milestone chính với tổng ngân sách là 700 USD
+.
+Milestone 1: Nền tảng và Kết nối lõi (Foundation & Core Control)
+Ngân sách: $250
+.
+Các công việc chi tiết:
+Thiết lập môi trường React Native CLI và tích hợp Tuya Smart App SDK
+.
+Xây dựng luồng đăng nhập (Login) và thiết lập ngôi nhà (Home setup) trên hệ thống Tuya
+.
+Triển khai tính năng In-app pairing: Quy trình khám phá, kết nối thiết bị qua WiFi và Bluetooth
+.
+Phát triển bảng điều khiển cơ bản: Hiển thị nhiệt độ thực tế và thay đổi nhiệt độ mục tiêu
+.
+Sản phẩm bàn giao: Bản build ứng dụng có thể kết nối thành công với thiết bị thật và thực hiện các lệnh điều khiển nhiệt độ cơ bản.
+Milestone 2: Hoàn thiện UI và Hệ thống quản trị (UI Completion & Backend)
+Ngân sách: $280
+.
+Các công việc chi tiết:
+Hoàn thiện toàn bộ giao diện người dùng (UI) dựa trên bản thiết kế, tối ưu hóa trải nghiệm trên Mobile
+.
+Thiết lập Backend trên Supabase và Vercel: Quản lý người dùng (User profile), lưu trữ ánh xạ thiết bị (device mapping)
+.
+Xây dựng tính năng quản lý ngôi nhà: Gán phòng và phân quyền thiết bị
+.
+Phát triển Admin Panel (Operational Layer): Xem danh sách người dùng, theo dõi trạng thái thiết bị và dữ liệu sử dụng
+.
+Sản phẩm bàn giao: Ứng dụng có giao diện hoàn chỉnh, dữ liệu được đồng bộ ổn định với backend và có trang quản trị cho admin.
+Milestone 3: Tính năng nâng cao và Bàn giao (Advanced Features & Delivery)
+Ngân sách: $170
+.
+Các công việc chi tiết:
+Tích hợp tính năng "Into the Cold": Đồng hồ đếm ngược và bảng tổng hợp hoạt động hàng ngày (daily summary)
+.
+Thiết lập hệ thống thông báo đẩy (Push Notifications) qua Firebase: Nhắc nhở dọn dẹp, cảnh báo trạng thái
+.
+Hệ thống nhắc nhở bộ lọc: Hiển thị trạng thái, nút reset và liên kết mua bộ lọc mới
+.
+Kiểm thử toàn diện (Testing), sửa lỗi và tối ưu hóa hiệu năng
+.
+Triển khai thực tế và bàn giao mã nguồn
+.
+Sản phẩm bàn giao: Ứng dụng hoàn thiện 100%, sẵn sàng cho người dùng cuối và đầy đủ tài liệu bàn giao.
+Lưu ý kỹ thuật quan trọng:
+Vùng dữ liệu: Tài khoản Tuya và Cloud Project phải ở cùng một Data Center (ví dụ: Europe) để tránh lỗi không tìm thấy thiết bị
+.
+Quyền hạn: Tài khoản khách cung cấp phải là chủ sở hữu (Owner) của "Home" trên Tuya mới có thể thực hiện liên kết SDK

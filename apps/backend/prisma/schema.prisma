@@ -1,0 +1,47 @@
+// Prisma schema — Postgres (Supabase). Business data sống ở Supabase.
+// Runtime dùng DATABASE_URL (pooled, pgbouncer :6543?pgbouncer=true);
+// migrate dùng DIRECT_URL (:5432). Mở rộng model ở C2 (user-mgmt) / C3 (admin-auth).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Tài khoản admin (auth qua Supabase Auth ở C3) — map tối thiểu.
+model AdminUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("admin_users")
+}
+
+/// Liên kết user (Tuya uid) ↔ thiết bị — placeholder cho user-mgmt / device mapping.
+model DeviceMapping {
+  id        String   @id @default(uuid())
+  tuyaUid   String
+  deviceId  String
+  homeId    String?
+  createdAt DateTime @default(now())
+
+  @@unique([tuyaUid, deviceId])
+  @@map("device_mappings")
+}
+
+/// Hàng đợi xoá (dùng ở C2: Tuya pre-delete + xoá business data) — định nghĩa sớm để ổn định schema.
+model DeleteJob {
+  id          String   @id @default(uuid())
+  tuyaUid     String
+  status      String   @default("pending") // pending | done | failed
+  attempts    Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("delete_jobs")
+}

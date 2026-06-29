@@ -1,0 +1,23 @@
+# deps
+node_modules
+
+# build
+dist
+*.tsbuildinfo
+
+# env / secrets (CHỈ commit .env.example)
+.env
+.env.*
+!.env.example
+
+# prisma generated client (regenerate bằng `prisma generate`)
+# (đặt trong node_modules/.prisma nên thường đã bị ignore qua node_modules)
+
+# test
+coverage
+
+# vercel
+.vercel
+
+# os
+.DS_Store
