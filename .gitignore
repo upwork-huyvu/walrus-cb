@@ -5,11 +5,11 @@ node_modules/
 
 # ---- Secrets / SDK (TUYỆT ĐỐI KHÔNG commit) ----
 # Keys + SDK do client cấp
-docs/sdk/keys.txt
-docs/sdk/**/*.zip
-docs/sdk/**/*.tar.gz
-docs/sdk/Android_SDK/
-docs/sdk/iOS_SDK/
+# docs/sdk/keys.txt
+# docs/sdk/**/*.zip
+# docs/sdk/**/*.tar.gz
+# docs/sdk/Android_SDK/
+# docs/sdk/iOS_SDK/
 
 # env (chỉ commit *.example)
 **/.env

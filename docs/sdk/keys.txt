@@ -1,0 +1,9 @@
+ANDROID_APPKEY=dsxexjah9wpcsqsrtksx
+ANDROID_SECRET=wma7wj4wjypr8ntgxevk3yknqqddec4r
+
+IOS_APIKEY=n7ywy7wyau4pqem7ajr3
+IOS_SECRET=vnt9dgd4f58phk8qhwqr74mf3kenwjdg
+
+CLOUD_DATA_CENTER=Central Europe Data Center
+CLOUD_CLIEND_ID=v75ujhfs848hcc599gug
+CLOUD_CLIEND_SECRET=7776790777d54a46a404ac26248244d3
