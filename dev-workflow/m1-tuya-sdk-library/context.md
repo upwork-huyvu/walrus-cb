@@ -39,15 +39,54 @@
   `NativeEventEmitter`** (KHÔNG dùng codegen `EventEmitter` type). Lý do: ổn định, tránh rắc rối
   type của strict-api. Object type cho codegen khai báo **inline trong file spec** (codegen không
   follow import chéo file).
+- **2026-06-29 (audit 5-agent + build-readiness)** — Sau workflow đối chiếu developer.tuya.com:
+  (a) **API native Android xác nhận ĐÚNG** (imports `com.thingclips.*`, signatures, listeners, parity JS↔native 26/26)
+  → KHÔNG sửa SDK surface; (b) **`:app` phải TỰ khai repo Maven Tuya** vì transitive `thingsmart` KHÔNG kế thừa
+  repositories của lib module (đặc tính Gradle) → thêm `allprojects.repositories` ở `example/android/build.gradle`;
+  (c) **`example/android/gradle.properties`** vừa là file build BẮT BUỘC (`newArchEnabled`/`hermesEnabled`) vừa chứa
+  Tuya key — gitignored nên phải tạo lại mỗi máy (đã tạo, mirror `apps/mobile`); (d) Android **`startBlePairing`** đã
+  implement (`BleActivatorBean(scan)` + `getActivator().newBleActivator()`); (e) iOS **`RCT_EXPORT_MODULE()`** đã thêm
+  (thiếu macro → module không đăng ký, `getEnforcing` throw lúc import). Toolchain chốt: **JDK17 + Gradle 9.3.1 +
+  AGP 8.12 + compileSdk/buildTools 36 + NDK 27.1.12297006** (LÀ 36, không phải 35 như note research cũ).
+- **2026-06-29 (REFACTOR: tách 5 TurboModule theo folder)** — Theo yêu cầu user ("chia tính năng theo folder,
+  đừng 1 file"). Bỏ module gộp `TuyaReactNative` → **5 TurboModule độc lập**: `TuyaCore` (init/version/destroy),
+  `TuyaAuth` (email+third+session), `TuyaHome`, `TuyaPairing` (wifi EZ/AP + BLE + token; phát onPairingProgress/
+  onBleScan), `TuyaDevice` (DP + listeners; phát onDeviceStatus). Codegen VẪN 1 lib (`codegenConfig.name=
+  TuyaReactNativeSpec`, `jsSrcsDir=src` quét đệ quy `src/specs/*`). Native theo folder: Android packages
+  `com.coolbath.tuyareactnative.{core,auth,home,pairing,device}` (1 `TuyaReactNativePackage` đăng ký cả 5); iOS
+  `ios/{Core,Auth,Home,Pairing,Device}` mỗi class có `RCT_EXPORT_MODULE()` + getTurboModule riêng (podspec glob
+  `ios/**` đã phủ). `index.tsx` giữ **facade phẳng `Tuya`** (tương thích `Tuya.<method>()`) + export sub-module.
+  `addListener/removeListeners` chỉ ở Pairing+Device (2 module phát event). Đã XOÁ: `src/NativeTuyaReactNative.ts`,
+  `TuyaReactNativeModule.kt`, `ios/TuyaReactNative.{h,mm}`. Lý do chọn multi-module (không phải 1 module + handler):
+  tách thật, độc lập test/maintain; đánh đổi = nhiều boilerplate (5 spec + 5 register).
+- **2026-06-29 (RENAME lib — bỏ @cool-bath)** — Theo yêu cầu user: npm `@cool-bath/tuya-react-native` →
+  **`@jimmy-vu/react-native-turbo-tuya`**; pod/podspec `TuyaReactNative` → **`TurboTuya`** (file `TurboTuya.podspec`);
+  codegen `TuyaReactNativeSpec` → **`TurboTuyaSpec`**; java package `com.coolbath.tuyareactnative` →
+  **`com.jimmyvu.turbotuya`** (đã di chuyển cây thư mục Android); package class `TuyaReactNativePackage` →
+  **`TurboTuyaPackage`**; source export condition `cool-bath-tuya-react-native-source` → **`react-native-turbo-tuya-source`**
+  (đồng bộ ở package.json/tsconfig/metro/vite). **Tên 5 module JS GIỮ nguyên** (TuyaCore/Auth/Home/Pairing/Device) —
+  rename chỉ ở cấp package/lib, KHÔNG ở module. **App ví dụ GIỮ identity cũ** (`TuyaReactNativeExample`, applicationId
+  `coolbath.tuyareactnative.example`) vì gắn đăng ký Tuya console + đổi pbxproj iOS rủi ro. ⚠️ Nếu muốn rebrand app
+  ví dụ thì làm TRƯỚC khi đăng ký console (đỡ phải đăng ký lại). Thư mục `packages/tuya-react-native/` giữ nguyên tên.
+- **2026-06-29 (RESEARCH toàn bộ Home SDK surface)** — Workflow 11 agent research các tính năng Home SDK còn lại
+  (Android+iOS, cited) → 11 note + overview ở `docs/research/tuya-home-sdk-*.md` (index: `tuya-home-sdk-full-surface.md`).
+  **Kế hoạch mở rộng lib (đề xuất, CHƯA implement):** mở rộng TuyaAuth (profile/tempUnit/onSessionExpired/reset/cancel),
+  TuyaHome (updateHome/weather/transfer/room/listener), TuyaDevice (rename/remove/reset/detail/snapshot+schema/queryDp/
+  publishDpsAwaitAck/bleConnect/online), TuyaPairing (combo BLE+Wi-Fi/sub-device/QR/wired/auto-token); module MỚI:
+  **TuyaOta, TuyaScene, TuyaMessage (push+message+DND), TuyaTimer, TuyaErrors** (P1-P2); TuyaMatter/TuyaMesh/TuyaMember
+  (P3); Widget = NGOÀI phạm vi (UI/extension, chỉ thêm getSwitchDps). Ưu tiên P1: Auth profile, Device mgmt+OTA,
+  control nâng cao, error shape. Triển khai theo 3 đợt — xem mục 3 của overview. Lưu ý chung: nhiều mảng có 2 thế hệ
+  API (legacy vs unified/Biz) phải chốt 1 bộ khi code; iOS không công bố bảng mã số; dpId/schema ice-bath cần thiết bị thật.
 
 ## Bản đồ file/module
 | File / Module | Vai trò |
 |---|---|
 | `packages/tuya-react-native/` | ✅ thư viện wrap Tuya SDK (scaffolded B1) |
-| `packages/tuya-react-native/src/NativeTuyaReactNative.ts` | ✅ TurboModule Codegen spec + object types (B2) |
-| `packages/tuya-react-native/src/index.tsx` | ✅ API TS public: `Tuya`, `onDeviceStatus/onPairingProgress/onBleScan` (B2) |
-| `packages/tuya-react-native/android/.../TuyaReactNativeModule.kt` | impl Kotlin (hiện chỉ stub `multiply` cũ → viết lại B5–B9) |
-| `packages/tuya-react-native/ios/TuyaReactNative.mm/.h` | impl Obj-C++ (stub → viết lại B5–B9) |
+| `packages/tuya-react-native/src/specs/NativeTuya{Core,Auth,Home,Pairing,Device}.ts` | ✅ 5 Codegen spec (tách theo tính năng); object type inline |
+| `packages/tuya-react-native/src/index.tsx` | ✅ facade phẳng `Tuya` + export sub-module + `onDeviceStatus/onPairingProgress/onBleScan` |
+| `packages/tuya-react-native/android/.../{core,auth,home,pairing,device}/Tuya*Module.kt` | ✅ 5 module Kotlin (đủ API; BLE pairing done) |
+| `packages/tuya-react-native/android/.../TuyaReactNativePackage.kt` | ✅ đăng ký cả 5 module |
+| `packages/tuya-react-native/ios/{Core,Auth,Home,Pairing,Device}/Tuya*.{h,mm}` | ✅ 5 module ObjC++ (Core init+setupConfig, Auth isLoggedIn wired; còn lại TODO-reject) |
 | `packages/tuya-react-native/example/src/App.tsx` | ✅ demo nút Init SDK (B2) |
 | `packages/tuya-react-native/example/` | example vanilla RN CLI — test 2 nền tảng |
 | `replit_generate/` | UI prototype (Expo) — tham chiếu thiết kế (cho mobile, không cho lib) |
@@ -87,7 +126,23 @@
 - **(iOS) auth/home/pairing/DP để TODO-reject** (skeleton compile, selector đúng codegen) — không đoán
   bừa selector Tuya ObjC; implement trên Xcode với header thật. init + isLoggedIn đã wire.
 - **File bảo mật là binary** (`security-algorithm.aar` / `ios_core_sdk.tar.gz`) → KHÔNG để env; drop tay
-  theo [SETUP.md](../../packages/tuya-react-native/SETUP.md). `getSdkVersion` trả hằng (Tuya không expose API version ổn định).
+  theo [README.md](../../packages/tuya-react-native/README.md). `getSdkVersion` trả hằng (Tuya không expose API version ổn định).
+  **(2026-06-29) Doc đã GỘP hết vào `README.md` (tiếng Anh, single source) — `SETUP.md` đã xoá.**
+- **(2026-06-29) File SDK đã có ở `docs/sdk/`** (client cấp): `Android_SDK/security-algorithm.tar.gz` → giải nén ra
+  `security-algorithm-1.0.0-beta.aar` (đã đặt vào `example/android/app/libs/`); `iOS_SDK.zip` → `ios_core_sdk.tar.gz`
+  **thực ra là ZIP** chứa `ThingSmartCryption.xcframework` + `ThingSmartCryption.podspec` (đã giải nén → `example/ios/`).
+  Lưu ý: file SDK là **v7.5.0** (Android lib pin Maven 7.5.6 — aar bảo mật độc lập version). `keys.txt`: Android & iOS
+  AppKey/Secret RIÊNG + Cloud client id/secret + **DC = Central Europe**.
+- **(2026-06-29 audit) iOS còn 17 method TODO-reject** (auth/home/pairing/BLE/DP/getCurrentUser/logout/getDps) + module
+  **chưa kế thừa RCTEventEmitter** (event onDeviceStatus/onPairingProgress/onBleScan KHÔNG bắn trên iOS) + `initSdk`
+  thiếu `[ThingSmartBusinessExtensionConfig setupConfig]`. Selector iOS đúng đã nằm trong kết quả audit (ThingSmartUser/
+  ThingSmartHomeManager/ThingSmartActivator/ThingSmartBLEManager/ThingSmartDevice) — implement trên Mac.
+- **(2026-06-29 audit) `:app` resolve thingsmart bằng repos của CHÍNH `:app`** (không phải của lib) → đã thêm allprojects
+  Maven Tuya. Nếu build đầu vẫn báo "Could not find thingsmart" thì kiểm tra lại block này / mode repositories.
+- 🔴 **(2026-06-29) SECRET LEAK:** `docs/sdk/keys.txt` (Android+iOS **AppSecret** + **Cloud client secret**) đã commit
+  ("fix" `259b37a`) + **push lên `origin/main`** GitHub (`upwork-huyvu/walrus-cb`); root `.gitignore` bị comment dòng
+  bảo vệ `docs/sdk`. User chọn **"để yên tính sau"**. Khuyến nghị khi xử: rotate keys trên Tuya console + bật lại
+  `.gitignore` + `git rm --cached docs/sdk` + purge history + force-push. (AppKey public OK; AppSecret/Cloud secret thì KHÔNG.)
 
 ## Liên kết
 - Plan: [plan.md](plan.md)

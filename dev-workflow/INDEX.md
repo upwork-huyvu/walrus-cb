@@ -3,7 +3,7 @@
 > Nơi DUY NHẤT trả lời "dự án đang ở đâu?". Mọi feature đều phải có 1 dòng ở đây.
 > `/plan` thêm dòng mới; `/dev` `/test` `/fix-plan` cập nhật cột Phase/Trạng thái.
 
-- **Cập nhật lần cuối:** 2026-06-28
+- **Cập nhật lần cuối:** 2026-06-29
 
 > ⚠️ **M1 đã MỞ RỘNG scope (2026-06-28).** Bản brief mới đưa thêm **Part A (thư
 > viện npm Tuya SDK)**, **Part C (backend NestJS + quản lý user)** và **Part D
@@ -13,7 +13,8 @@
 ## Đang làm / Tồn đọng
 | Feature (slug) | Milestone | Phần | Phase | Trạng thái | Cập nhật | Thư mục |
 |---|---|---|---|---|---|---|
-| m1-tuya-sdk-library | M1·A | mobile/lib | DEV | in_progress (code + SDK/keys wired; build cần console package/SHA-256 + toolchain; iOS/BLE TODO) | 2026-06-29 | [↗](m1-tuya-sdk-library/progress.md) |
+| m1-tuya-sdk-library | M1·A | mobile/lib | DEV | in_progress (audit ✅ API Android đúng; **build-ready wired** aar+gradle.properties+Maven repos, BLE pairing + iOS RCT_EXPORT_MODULE done; còn JDK17+Android SDK + console SHA-256/DC + iOS 17 method) | 2026-06-29 | [↗](m1-tuya-sdk-library/progress.md) |
+| m1-tuya-sdk-expansion | M1·A+ | mobile/lib | PLAN | planned (15 bước B1–B15: C0/C1 prereq + module theo 3 đợt P1–P3; CHƯA code. Dựa research full-surface 11 note) | 2026-06-29 | [↗](m1-tuya-sdk-expansion/progress.md) |
 | m1-backend-scaffold | M1·C1 | backend | DEV | in_progress (B1–B5 + **Tuya token LIVE ✅** Central EU; AC3 DB Supabase chờ) | 2026-06-29 | [↗](m1-backend-scaffold/progress.md) |
 | m1-backend-user-mgmt | M1·C2 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-28 | [↗](m1-backend-user-mgmt/progress.md) |
 | m1-backend-admin-auth | M1·C3 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-29 | [↗](m1-backend-admin-auth/progress.md) |
@@ -54,7 +55,7 @@
 ## Bị chặn
 | Feature (slug) | Đang chờ gì | Từ ngày |
 |---|---|---|
-| m1-tuya-sdk-library | SDK/keys đã wire (2026-06-29). Còn: applicationId/bundleId TRÙNG package console + keystore SHA-256 + toolchain (JDK17/Xcode) + thiết bị thật. Xem SETUP.md. | 2026-06-28 |
+| m1-tuya-sdk-library | Build-ready đã wire (2026-06-29). Chặn cứng: **JDK17 + Android SDK** (máy đang JDK8, chưa có SDK) → không assembleDebug được tại chỗ. Còn console: applicationId TRÙNG package + keystore SHA-256 + DC. iOS cần Mac. Xem progress.md. | 2026-06-29 |
 
 ---
 ### Quy ước

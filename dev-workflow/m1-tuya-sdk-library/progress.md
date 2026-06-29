@@ -9,11 +9,27 @@
 - **Cập nhật lần cuối:** 2026-06-29
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
-✅ Đã viết **toàn bộ code A (B3–B9)** theo chế độ "làm hết" (secret để env/native config, placeholder).
-⚠️ **KHÔNG build-verify được trên máy này** (thiếu Android SDK/JDK17/Xcode + file bảo mật). Cần làm trên máy thật:
-1. Theo **[SETUP.md](../../packages/tuya-react-native/SETUP.md)**: drop `security-algorithm.aar` (Android) + `ios_core_sdk.tar.gz` (iOS), điền AppKey/Secret (gradle.properties / Info.plist), thêm repo Maven Tuya + pod `ThingSmartCryption`.
-2. Build example → sửa import/getter Android nếu lệch; **implement nốt iOS** (auth/home/pairing/DP) + **Android `startBlePairing`** (đang TODO).
-3. Test thiết bị thật cho pairing/DP.
+✅ **(2026-06-29) Audit đa-agent + wire build-readiness Android XONG** (đối chiếu docs Tuya: API native Android
+gần như đúng hết — không có landmine sai package/method). Đã làm trên repo này:
+- Giải nén & đặt **`security-algorithm-1.0.0-beta.aar`** → `example/android/app/libs/` (từ `docs/sdk`).
+- Giải nén **iOS xcframework** → `example/ios/{Build,ThingSmartCryption.podspec}` (stage cho Mac).
+- Tạo **`example/android/gradle.properties`** (RN props + Tuya AppKey/Secret, gitignored).
+- Thêm **repo Maven Tuya** vào `example/android/build.gradle` (`allprojects` — fix transitive resolve thingsmart).
+- Implement **Android `startBlePairing`** (BleActivatorBean + newBleActivator, research §5) + cache ScanDeviceBean.
+- Fix **iOS `RCT_EXPORT_MODULE()`** trong `.mm` (thiếu → getEnforcing throw lúc import trên iOS).
+
+⛔ **Còn lại = CHỈ máy build + console (không code được trên máy này):**
+1. **Toolchain Android (Windows):** cài **JDK 17** (đang JDK 8) + **Android SDK** (chưa có) — platform-36,
+   build-tools 36.0.0, ndk 27.1.12297006. Rồi `corepack enable` → `yarn install` → `yarn prepare` →
+   `example/android/gradlew.bat assembleDebug`. (Playbook chi tiết: xem run log + chat 2026-06-29.)
+2. **Tuya console:** applicationId `coolbath.tuyareactnative.example` phải TRÙNG package đăng ký + **add SHA-256**
+   của `example/android/app/debug.keystore` + **xác minh DC = Central Europe** khớp Cloud Project.
+3. **iOS (cần Mac):** còn **17 method TODO-reject** (auth/home/pairing/BLE/DP) + module chưa là RCTEventEmitter
+   (event không bắn) + `initSdk` thiếu `ThingSmartBusinessExtensionConfig setupConfig`.
+4. **Thiết bị thật** cho pairing/BLE/DP.
+
+🔴 **Bảo mật (user defer "tính sau" 2026-06-29):** `docs/sdk/keys.txt` (AppSecret + Cloud secret) **đã push lên
+`origin/main`** GitHub → keys coi như lộ; nên rotate + dọn git history. Xem context.md.
 
 ## Checklist các bước (đồng bộ với plan.md mục 4)
 - [x] B1 — Scaffold thư viện · **done**
@@ -24,7 +40,7 @@
 - [x] B6 — Auth email + thirdLogin · **done Android**; ⚠️ **iOS TODO-reject** (chỉ isLoggedIn wire)
 - [x] B7 — Home management · **done Android**; ⚠️ **iOS TODO-reject**
 - [x] B8 — Pairing Wi-Fi (EZ/AP) + token · **done Android**; ⚠️ **iOS TODO-reject**; cần thiết bị thật
-- [~] B9 — BLE + DP + status emitter · **DP + events + BLE-scan done Android**; ⚠️ **Android `startBlePairing` TODO** + **iOS TODO-reject**
+- [x] B9 — BLE + DP + status emitter · **done Android** (DP + events + BLE scan **+ pairing**); ⚠️ **iOS TODO-reject**
 - [~] B10 — Secret sweep + docs · **SETUP.md + .gitignore + gradle.properties.example done**; README API chi tiết để sau
 
 ## Checklist tiêu chí hoàn thành (đồng bộ với plan.md mục 3)
@@ -38,6 +54,11 @@
 ## Nhật ký chạy (Run log) — mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
+| 2026-06-29 | RESEARCH (full surface) | ✅ | Workflow 11 agent research toàn bộ Home SDK còn lại (Android+iOS, cited) → 11 note `docs/research/tuya-home-sdk-*.md` + overview `tuya-home-sdk-full-surface.md` (bản đồ + đề xuất API + ưu tiên 3 đợt). Đề xuất module mới: TuyaOta/TuyaScene/TuyaMessage/TuyaTimer/TuyaErrors (P1-P2), TuyaMatter/TuyaMesh/TuyaMember (P3); Widget ngoài phạm vi. **Mới là RESEARCH+đề xuất — CHƯA implement native.** |
+| 2026-06-29 | DOCS | ✅ | Gộp toàn bộ hướng dẫn (config AppKey/Secret/id + Android/iOS + usage + kiến trúc) vào **README.md tiếng Anh** (single source), xoá `SETUP.md`; sửa ref trong .gitignore/build.gradle/podspec/TuyaCore.mm → README. |
+| 2026-06-29 | RENAME | ✅ code-only | Đổi tên lib → **`@jimmy-vu/react-native-turbo-tuya`** (pod/codegen `TurboTuya`/`TurboTuyaSpec`, java `com.jimmyvu.turbotuya`, class `TurboTuyaPackage`, condition `react-native-turbo-tuya-source`). Sửa package.json/tsconfig/podspec(đổi tên file)/metro/vite/imports/docs; di chuyển cây Kotlin. Module JS giữ nguyên. App ví dụ giữ identity cũ (console-tied). |
+| 2026-06-29 | REFACTOR | ✅ code-only | Tách module gộp → **5 TurboModule theo folder** (Core/Auth/Home/Pairing/Device) theo yêu cầu user. TS: `src/specs/*` (5 spec) + `index.tsx` facade phẳng `Tuya` + export sub-module. Android: 5 package `…{core,auth,home,pairing,device}` + 1 Package đăng ký. iOS: `ios/{Core,Auth,Home,Pairing,Device}` mỗi class `RCT_EXPORT_MODULE()`. Xoá monolith cũ. Codegen vẫn 1 lib. **Chưa typecheck** (đang yarn install). |
+| 2026-06-29 | AUDIT + WIRE | ✅ | Workflow 5-agent audit native+build (đối chiếu developer.tuya.com): **Android API đúng**, parity JS↔native sạch (26/26), toolchain versions tương thích (Gradle 9.3.1/AGP 8.12/JDK17/SDK36/NDK27.1). Wire build-ready: aar→libs, iOS xcframework→example/ios, tạo gradle.properties, +Maven Tuya (allprojects), impl `startBlePairing`+cache scan, fix iOS `RCT_EXPORT_MODULE()`. Còn: cài JDK17+Android SDK + console (applicationId/SHA-256/DC) + iOS 17 method. |
 | 2026-06-29 | DEV B3–B9 | ⚠️ code-only | Viết native: Android `TuyaReactNativeModule.kt` (init/auth/home/wifi-pairing/DP/events/ble-scan; BLE-pairing TODO) + gradle/manifest/proguard; iOS `.mm` (init+isLoggedIn real; còn lại TODO-reject) + podspec; SETUP.md + gradle.properties.example + .gitignore secret. **Lib `tsc` vẫn pass.** Native CHƯA build-verify (thiếu Android SDK/JDK17/Xcode + file bảo mật). |
 | 2026-06-28 | DEV+TEST B2 | ✅ | TurboModule spec đủ 7 nhóm API (init/auth/home/pairing WiFi+BLE/DP/events) + `src/index.tsx` (Tuya + on*). Bỏ `multiply`. `yarn typecheck` exit 0, jest pass, bob build pass. Codegen native gen hoãn tới B3 (chưa có Android SDK/JDK17). |
 | 2026-06-28 | DEV+TEST B1 | ✅ | `create-react-native-library` → `packages/tuya-react-native` (turbo-module, kotlin-objc Obj-C++, RN 0.85.0, yarn4 berry, example vanilla). Gỡ nested `.git`; thêm `yarn.lock` rỗng (do có yarn project ở ~). `yarn install` OK, typecheck/jest/bob pass. Android `assembleDebug` HOÃN (máy này không có Android SDK + JDK 11<17). |
