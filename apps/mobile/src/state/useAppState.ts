@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getStreakMultiplier } from './levels';
+import {
+  initSdk,
+  readDevice,
+  setTargetTemp as tuyaSetTargetTemp,
+  setLight as tuyaSetLight,
+  listenDevice,
+} from '../services/tuya';
 
-// App state (port từ replit_generate/App.js). Phần device (temp/light) sẽ nối Tuya
-// SDK ở B6 — đánh dấu "replaced by Tuya SDK later".
+// devId của bồn — TODO: lấy từ pairing (feature m1-mobile-pairing) / lưu local.
+// B6 để rỗng → adapter Tuya tự dùng mock (UI clone chạy được khi chưa build native / chưa pair).
+const DEVICE_ID = '';
+
+// App state (port từ replit_generate/App.js). Phần device (temp/light) nối Tuya SDK qua
+// services/tuya (adapter có mock fallback). Chữ ký return giữ nguyên để screens không phải sửa.
 export function useAppState() {
   const [totalSessions, setTotalSessions] = useState(0);
   const [totalMinutes, setTotalMinutes] = useState(0);
@@ -36,12 +47,14 @@ export function useAppState() {
     setLastSessionPoints(pointsEarned);
   };
 
-  // Simulate connection — replace with Tuya SDK call later
-  const connectDevice = () => {
+  // Kết nối: init SDK + đọc snapshot DP thiết bị (adapter trả mock khi native vắng / devId rỗng).
+  const connectDevice = async () => {
     setDeviceConnected(true);
-    setCurrentTemp(12);
-    setTargetTemp_(6);
-    setLightOn(false);
+    await initSdk();
+    const s = await readDevice(DEVICE_ID);
+    setCurrentTemp(s.currentTemp);
+    setTargetTemp_(s.targetTemp);
+    setLightOn(s.lightOn);
   };
 
   const disconnectDevice = () => {
@@ -50,9 +63,30 @@ export function useAppState() {
     setTargetTemp_(null);
   };
 
-  const toggleLight = () => setLightOn((l) => !l);
-  const setTargetTemp = (temp: number) =>
-    setTargetTemp_(Math.max(-3, Math.min(12, temp)));
+  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng).
+  const toggleLight = () =>
+    setLightOn((l) => {
+      const next = !l;
+      void tuyaSetLight(DEVICE_ID, next);
+      return next;
+    });
+
+  const setTargetTemp = (temp: number) => {
+    const v = Math.max(-3, Math.min(12, temp));
+    setTargetTemp_(v);
+    void tuyaSetTargetTemp(DEVICE_ID, v);
+  };
+
+  // Realtime DP (onDeviceStatus) → cập nhật currentTemp/targetTemp/lightOn. No-op khi native vắng.
+  useEffect(() => {
+    if (!deviceConnected) return;
+    const sub = listenDevice(DEVICE_ID, (p) => {
+      if (p.currentTemp !== undefined) setCurrentTemp(p.currentTemp);
+      if (p.targetTemp !== undefined) setTargetTemp_(p.targetTemp);
+      if (p.lightOn !== undefined) setLightOn(p.lightOn);
+    });
+    return () => sub.remove();
+  }, [deviceConnected]);
 
   const completeBreathwork = (rounds = 1) => {
     setCompletedBreathworks((b) => b + 1);
