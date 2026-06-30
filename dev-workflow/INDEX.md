@@ -19,7 +19,9 @@
 | m1-backend-user-mgmt | M1·C2 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-28 | [↗](m1-backend-user-mgmt/progress.md) |
 | m1-backend-admin-auth | M1·C3 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-29 | [↗](m1-backend-admin-auth/progress.md) |
 | m1-admin-web | M1·D | admin | DEV | in_progress (B1–B4 code xong; env→verify live) | 2026-06-29 | [↗](m1-admin-web/progress.md) |
+| m1-mobile-pairing | M1·B4 | mobile | DEV | in_progress — **B1–B4 code XONG** (adapter pairing+mock · deviceStore AsyncStorage · PairingScreen state-machine Wi-Fi/BLE · success→connectDevice). `tsc`/`jest` deferred (no node_modules+503). Còn AC5 device round-trip + thay `ensureHome` tạm bằng auth/home thật | 2026-06-30 | [↗](m1-mobile-pairing/progress.md) |
 | m1-mobile-scaffold | M1·B(clone UI) | mobile | DEV | in_progress — **B1–B6 code XONG** (clone UI 12 screens + **B6 nối lib Tuya**: adapter require+mock, DP-id, useAppState device→Tuya). `tsc`/`jest` deferred (no node_modules+503). Còn AC6 device round-trip (build+thiết bị+DP schema) → rồi feature mobile pairing/dashboard | 2026-06-30 | [↗](m1-mobile-scaffold/progress.md) |
+| m1-mobile-dashboard | M1·B5 | mobile | PLAN | in_progress — plan vừa tạo (6 bước: schema-parse → deviceStore → conn state machine → optimistic ack → DeviceCard UI → device checklist). Tiêu thụ `isOnline`/`schemaJson`/`publishDpsAwaitAck` đã có ở lib; verify tsc+jest. **Chờ Gate ① + DP schema thật**; devId lấy từ `m1-mobile-pairing` | 2026-06-30 | [↗](m1-mobile-dashboard/progress.md) |
 
 ## Backlog M1 — chia theo brief mở rộng (chạy `/plan <slug>` khi tới)
 > Thứ tự phụ thuộc: **A → B**; **C → D** (track backend/admin chạy song song được).
@@ -27,8 +29,6 @@
 |---|---|---|---|
 | m1-mobile-auth | M1·B2 | mobile | Màn đăng ký/đăng nhập: email + Google + Apple → lấy idToken → `thirdLogin` |
 | m1-mobile-home-setup | M1·B3 | mobile | Setup Home đầu tiên cho user (1 nhà/user) |
-| m1-mobile-pairing | M1·B4 | mobile | In-app pairing: Wi-Fi (EZ/AP) + Bluetooth, màn hướng dẫn, loading/lỗi |
-| m1-mobile-dashboard | M1·B5 | mobile | Dashboard: hiển thị nhiệt độ thực tế + đặt nhiệt độ mục tiêu + status real-time |
 
 ## Backlog M2 / M3 (ngoài phạm vi M1)
 | Feature (slug) | Milestone | Phần | Mô tả ngắn |
