@@ -74,6 +74,9 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | Device Control (Android, publishDps + IDevListener.onDpUpdate) | ✅ https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y |
 | Error Codes (-33/-55/-56/-1400...) | ✅ https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a |
 | Privacy Manifest (iOS) | 🔗 https://developer.tuya.com/en/docs/app-development/PrivacyInfo?id=Kdgwv9p6ual8m |
+| Matter pairing (iOS, unified ThingSmartActivatorDiscovery) | ✅ https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k |
+| SIG Mesh (iOS, ThingSmartBleMesh/ThingSmartSIGMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23 |
+| Tuya Mesh (iOS, ThingSmartBleMesh/ThingBLEMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz |
 
 ## How to find a deep page you don't have
 `WebSearch` with `allowed_domains: ["developer.tuya.com"]`, e.g.
