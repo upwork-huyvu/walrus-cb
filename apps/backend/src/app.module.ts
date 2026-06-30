@@ -5,6 +5,7 @@ import { TuyaModule } from './tuya/tuya.module';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AdminAuthModule } from './admin-auth/admin-auth.module';
     AdminAuthModule, // auth admin (Supabase) + guard
     HealthModule, // GET /health
     UsersModule, // list/detail/xoá user + delete_jobs cron (bọc AdminAuthGuard)
+    NotificationsModule, // gửi push + quản lý template qua Tuya Cloud App Push (bọc AdminAuthGuard)
   ],
 })
 export class AppModule {}

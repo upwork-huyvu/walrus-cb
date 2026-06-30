@@ -1,0 +1,32 @@
+// Kiểu dữ liệu trả về từ Tuya Cloud App Push API.
+// Một số cấu trúc bao ngoài (list, trạng thái duyệt) chưa xác minh trên data thật
+// → để mềm (optional + index signature), siết lại khi có response thực tế.
+
+/** Kết quả gửi push: POST /v1.0/iot-03/messages/app-notifications/actions/push */
+export type TuyaPushResult = {
+  send_status: boolean;
+};
+
+/** Kết quả tạo template: POST /v1.0/iot-03/msg-templates/app-notifications */
+export type TuyaCreateTemplateResult = {
+  template_id: string;
+};
+
+/** 1 template thông báo (chi tiết/danh sách). */
+export type TuyaTemplate = {
+  template_id: string;
+  name?: string;
+  title?: string;
+  content?: string;
+  type?: number;
+  /** Trạng thái duyệt — enum chính xác cần verify khi có data thật. */
+  status?: string | number;
+  [key: string]: unknown;
+};
+
+/** Danh sách template: GET /v1.0/iot-03/msg-templates/app-notifications */
+export type TuyaTemplateList = {
+  list?: TuyaTemplate[];
+  total?: number;
+  [key: string]: unknown;
+};
