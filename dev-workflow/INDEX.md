@@ -19,7 +19,7 @@
 | m1-backend-user-mgmt | M1·C2 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-28 | [↗](m1-backend-user-mgmt/progress.md) |
 | m1-backend-admin-auth | M1·C3 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-29 | [↗](m1-backend-admin-auth/progress.md) |
 | m1-admin-web | M1·D | admin | DEV | in_progress (B1–B4 code xong; env→verify live) | 2026-06-29 | [↗](m1-admin-web/progress.md) |
-| m1-mobile-scaffold | M1·B(clone UI) | mobile | DEV | in_progress (B1–B5 xong: clone UI 12 screens + router, tsc+jest pass; B6 link lib Tuya) | 2026-06-29 | [↗](m1-mobile-scaffold/progress.md) |
+| m1-mobile-scaffold | M1·B(clone UI) | mobile | DEV | in_progress — **B1–B6 code XONG** (clone UI 12 screens + **B6 nối lib Tuya**: adapter require+mock, DP-id, useAppState device→Tuya). `tsc`/`jest` deferred (no node_modules+503). Còn AC6 device round-trip (build+thiết bị+DP schema) → rồi feature mobile pairing/dashboard | 2026-06-30 | [↗](m1-mobile-scaffold/progress.md) |
 
 ## Backlog M1 — chia theo brief mở rộng (chạy `/plan <slug>` khi tới)
 > Thứ tự phụ thuộc: **A → B**; **C → D** (track backend/admin chạy song song được).

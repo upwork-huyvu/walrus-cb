@@ -6,6 +6,15 @@
 - **2026-06-29** — App = **RN CLI** (KHÔNG Expo), pin **RN 0.85** khớp lib `@cool-bath/tuya-react-native`
   (CRNL sinh lib ở RN 0.85) để link/autolink mượt.
 - **2026-06-29** — `replit_generate/` chỉ dùng làm **tham chiếu UI/theme**; bỏ hết `expo-*`.
+- **2026-06-30 (B6)** — Lib đổi tên **`@jimmy-vu/react-native-turbo-tuya`** (không còn `@cool-bath`). Repo **KHÔNG có
+  root workspace** → app standalone → link bằng **`file:` dep** + metro `watchFolders`+`extraNodeModules`(dedupe React)+
+  `unstable_enablePackageExports`/condition `react-native-turbo-tuya-source` (đọc `src` lib trực tiếp, khỏi `bob build`).
+- **2026-06-30 (B6)** — **Adapter `src/services/tuya.ts` dùng `require` trong try/catch + mock fallback** thay vì import
+  tĩnh: lib `index.tsx` gọi `getEnforcing`/`new NativeEventEmitter` NGAY lúc import → JS-only (Metro chưa build native)
+  sẽ crash. Adapter cho UI clone chạy được khi chưa build native, tự chuyển sang SDK thật khi native có mặt.
+- **2026-06-30 (B6)** — `useAppState` device-state nối Tuya qua adapter (initSdk/getDeviceSnapshot/publishDps/
+  onDeviceStatus), **giữ NGUYÊN chữ ký return** (chỉ `connectDevice` thành async) → screens không phải sửa. DP-id ở
+  `src/services/dp.ts` là **placeholder** (chưa có DP schema bồn thật). `devId` để rỗng → mock; pairing thật = feature sau.
 
 ## Bản đồ file/module
 | File | Vai trò |
@@ -19,7 +28,11 @@
 | `apps/mobile/App.tsx` | (B5) router switch `navigate()` + ThemeProvider (đã bỏ Font.loadAsync) |
 | `apps/mobile/src/navigation.ts` | (B4) ScreenName + Navigate type (router tự viết) |
 | `apps/mobile/src/state/levels.test.ts` | (B5) unit test pure-logic (thay App.test boilerplate) |
-| `packages/tuya-react-native` | lib native được link (B2) |
+| `apps/mobile/src/services/tuya.ts` | (B6) adapter Tuya: require try/catch + mock; initSdk/readDevice/setTargetTemp/setLight/listenDevice |
+| `apps/mobile/src/services/dp.ts` (+`.test.ts`) | (B6) hằng DP-id (placeholder) + parse/build dps |
+| `apps/mobile/metro.config.js` | (B6) watchFolders lib + dedupe React + package-exports condition |
+| `apps/mobile/package.json` | (B6) +`file:` dep `@jimmy-vu/react-native-turbo-tuya` |
+| `packages/tuya-react-native` | lib native được link qua `file:` dep (B6) |
 | `replit_generate/` | UI prototype (Expo) — nguồn tham chiếu |
 
 ## Phát hiện & cạm bẫy
