@@ -7,7 +7,10 @@ export function proxy(req: NextRequest) {
   const hasToken = req.cookies.has(TOKEN_COOKIE);
   const { pathname } = req.nextUrl;
 
-  if (!hasToken && pathname.startsWith('/users')) {
+  if (
+    !hasToken &&
+    (pathname.startsWith('/users') || pathname.startsWith('/notifications'))
+  ) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
   if (hasToken && pathname === '/login') {
@@ -17,5 +20,5 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/users/:path*', '/login'],
+  matcher: ['/users/:path*', '/notifications/:path*', '/login'],
 };
