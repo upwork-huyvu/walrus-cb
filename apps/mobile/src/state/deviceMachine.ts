@@ -52,7 +52,7 @@ export type DeviceAction =
   | { type: 'dpPatch'; patch: DpPatch }
   | { type: 'setTargetOptimistic'; temp: number }
   | { type: 'ackResolved'; temp: number }
-  | { type: 'ackTimeout'; temp: number }
+  | { type: 'ackTimeout'; temp: number; error?: string }
   | { type: 'disconnect' };
 
 const ACK_TIMEOUT_MSG = 'Thiết bị không xác nhận lệnh đặt nhiệt độ';
@@ -86,20 +86,35 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
       return { ...state, status: action.isOnline ? 'online' : 'offline' };
 
     case 'dpPatch': {
+      // Diff trước khi tạo state mới (audit M-3): không đổi gì → trả CÙNG ref → useReducer bỏ re-render.
       const p = action.patch;
       const next: DeviceState = { ...state };
-      if (p.currentTemp !== undefined) next.currentTemp = p.currentTemp;
-      if (p.lightOn !== undefined) next.lightOn = p.lightOn;
+      let changed = false;
+      if (p.currentTemp !== undefined && p.currentTemp !== state.currentTemp) {
+        next.currentTemp = p.currentTemp;
+        changed = true;
+      }
+      if (p.lightOn !== undefined && p.lightOn !== state.lightOn) {
+        next.lightOn = p.lightOn;
+        changed = true;
+      }
       if (p.targetTemp !== undefined && p.targetTemp !== null) {
         // Thiết bị là nguồn sự thật: echo target → set + xoá pending (đã confirm/đổi ngoài).
-        next.targetTemp = p.targetTemp;
-        next.pendingTarget = null;
-        next.prevTarget = null;
+        if (p.targetTemp !== state.targetTemp || state.pendingTarget !== null) {
+          next.targetTemp = p.targetTemp;
+          next.pendingTarget = null;
+          next.prevTarget = null;
+          changed = true;
+        }
       }
       if (p.isOnline !== undefined && state.status !== 'idle') {
-        next.status = p.isOnline ? 'online' : 'offline';
+        const ns: ConnStatus = p.isOnline ? 'online' : 'offline';
+        if (ns !== state.status) {
+          next.status = ns;
+          changed = true;
+        }
       }
-      return next;
+      return changed ? next : state;
     }
 
     case 'setTargetOptimistic': {
@@ -125,7 +140,7 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
         targetTemp: state.prevTarget,
         pendingTarget: null,
         prevTarget: null,
-        error: ACK_TIMEOUT_MSG,
+        error: action.error ?? ACK_TIMEOUT_MSG, // dùng message đã map (audit H-1) nếu có
       };
 
     case 'disconnect':

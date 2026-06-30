@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer } from 'react';
+import { useState, useEffect, useReducer, useRef } from 'react';
 import { getStreakMultiplier } from './levels';
 import {
   initSdk,
@@ -8,6 +8,8 @@ import {
   listenDevice,
 } from '../services/tuya';
 import { clampToRange } from '../services/deviceSchema';
+import { describeTuyaError } from '../services/tuyaError';
+import { debounce } from '../lib/debounce';
 import { deviceReducer, initialDeviceState } from './deviceMachine';
 import { getDevId, setDevId as persistDevId } from '../services/deviceStore';
 
@@ -27,6 +29,20 @@ export function useAppState() {
   const [device, dispatch] = useReducer(deviceReducer, initialDeviceState);
   const [devId, setDevId] = useState('');
   const deviceConnected = device.status !== 'idle';
+
+  // Publish target được DEBOUNCE (audit M-1): bấm +/- nhanh chỉ gửi giá trị cuối. Tạo 1 lần.
+  const publishTargetRef = useRef(
+    debounce((id: string, temp: number) => {
+      void tuyaSetTargetTemp(id, temp).then((res) => {
+        if (res.ok) dispatch({ type: 'ackResolved', temp });
+        else dispatch({ type: 'ackTimeout', temp, error: res.error });
+      });
+    }, 400),
+  );
+  useEffect(() => {
+    const publisher = publishTargetRef.current;
+    return () => publisher.cancel(); // dọn debounce khi unmount
+  }, []);
 
   // Nạp devId đã pair lúc mở app.
   useEffect(() => {
@@ -66,10 +82,8 @@ export function useAppState() {
       const s = await readDevice(useId);
       dispatch({ type: 'connectOk', snapshot: s });
     } catch (e) {
-      dispatch({
-        type: 'connectError',
-        error: e instanceof Error ? e.message : 'Không đọc được thiết bị',
-      });
+      // Map mã lỗi Tuya → thông điệp phân biệt (audit H-1) thay vì chuỗi cố định.
+      dispatch({ type: 'connectError', error: describeTuyaError(e).message });
     }
   };
 
@@ -82,20 +96,20 @@ export function useAppState() {
     dispatch({ type: 'disconnect' });
   };
 
-  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair).
+  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert đèn.
   const toggleLight = () => {
     const next = !device.lightOn;
     dispatch({ type: 'dpPatch', patch: { lightOn: next } });
-    void tuyaSetLight(devId, next);
+    void tuyaSetLight(devId, next).then((res) => {
+      if (!res.ok) dispatch({ type: 'dpPatch', patch: { lightOn: !next } });
+    });
   };
 
-  // Đặt target: kẹp theo schema → optimistic (pending) → confirm bằng ack, revert nếu không ack.
+  // Đặt target: kẹp theo schema → optimistic (pending) ngay → publish DEBOUNCE → confirm ack / revert nếu fail.
   const setTargetTemp = (temp: number) => {
     const clamped = clampToRange(temp, device.tempRange);
     dispatch({ type: 'setTargetOptimistic', temp: clamped });
-    void tuyaSetTargetTemp(devId, clamped).then((ok) => {
-      dispatch({ type: ok ? 'ackResolved' : 'ackTimeout', temp: clamped });
-    });
+    publishTargetRef.current(devId, clamped);
   };
 
   // Realtime DP + online/offline (onDeviceStatus) → reducer. No-op khi native vắng / chưa kết nối.

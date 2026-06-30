@@ -3,6 +3,32 @@
 // + new NativeEventEmitter NGAY lúc import → JS-only sẽ throw → bắt bằng require trong try/catch.
 import { parseDeviceDps, buildTempDps, buildLightDps } from './dp';
 import { parseTempRange, DEFAULT_TEMP_RANGE, type TempRange } from './deviceSchema';
+import { describeTuyaError } from './tuyaError';
+
+// Log lỗi SDK ở dev (audit H-1: KHÔNG nuốt im lặng). Prod: không spam console.
+function devLogError(where: string, e: unknown): void {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    const info = describeTuyaError(e);
+    // eslint-disable-next-line no-console
+    console.warn(`[tuya] ${where} failed`, info.code ?? '', info.message, e);
+  }
+}
+
+/** Kết quả publish có ack: ok=true đã xác nhận; ok=false kèm thông điệp lỗi (đã map) để UI hiện. */
+export type SetResult = { ok: boolean; error?: string };
+
+// Bọc promise với timeout → reject 'timeout' nếu native không phản hồi (audit M-2: tránh kẹt loading).
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timeout sau ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
+const READ_TIMEOUT_MS = 8000;
 
 export type DeviceSnapshot = {
   currentTemp: number | null;
@@ -45,7 +71,8 @@ export async function initSdk(): Promise<boolean> {
   if (!tuyaAvailable) return false;
   try {
     return await lib.Tuya.initSdk();
-  } catch {
+  } catch (e) {
+    devLogError('initSdk', e);
     return false;
   }
 }
@@ -57,7 +84,8 @@ export async function initSdk(): Promise<boolean> {
  */
 export async function readDevice(devId: string): Promise<DeviceSnapshot> {
   if (!tuyaAvailable || !devId) return { ...MOCK };
-  const snap = await lib.Tuya.getDeviceSnapshot(devId);
+  // timeout để không kẹt 'connecting'/loading nếu native treo (audit M-2).
+  const snap = await withTimeout(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Đọc thiết bị');
   const d = parseDeviceDps(snap?.dpsJson ?? '{}');
   return {
     currentTemp: d.currentTemp,
@@ -74,26 +102,29 @@ export async function readDevice(devId: string): Promise<DeviceSnapshot> {
  * @returns `true` = thiết bị đã xác nhận (ack); `false` = không ack / lỗi → caller revert optimistic.
  * native vắng / devId rỗng (mock) → coi như confirmed ngay (`true`).
  */
-export async function setTargetTemp(devId: string, temp: number): Promise<boolean> {
-  if (!tuyaAvailable || !devId) return true;
+export async function setTargetTemp(devId: string, temp: number): Promise<SetResult> {
+  if (!tuyaAvailable || !devId) return { ok: true };
   try {
     if (typeof lib.Tuya.publishDpsAwaitAck === 'function') {
       await lib.Tuya.publishDpsAwaitAck(devId, buildTempDps(temp), 0); // 0 → timeout mặc định native
     } else {
       await lib.Tuya.publishDps(devId, buildTempDps(temp));
     }
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (e) {
+    devLogError('setTargetTemp', e);
+    return { ok: false, error: describeTuyaError(e).message };
   }
 }
 
-export async function setLight(devId: string, on: boolean): Promise<void> {
-  if (!tuyaAvailable || !devId) return;
+export async function setLight(devId: string, on: boolean): Promise<SetResult> {
+  if (!tuyaAvailable || !devId) return { ok: true };
   try {
     await lib.Tuya.publishDps(devId, buildLightDps(on));
-  } catch {
-    /* nuốt — UI đã optimistic */
+    return { ok: true };
+  } catch (e) {
+    devLogError('setLight', e);
+    return { ok: false, error: describeTuyaError(e).message };
   }
 }
 
@@ -123,12 +154,13 @@ export function listenDevice(devId: string, onPatch: (p: DevicePatch) => void): 
         try {
           lib.Tuya.unregisterDeviceListener(devId);
           sub?.remove?.();
-        } catch {
-          /* ignore */
+        } catch (e) {
+          devLogError('unregisterDeviceListener', e);
         }
       },
     };
-  } catch {
+  } catch (e) {
+    devLogError('listenDevice', e);
     return { remove() {} };
   }
 }

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { F, useTheme } from '../theme';
 
@@ -22,6 +22,14 @@ export default function CleaningPanel() {
   const [cleanState, setCleanState] = useState<CleanState>('idle');
   const [cleanCountdown, setCleanCountdown] = useState(0);
   const cleanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Dọn interval khi unmount (audit M-4): tránh setState trên component đã gỡ + leak nếu rời màn lúc đang "Cleaning…".
+  useEffect(
+    () => () => {
+      if (cleanTimerRef.current) clearInterval(cleanTimerRef.current);
+    },
+    [],
+  );
 
   const formatCleanTime = () => {
     const h = cleanHour.toString().padStart(2, '0');

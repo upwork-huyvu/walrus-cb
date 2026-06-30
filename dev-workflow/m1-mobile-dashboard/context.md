@@ -18,6 +18,18 @@
   `useAppState` đọc devId lúc mount. Dashboard **tái dùng nguyên** (không tạo store trùng) → B2 coi như xong.
 - **2026-06-30 (DEV) — reducer init `status:'online'`:** giữ UX cũ của UI clone (mặc định coi như đã có thiết bị
   mock 12/6) → `deviceConnected = status!=='idle'` vẫn true lúc mount. Khi pair thật, connectDevice ghi đè bằng snapshot.
+- **2026-06-30 (DEV B7) — TÁI DÙNG lib `TuyaErrors`:** lib đã export sẵn classifier `TuyaErrors` (classify/describe,
+  message tiếng Việt + cờ retryable, bảng tĩnh JS-only). `services/tuyaError.ts` chỉ là **wrapper mỏng** (trích code từ
+  reject + bỏ tiền tố `[domain:code]`), KHÔNG bịa bảng riêng. Lấy qua `require` try/catch (lib import tĩnh = crash JS-only);
+  cho **inject classifier** để test (vì lib không load được trong jest/native vắng).
+- **2026-06-30 (DEV B9) — M-3 chặn re-render tại NGUỒN, không memo:** thay vì `React.memo(DeviceCard)` (vô hiệu vì prop
+  `state` đổi ref mỗi render — App spread `{...appState, isDark}`), cho `deviceReducer.dpPatch` **diff → trả CÙNG ref** khi
+  echo không đổi → `useReducer` bỏ re-render ngay từ gốc. Đã loại memo (cần tách prop primitive cho cả app — over-scope).
+- **2026-06-30 (FIX-PLAN sau audit)** — Thêm **B7–B9** vào plan từ finding audit (`docs/audit/2026-06-30-m1-mobile-dashboard.md`):
+  B7 = error observability (H-1: bỏ empty-catch, log+map mã lỗi Tuya → thông điệp phân biệt); B8 = debounce publish target
+  + timeout đọc snapshot (M-1/M-2); B9 = throttle DP patch + memo DeviceCard + clear setInterval CleaningPanel (M-3/M-4).
+  +AC8/AC9. **Lý do:** code B1–B6 chạy nhưng audit lộ gap robustness/observability + 1 leak — sửa được ngay không cần
+  thiết bị. **H-2 (DP schema thật) KHÔNG thành bước** (chờ client) — giữ ở Rủi ro. Nit L-1/L-2/L-3 đẩy backlog.
 - **2026-06-30 (PLAN)** — Tiêu thụ `devId` từ **`services/deviceStore.ts` (seam)** thay vì hardcode `''` trong
   `useAppState`. Lý do: tách dashboard khỏi pairing — pairing (`m1-mobile-pairing`) sẽ điền store; dashboard chạy
   mock khi store rỗng. Đã loại: chờ pairing xong mới làm dashboard (block không cần thiết).
@@ -39,7 +51,9 @@
 | `apps/mobile/src/services/dp.ts` | Hằng DP-id (placeholder) + parse/build dps — tái dùng |
 | `apps/mobile/src/services/deviceSchema.ts` | **MỚI (B1)** parse `schemaJson` → `tempRange{min,max,step,scale,unit}` + kiểu DP |
 | `apps/mobile/src/services/deviceStore.ts` | **MỚI (B2)** nguồn `devId` dùng chung (get/set/subscribe); pairing điền sau |
-| `apps/mobile/src/state/deviceMachine.ts` | **MỚI (B3/B4)** reducer thuần: ConnStatus + loading/error + reconcile optimistic/ack |
+| `apps/mobile/src/state/deviceMachine.ts` | **MỚI (B3/B4/B9)** reducer thuần: ConnStatus + loading/error + reconcile optimistic/ack + dpPatch diff |
+| `apps/mobile/src/services/tuyaError.ts` | **MỚI (B7)** wrapper quanh `TuyaErrors` lib → mã lỗi + message phân biệt (tiếng Việt) |
+| `apps/mobile/src/lib/debounce.ts` | **MỚI (B8)** debounce trailing thuần (gộp publish target) |
 | `apps/mobile/src/state/useAppState.ts` | **Sửa:** đọc devId từ store; nối deviceMachine; vẫn giữ chữ ký return cho screens |
 | `apps/mobile/src/components/DeviceCard.tsx` | **MỚI (B5)** card thiết bị + status/loading/error/bounds (đặt trong DashboardScreen) |
 | `apps/mobile/src/components/StatusPill.tsx` | **MỚI (B5)** chip online/offline/connecting/error |
@@ -60,12 +74,17 @@
   `onDpUpdate`/event echo về. Dùng `publishDpsAwaitAck` + reconcile timeout.
 - **Online 2 mức:** `isOnline` = LAN **hoặc** cloud; `isLocalOnline` = chỉ LAN. UI hiển thị theo `isOnline`.
 - **DP id/scale placeholder** ở `dp.ts` — chưa có schema thật của bồn; B1 viết schema-driven, AC6 cần schema thật.
-- ⛔ **BLOCKER có sẵn:** module `apps/mobile/src/lib/format` (xuất `LOGO_URI`, `LOGO_URI_LIGHT`, `formatTime`)
-  **không tồn tại trên đĩa** (Read/Glob/Grep đều xác nhận); `apps/mobile` không được git track nên không restore được.
-  → App + `HomeScreen`/`SplashScreen`/`OnboardWelcomeScreen`/`SessionScreen` **không compile**. KHÔNG do dashboard
-  (HomeScreen import sẵn từ trước). Cần khôi phục file (URL logo Dropbox từ scaffold + `formatTime`) — không bịa.
+- ✅ **(ĐÃ GỠ)** module `apps/mobile/src/lib/format` từng **thiếu trên đĩa** (Read/Glob/Grep xác nhận; `apps/mobile`
+  untracked nên không restore từ git) → App + Home/Splash/OnboardWelcome/Session không compile. **Đã khôi phục nguyên
+  bản** từ `replit_generate/App.js`: `LOGO_URI`/`LOGO_URI_LIGHT` (Dropbox ?dl=1) + `formatTime(s)='mm:ss'`. KHÔNG do dashboard.
 - **readDevice rethrow:** chỉ MOCK khi native vắng/devId rỗng; lỗi đọc THẬT thì throw → `connectError` (cho AC3).
   `setTargetTemp` trả `boolean` (ack) thay vì void → reducer ackResolved/ackTimeout.
+
+## Audit (2026-06-30)
+- Báo cáo: [docs/audit/2026-06-30-m1-mobile-dashboard.md](../../docs/audit/2026-06-30-m1-mobile-dashboard.md) — 🔴0 🟠2 🟡4 🔵3.
+- **Follow-up (feed `/fix-plan`):** H-1 adapter log+map error code (lib `errors.ts`) + thông báo phân biệt region/owner/offline;
+  H-2 cắm DP schema thật (chờ client); M-1 debounce publish target +/-; M-2 timeout `readDevice`; M-3 throttle DP patch +
+  memo DeviceCard; M-4 clear `setInterval` CleaningPanel khi unmount. ĐẠT: optimistic-reconcile, listener cleanup, không secret.
 
 ## Liên kết
 - Plan: [plan.md](plan.md) · Progress: [progress.md](progress.md)

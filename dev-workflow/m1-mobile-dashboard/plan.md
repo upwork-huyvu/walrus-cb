@@ -60,6 +60,11 @@ thiết bị), phản ánh cập nhật **DP realtime**, có **loading / error /
   giá trị **confirmed** ≤ N giây; **ngắt mạng** thiết bị → UI chuyển **offline**. *(manual device checklist)*
 - [ ] **AC7** — `tsc` pass + `jest` pass cho các module pure-logic mới; **không** Expo; **không** secret mới
   trong bundle.
+- [ ] **AC8 (audit H-1)** — Lỗi SDK **không bị nuốt**: adapter log (ít nhất `__DEV__`) + trả mã lỗi; thông báo
+  người dùng **phân biệt** các ca phổ biến (sai region / không phải Owner / token hết hạn / thiết bị offline) qua bảng
+  map của lib (`errors.ts`). *(jest map code→message + tsc)*
+- [ ] **AC9 (audit M-1/M-2)** — Bấm +/- target **debounce** (chỉ publish giá trị cuối); `readDevice`/snapshot có
+  **timeout** → rơi về `error` thay vì kẹt `connecting`/loading. *(jest debounce/coalesce + timeout reducer; manual)*
 
 ## 4. Các bước thực hiện
 > Mỗi bước nhỏ, làm được trong 1 lượt dev + test. Đánh số để `progress.md` tham chiếu.
@@ -108,6 +113,30 @@ thiết bị), phản ánh cập nhật **DP realtime**, có **loading / error /
    - File: `progress.md`.
    - Kiểm thử: manual / deferred.
 
+> **Bổ sung sau audit 2026-06-30** (xem `docs/audit/2026-06-30-m1-mobile-dashboard.md`) — fix các finding làm-được-ngay
+> (không cần thiết bị). H-2 (DP schema thật) **không** thành bước ở đây vì chờ client (giữ ở Rủi ro).
+
+7. **B7 — Error observability (audit H-1)**
+   - Việc: bỏ empty-catch nuốt lỗi ở `services/tuya.ts`; adapter trả lỗi có **mã** + **log `__DEV__`**; thêm helper
+     `services/tuyaError.ts` map mã lỗi Tuya → thông điệp tiếng Việt **phân biệt** (sai region / không phải Owner /
+     token hết hạn / thiết bị offline / sai băng tần), tái dùng bảng `errors.ts` của lib nếu có. `useAppState`
+     `connectError`/`ackTimeout` dùng thông điệp map thay vì chuỗi cố định.
+   - File: `services/tuyaError.ts` (+`.test.ts`), `services/tuya.ts`, `state/useAppState.ts`, `state/deviceMachine.ts` (message).
+   - Kiểm thử: `jest` (map code→message) + `tsc`.
+
+8. **B8 — Debounce publish + timeout đọc (audit M-1, M-2)**
+   - Việc: **debounce trailing ~400ms** việc publish target (giữ optimistic-UI tức thời, chỉ gửi giá trị cuối) — tách
+     helper thuần `lib/debounce.ts` hoặc coalesce trong `useAppState`. Thêm **timeout** cho `readDevice`/snapshot
+     (`Promise.race` với mốc, vd 8s) → `connectError('timeout')` thay vì kẹt loading.
+   - File: `lib/debounce.ts` (+`.test.ts`), `state/useAppState.ts`, `services/tuya.ts`.
+   - Kiểm thử: `jest` (debounce coalesce + timeout) + `tsc`.
+
+9. **B9 — Realtime perf + dọn timer (audit M-3, M-4)**
+   - Việc: throttle/diff DP patch trước khi vào state (chỉ dispatch khi giá trị đổi); `React.memo` cho `DeviceCard`
+     (+`useCallback` handler). `CleaningPanel`: thêm `useEffect` cleanup `clearInterval` khi unmount (chống leak + setState-after-unmount).
+   - File: `state/useAppState.ts`, `components/DeviceCard.tsx`, `components/CleaningPanel.tsx`.
+   - Kiểm thử: `tsc` + (jest cho hàm diff/throttle nếu tách) + manual.
+
 ## 5. Rủi ro & câu hỏi mở
 - ⚠️ **`devId` phụ thuộc pairing** (`m1-mobile-pairing` chưa làm) → giảm thiểu bằng **deviceStore seam** +
   mock; **đề xuất làm pairing trước**, nhưng dashboard **không chặn cứng** (mock chạy được).
@@ -120,3 +149,6 @@ thiết bị), phản ánh cập nhật **DP realtime**, có **loading / error /
 - ✅ **(đã chốt)** Cleaning scheduler **tách feature riêng** (Tuya Timer) — giữ panel local hiện tại.
 - ✅ **(đã chốt)** **Tách `DashboardScreen` riêng** (thêm route + `ScreenName 'dashboard'`); Home giữ summary +
   nút điều hướng. ⚠️ Hệ quả: B5 đụng `navigation.ts` + `App.tsx` (router tự viết) → test kỹ điều hướng.
+- 🔎 **Audit 2026-06-30** (`docs/audit/2026-06-30-m1-mobile-dashboard.md`): 🟠2 🟡4 🔵3. Fix làm-được-ngay → **B7–B9**.
+  H-2 (DP schema thật) **vẫn chặn** ở Rủi ro trên (chờ client). Nit L-1/L-2/L-3 (inline style / foreground-refresh /
+  token→Keychain) đẩy backlog, **không** làm trong feature này.
