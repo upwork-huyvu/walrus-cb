@@ -3,7 +3,7 @@
 > Nơi DUY NHẤT trả lời "dự án đang ở đâu?". Mọi feature đều phải có 1 dòng ở đây.
 > `/plan` thêm dòng mới; `/dev` `/test` `/fix-plan` cập nhật cột Phase/Trạng thái.
 
-- **Cập nhật lần cuối:** 2026-06-29
+- **Cập nhật lần cuối:** 2026-06-30
 
 > ⚠️ **M1 đã MỞ RỘNG scope (2026-06-28).** Bản brief mới đưa thêm **Part A (thư
 > viện npm Tuya SDK)**, **Part C (backend NestJS + quản lý user)** và **Part D
@@ -14,7 +14,7 @@
 | Feature (slug) | Milestone | Phần | Phase | Trạng thái | Cập nhật | Thư mục |
 |---|---|---|---|---|---|---|
 | m1-tuya-sdk-library | M1·A | mobile/lib | DEV | in_progress (audit ✅ API Android đúng; **build-ready wired** aar+gradle.properties+Maven repos, BLE pairing + iOS RCT_EXPORT_MODULE done; còn JDK17+Android SDK + console SHA-256/DC + iOS 17 method) | 2026-06-29 | [↗](m1-tuya-sdk-library/progress.md) |
-| m1-tuya-sdk-expansion | M1·A+ | mobile/lib | PLAN | planned (15 bước B1–B15: C0/C1 prereq + module theo 3 đợt P1–P3; CHƯA code. Dựa research full-surface 11 note) | 2026-06-29 | [↗](m1-tuya-sdk-expansion/progress.md) |
+| m1-tuya-sdk-expansion | M1·A+ | mobile/lib | DEV | in_progress — **15/15 bước code XONG** (12 TurboModule: +Scene/Timer/Message/Member/Matter/Mesh, Home weather/listener, Pairing combo/auto-token) + **2 review adversarial** (Đợt2 1 fix, Đợt3 0 finding) + README. Android wired phần lớn; Scene/Matter/Mesh/pairing-adv = skeleton+intended-call. **Chặn:** JDK17+SDK/Xcode + device cho AC6 | 2026-06-30 | [↗](m1-tuya-sdk-expansion/progress.md) |
 | m1-backend-scaffold | M1·C1 | backend | DEV | in_progress (B1–B5 + **Tuya token LIVE ✅** Central EU; AC3 DB Supabase chờ) | 2026-06-29 | [↗](m1-backend-scaffold/progress.md) |
 | m1-backend-user-mgmt | M1·C2 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-28 | [↗](m1-backend-user-mgmt/progress.md) |
 | m1-backend-admin-auth | M1·C3 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-29 | [↗](m1-backend-admin-auth/progress.md) |
