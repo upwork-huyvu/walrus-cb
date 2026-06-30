@@ -1,6 +1,6 @@
 #import <TurboTuyaSpec/TurboTuyaSpec.h>
 #import "TuyaEventEmitter.h"
 
-@interface TuyaAuth : TuyaEventEmitter <NativeTuyaAuthSpec>
+@interface TuyaOta : TuyaEventEmitter <NativeTuyaOtaSpec>
 
 @end
