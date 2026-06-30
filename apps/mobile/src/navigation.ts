@@ -8,6 +8,7 @@ export type ScreenName =
   | 'onboard-why'
   | 'onboard-experience'
   | 'onboard-device'
+  | 'auth'
   | 'pairing'
   | 'home'
   | 'dashboard'

@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react';
 import { Animated, Image, View } from 'react-native';
 import { DARK_THEME, F, useTheme } from '../theme';
 import { LOGO_URI, LOGO_URI_LIGHT } from '../lib/format';
-import type { Navigate } from '../navigation';
 
-type Props = { navigate: Navigate };
+// onDone gọi khi animation chạy XONG; App tự quyết route kế tiếp theo trạng thái auth.
+type Props = { onDone: () => void };
 
-export default function SplashScreen({ navigate }: Props) {
+export default function SplashScreen({ onDone }: Props) {
   const C = useTheme();
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const taglineOpacity = useRef(new Animated.Value(0)).current;
@@ -21,7 +21,9 @@ export default function SplashScreen({ navigate }: Props) {
       Animated.timing(taglineOpacity, { toValue: 1, duration: 1600, useNativeDriver: true }),
       Animated.delay(1800),
       Animated.timing(screenOpacity, { toValue: 0, duration: 900, useNativeDriver: true }),
-    ]).start(() => navigate('onboard-welcome'));
+    ]).start(({ finished }) => {
+      if (finished) onDone();
+    });
 
     return () => {
       logoOpacity.stopAnimation();

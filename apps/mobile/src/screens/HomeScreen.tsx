@@ -16,9 +16,9 @@ import { formatTemp } from '../services/deviceSchema';
 import PrimaryButton from '../components/PrimaryButton';
 import StatusPill from '../components/StatusPill';
 
-type Props = { state: AppState; navigate: Navigate; userName?: string };
+type Props = { state: AppState; navigate: Navigate; userName?: string; onSignOut?: () => void };
 
-export default function HomeScreen({ state, navigate, userName }: Props) {
+export default function HomeScreen({ state, navigate, userName, onSignOut }: Props) {
   const C = useTheme();
   const toggleTheme = useToggleTheme();
   const isDark = C.bg === DARK_THEME.bg;
@@ -203,6 +203,12 @@ export default function HomeScreen({ state, navigate, userName }: Props) {
             </Pressable>
             <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 2 }}>LIGHT</Text>
           </View>
+
+          {onSignOut && (
+            <Pressable onPress={onSignOut} style={{ alignItems: 'center', paddingVertical: 16, marginTop: 8 }}>
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 1 }}>Sign out</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>

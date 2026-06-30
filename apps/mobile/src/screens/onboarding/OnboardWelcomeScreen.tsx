@@ -33,10 +33,10 @@ export default function OnboardWelcomeScreen({ navigate }: Props) {
             </Text>
           </View>
 
-          {/* Auth buttons — wiring native Google/Apple sign-in ở m1-mobile-auth (B2 feature) */}
+          {/* Auth entry → AuthScreen (login/register email + Google/Apple). m1-mobile-auth */}
           <View style={{ paddingHorizontal: 40, paddingBottom: 48, gap: 12 }}>
             <Pressable
-              onPress={() => navigate('onboard-name')}
+              onPress={() => navigate('auth')}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -54,7 +54,7 @@ export default function OnboardWelcomeScreen({ navigate }: Props) {
             </Pressable>
 
             <Pressable
-              onPress={() => navigate('onboard-name')}
+              onPress={() => navigate('auth')}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -71,7 +71,7 @@ export default function OnboardWelcomeScreen({ navigate }: Props) {
               <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15, letterSpacing: 0.5 }}>Continue with Apple</Text>
             </Pressable>
 
-            <Pressable onPress={() => navigate('onboard-email')} style={{ padding: 16, alignItems: 'center' }}>
+            <Pressable onPress={() => navigate('auth')} style={{ padding: 16, alignItems: 'center' }}>
               <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, letterSpacing: 0.5 }}>Continue with email</Text>
             </Pressable>
           </View>

@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'react-native';
 import {
   DARK_THEME,
@@ -24,6 +24,9 @@ import OnboardDeviceScreen from './src/screens/onboarding/OnboardDeviceScreen';
 import PairingScreen from './src/screens/PairingScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import AuthScreen from './src/screens/AuthScreen';
+import { useAuth } from './src/state/useAuth';
+import { onSessionExpired } from './src/services/auth';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
@@ -36,6 +39,28 @@ export default function App() {
   const theme = isDark ? DARK_THEME : LIGHT_THEME;
   // Bơm isDark vào state cho screens (replit đọc state.isDark).
   const state: AppState = { ...appState, isDark };
+
+  const auth = useAuth();
+  const [splashDone, setSplashDone] = useState(false);
+  const routed = useRef(false);
+
+  // 1) Kiểm tra phiên lúc khởi động. 2) Phiên hết hạn (SDK kick) → về auth.
+  useEffect(() => {
+    auth.bootstrap();
+    const sub = onSessionExpired(() => {
+      auth.reset();
+      setScreen('auth');
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sau splash + đã biết trạng thái → route MỘT lần (authed→home, guest→onboarding).
+  useEffect(() => {
+    if (routed.current || !splashDone || auth.status === 'checking') return;
+    routed.current = true;
+    setScreen(auth.status === 'authed' ? 'home' : 'onboard-welcome');
+  }, [splashDone, auth.status]);
 
   useEffect(() => {
     // RN CLI: font đã link native (không cần Font.loadAsync). Prefetch logo cho mượt.
@@ -58,7 +83,7 @@ export default function App() {
   let currentScreen: ReactNode;
   switch (screen) {
     case 'splash':
-      currentScreen = <SplashScreen navigate={navigate} />;
+      currentScreen = <SplashScreen onDone={() => setSplashDone(true)} />;
       break;
     case 'onboard-welcome':
       currentScreen = <OnboardWelcomeScreen navigate={navigate} />;
@@ -77,6 +102,9 @@ export default function App() {
       break;
     case 'onboard-device':
       currentScreen = <OnboardDeviceScreen navigate={navigate} userName={userName} />;
+      break;
+    case 'auth':
+      currentScreen = <AuthScreen navigate={navigate} onAuthed={auth.onAuthed} />;
       break;
     case 'pairing':
       currentScreen = <PairingScreen navigate={navigate} state={state} />;
@@ -102,7 +130,17 @@ export default function App() {
       break;
     case 'home':
     default:
-      currentScreen = <HomeScreen state={state} navigate={navigate} userName={userName} />;
+      currentScreen = (
+        <HomeScreen
+          state={state}
+          navigate={navigate}
+          userName={userName}
+          onSignOut={() => {
+            auth.signOut();
+            setScreen('auth');
+          }}
+        />
+      );
   }
 
   return (
