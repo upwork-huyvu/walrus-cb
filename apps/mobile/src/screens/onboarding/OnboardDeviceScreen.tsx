@@ -35,7 +35,7 @@ export default function OnboardDeviceScreen({ navigate }: Props) {
         </View>
 
         <View style={{ paddingHorizontal: 40, paddingBottom: 48, gap: 12 }}>
-          <PrimaryButton label="Pair now" onPress={() => navigate('home')} />
+          <PrimaryButton label="Pair now" onPress={() => navigate('pairing')} />
           <GhostButton label="Skip for now" onPress={() => navigate('home')} />
         </View>
       </SafeAreaView>
