@@ -21,6 +21,9 @@ import OnboardNameScreen from './src/screens/onboarding/OnboardNameScreen';
 import OnboardWhyScreen from './src/screens/onboarding/OnboardWhyScreen';
 import OnboardExperienceScreen from './src/screens/onboarding/OnboardExperienceScreen';
 import OnboardDeviceScreen from './src/screens/onboarding/OnboardDeviceScreen';
+import PairingScreen from './src/screens/PairingScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
@@ -75,6 +78,12 @@ export default function App() {
     case 'onboard-device':
       currentScreen = <OnboardDeviceScreen navigate={navigate} userName={userName} />;
       break;
+    case 'pairing':
+      currentScreen = <PairingScreen navigate={navigate} state={state} />;
+      break;
+    case 'dashboard':
+      currentScreen = <DashboardScreen navigate={navigate} state={state} />;
+      break;
     case 'breathwork':
       currentScreen = (
         <BreathworkScreen navigate={navigate} onComplete={appState.completeBreathwork} state={state} />
@@ -98,7 +107,9 @@ export default function App() {
 
   return (
     <ThemeToggleContext.Provider value={toggleTheme}>
-      <ThemeContext.Provider value={theme}>{currentScreen}</ThemeContext.Provider>
+      <ThemeContext.Provider value={theme}>
+        <ErrorBoundary>{currentScreen}</ErrorBoundary>
+      </ThemeContext.Provider>
     </ThemeToggleContext.Provider>
   );
 }
