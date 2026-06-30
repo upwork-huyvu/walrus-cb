@@ -78,6 +78,18 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | SIG Mesh (iOS, ThingSmartBleMesh/ThingSmartSIGMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23 |
 | Tuya Mesh (iOS, ThingSmartBleMesh/ThingBLEMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz |
 
+## Cloud OpenAPI — App Push Notification (server→user) confirmed ✅ (2026-06-30)
+Note: [docs/research/tuya-cloud-app-push.md](../../../docs/research/tuya-cloud-app-push.md)
+Khác với App SDK ở trên — đây là **Cloud OpenAPI** (backend gọi, target theo `uid`).
+| Topic | URL |
+|---|---|
+| Mobile Push Notification Service (mục lục 4 endpoint) | ✅ https://developer.tuya.com/en/docs/cloud/app-push?id=Kaiuye3tb3yho |
+| Send Push to App (`POST .../app-notifications/actions/push`) | ✅ https://developer.tuya.com/en/docs/cloud/571df1f27e?id=Kagp27bb0hkxe |
+| Add template (`POST .../msg-templates/app-notifications`, name/title/content/type/remark) | ✅ https://developer.tuya.com/en/docs/cloud/db8cac79e4?id=Kagp29fdj4yse |
+| List templates (`GET .../msg-templates/app-notifications`) | ✅ https://developer.tuya.com/en/docs/cloud/d42a2cefb7?id=Kaio7tuala794 |
+| Subscription & Template (subscribe product + duyệt ≤2 ngày, biz_type) | ✅ https://developer.tuya.com/en/docs/iot/app-push-notification?id=Kaiuyyn5po2kw |
+| Configure Placeholders (`${var}` / `${dp**}`) | ✅ https://developer.tuya.com/en/docs/iot/message-push-Placeholder?id=Kby77w6kmpfdt |
+
 ## How to find a deep page you don't have
 `WebSearch` with `allowed_domains: ["developer.tuya.com"]`, e.g.
 `tuya home sdk android device pairing EZ mode token`, or
