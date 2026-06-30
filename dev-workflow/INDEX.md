@@ -19,15 +19,16 @@
 | m1-backend-user-mgmt | M1·C2 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-28 | [↗](m1-backend-user-mgmt/progress.md) |
 | m1-backend-admin-auth | M1·C3 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-29 | [↗](m1-backend-admin-auth/progress.md) |
 | m1-admin-web | M1·D | admin | DEV | in_progress (B1–B4 code xong; env→verify live) | 2026-06-29 | [↗](m1-admin-web/progress.md) |
+| m1-mobile-auth | M1·B2 | mobile | TEST | code_done — **B1–B4 XONG** (auth.ts adapter+mock · AuthScreen login/register email+OTP+Google/Apple scaffold · useAuth + App gating splash→home/auth + onSessionExpired→auth + logout · Welcome→auth). `tsc`/`jest` deferred (no node_modules+503). Google/Apple cần native SDK (idToken). AC5 device chờ build. Chốt: Tuya account=định danh M1; Supabase sau | 2026-06-30 | [↗](m1-mobile-auth/progress.md) |
 | m1-mobile-pairing | M1·B4 | mobile | DEV | in_progress — **B1–B4 code XONG** (adapter pairing+mock · deviceStore AsyncStorage · PairingScreen state-machine Wi-Fi/BLE · success→connectDevice). `tsc`/`jest` deferred (no node_modules+503). Còn AC5 device round-trip + thay `ensureHome` tạm bằng auth/home thật | 2026-06-30 | [↗](m1-mobile-pairing/progress.md) |
 | m1-mobile-scaffold | M1·B(clone UI) | mobile | DEV | in_progress — **B1–B6 code XONG** (clone UI 12 screens + **B6 nối lib Tuya**: adapter require+mock, DP-id, useAppState device→Tuya). `tsc`/`jest` deferred (no node_modules+503). Còn AC6 device round-trip (build+thiết bị+DP schema) → rồi feature mobile pairing/dashboard | 2026-06-30 | [↗](m1-mobile-scaffold/progress.md) |
-| m1-mobile-dashboard | M1·B5 | mobile | PLAN | in_progress — plan vừa tạo (6 bước: schema-parse → deviceStore → conn state machine → optimistic ack → DeviceCard UI → device checklist). Tiêu thụ `isOnline`/`schemaJson`/`publishDpsAwaitAck` đã có ở lib; verify tsc+jest. **Chờ Gate ① + DP schema thật**; devId lấy từ `m1-mobile-pairing` | 2026-06-30 | [↗](m1-mobile-dashboard/progress.md) |
+| m1-mobile-dashboard | M1·B5 | mobile | DEV | in_progress — **B1–B9 code XONG** (B1–B6 dashboard + **B7–B9 fix audit**: tuyaError reuse lib `TuyaErrors`+log · debounce publish+timeout read · reducer dpPatch diff+CleaningPanel cleanup). 5 file test thuần. `tsc`/`jest` deferred (no node_modules). H-2 DP schema thật + AC6/HW chờ build+thiết bị; nit L-1/L-2/L-3 backlog | 2026-06-30 | [↗](m1-mobile-dashboard/progress.md) |
+| m1-admin-push | M1·C+D | backend+admin | DEV | in_progress — Option A **Tuya Cloud App Push** (reuse `TuyaCloudService`+`AdminAuthGuard`, KHÔNG Firebase). **B1–B6 + lib/auth CODE XONG**: backend (env biz_type · DTO · `NotificationsService` push+template + spec · controller/module/app.module) + admin (`lib/api.ts`+`lib/auth.ts` tự tạo · `notifications/` gửi: page+action+layout+`SendPushForm` parse `${var}` · `notifications/templates` tạo+list duyệt · proxy+nav). **Divergence đã gỡ:** vá `lib/auth` (vốn thiếu, scope `m1-admin-web`) → mọi import `@/...` resolve. `tsc`/`jest`/`build` defer (E503 Nexus). AC6 live BLOCKED: subscribe product + duyệt template + token-reg **M3** `m3-push-fcm` | 2026-06-30 | [↗](m1-admin-push/progress.md) |
 
 ## Backlog M1 — chia theo brief mở rộng (chạy `/plan <slug>` khi tới)
 > Thứ tự phụ thuộc: **A → B**; **C → D** (track backend/admin chạy song song được).
 | Feature (slug) | Milestone | Phần | Mô tả ngắn |
 |---|---|---|---|
-| m1-mobile-auth | M1·B2 | mobile | Màn đăng ký/đăng nhập: email + Google + Apple → lấy idToken → `thirdLogin` |
 | m1-mobile-home-setup | M1·B3 | mobile | Setup Home đầu tiên cho user (1 nhà/user) |
 
 ## Backlog M2 / M3 (ngoài phạm vi M1)
