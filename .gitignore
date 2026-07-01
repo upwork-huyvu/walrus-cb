@@ -25,7 +25,7 @@ packages/tuya-react-native/example/android/app/libs/
 
 # build outputs
 **/dist/
-**/lib/
+packages/*/lib/
 **/.next/
 **/*.tsbuildinfo
 
