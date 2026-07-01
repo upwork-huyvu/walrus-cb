@@ -74,9 +74,17 @@
   `onDpUpdate`/event echo về. Dùng `publishDpsAwaitAck` + reconcile timeout.
 - **Online 2 mức:** `isOnline` = LAN **hoặc** cloud; `isLocalOnline` = chỉ LAN. UI hiển thị theo `isOnline`.
 - **DP id/scale placeholder** ở `dp.ts` — chưa có schema thật của bồn; B1 viết schema-driven, AC6 cần schema thật.
-- ✅ **(ĐÃ GỠ)** module `apps/mobile/src/lib/format` từng **thiếu trên đĩa** (Read/Glob/Grep xác nhận; `apps/mobile`
-  untracked nên không restore từ git) → App + Home/Splash/OnboardWelcome/Session không compile. **Đã khôi phục nguyên
-  bản** từ `replit_generate/App.js`: `LOGO_URI`/`LOGO_URI_LIGHT` (Dropbox ?dl=1) + `formatTime(s)='mm:ss'`. KHÔNG do dashboard.
+- ✅ **(ĐÃ GỠ THẬT 2026-06-30, qua `tsc`)** module `apps/mobile/src/lib/format` — bản ghi 2026-06-29 nói "đã khôi phục"
+  nhưng **chưa từng được ghi xuống đĩa** (chỉ type-review thủ công lúc chưa có `node_modules`, không verify được bằng
+  compiler thật). `tsc --noEmit` lần đầu chạy được (sau khi mạng thông + `npm install`) đã bắt lỗi `Cannot find module
+  './src/lib/format'`. Đã tạo lại đúng nội dung từ `replit_generate/App.js`. **Bài học:** "type-review thủ công" ≠ "đã
+  verify" — đừng đánh dấu code xong nếu chưa chạy compiler/test thật được ít nhất 1 lần.
+- ✅ **(ĐÃ GỠ THẬT 2026-06-30)** Tương tự, `apps/mobile/src/lib/debounce.ts` (B8) cũng chưa từng có trên đĩa dù progress
+  ghi "code xong" — tạo lại + verify bằng `tsc`/`jest` thật.
+- **TS quirk — generic inference từ `any` argument:** `withTimeout<T>(p: Promise<T>, …)` gọi với `p` có type `any`
+  (từ `lib: any` + `require()` động) → TS **không** suy ra `T` từ `any`, fallback về `{}` (rỗng) → lỗi
+  `Property 'x' does not exist on type '{}'` dù runtime đúng. Fix: ghi tường minh type argument `withTimeout<any>(...)`
+  khi nguồn vào vốn là `any` có chủ đích (native lib có thể vắng mặt).
 - **readDevice rethrow:** chỉ MOCK khi native vắng/devId rỗng; lỗi đọc THẬT thì throw → `connectError` (cho AC3).
   `setTargetTemp` trả `boolean` (ack) thay vì void → reducer ackResolved/ackTimeout.
 

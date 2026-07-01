@@ -4,11 +4,31 @@
 > Luôn giữ "Hành động kế tiếp" chính xác.
 
 - **Slug:** `m1-tuya-sdk-expansion`
-- **Phase hiện tại:** `DEV` (15/15 bước code XONG + 2 review adversarial + README; còn build/device-test — chặn môi trường)
-- **Trạng thái:** `in_progress` (code-complete; AC6 device-test bị chặn JDK17+SDK/Xcode)
+- **Phase hiện tại:** `TEST` (15/15 bước code XONG + 2 review adversarial + README; **2026-06-30 BUILD XANH thật trên Android — assembleDebug SUCCESSFUL**)
+- **Trạng thái:** `in_progress` (build APK XONG; còn AC6 device-test + hoàn thiện nhóm stub trên thiết bị thật)
 - **Cập nhật lần cuối:** 2026-06-30
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
+✅ **(2026-06-30) BUILD XANH thật:** `:jimmy-vu_react-native-turbo-tuya:compileDebugKotlin` + `:app:assembleDebug` = **BUILD SUCCESSFUL** (APK `app/build/outputs/apk/debug/app-debug.apk` 156MB). Cả 12 TurboModule compile sạch.
+
+🔁 **ĐÍNH CHÍNH chẩn đoán trước đó (kết luận "thiếu module → cần Tuya console" là SAI):**
+lần quét artifact đầu (dùng `unzip` per-aar, bị timeout/sót) tưởng các class không tồn tại. Quét lại **đủ 55 artifact** `com.thingclips.smart:*` (Python `zipfile`, mở cả
+`classes.jar` lồng, 9.179 class) → **mọi class ĐỀU CÓ** trong `thingsmart:7.5.6`. Lỗi thật = **8 import sai package + API drift** (method/enum/constructor/getter đổi giữa
+bản code viết theo và Android 7.5.6). Sửa hoàn toàn trong code, **không thêm dependency, không cần console**. Xác minh từng symbol bằng `javap` trên SDK thật. Bảng fix
+đầy đủ + phương pháp tái lập: [docs/research/tuya-android-sdk-missing-modules.md](../../docs/research/tuya-android-sdk-missing-modules.md).
+
+**Đã sửa (5 file):** Pairing (`ActivatorBuilder` import + enum `THING_AP/THING_EZ` + bỏ override `onActivatorStatePauseCallback` không tồn tại) · Timer (3 import +
+`ThingTimerBuilder.Builder().…build()`) · Ota (`UpgradeInfoBean` import + `IDevOTAListener.firmwareUpgradeStatus(ThingDevUpgradeStatusBean)` map `DevUpgradeStatusEnum`→event +
+`IGetOtaInfoCallback.onFailure` + `fileSize:long`/`canUpgrade:Boolean?`) · Auth (`TempUnitEnum`/`INeedLoginListener` import) · Home (`GroupBean` import + `updateHome` overload
+`overWriteRoom` + `getHomeWeatherSketch` ở `newHomeInstance` không phải manager) · Member (`MemberBean.getNickName/getMemberStatus`, bỏ `mobile`/`invitationCode`,
+`joinHomeByCode`→stub vì 7.5.6 bỏ `joinHomeByInviteCode`) · Message (toàn bộ nhóm **DND** → stub vì Android `IThingPush` 7.5.6 KHÔNG có các method DND).
+
+**Hạ tầng đã fix lúc build (giữ nguyên):** exclude `thingsmart-modularCampAnno:1.0.0-SNAPSHOT` + wire AppKey/Secret/aar/Maven-repo vào `apps/mobile/android`.
+
+**Còn lại (không chặn build):** chạy thiết bị thật verify runtime + hoàn thiện nhóm stub `not_implemented` (Message DND/list-by-type · Member joinByCode/addMember/invitation/transferOwner ·
+Pairing nâng cao unified ActivatorService · Timer getTimerList · Home getHomeWeatherDetail) khi có bean/token thật. Tuya SDK **init runtime** cần package + keystore SHA-256
+đăng ký console cho AppKey (không chặn build APK).
+
 ✅ **ĐỢT 1 (B1–B6) XONG code:** TuyaErrors · iOS event infra · TuyaAuth · TuyaDevice · **TuyaOta** · TuyaHome.updateHome.
 Android wired đầy đủ (trừ nhóm TODO-verify đã ghi); iOS: event infra + Auth wired, còn lại TODO-reject (parity); build deferred.
 ✅ **ĐỢT 2 (B7–B11) XONG code.** Lib = **9 TurboModule** (Scene/Timer/Message mới + Home weather/listener + Pairing combo/auto-token).
@@ -41,11 +61,15 @@ Android wired đầy đủ (trừ nhóm TODO-verify đã ghi); iOS: event infra 
 - [x] AC3 Đợt 2 (Scene/Timer/Message/weather+listener/combo) — code XONG + review adversarial (1 fix)
 - [x] AC4 Đợt 3 (P3) — spec/facade/event/register XONG; native skeleton+intended-call (Member wired 1 phần) + review adversarial (0 finding)
 - [◑] AC5 facade + README — **XONG**; tsc/lint **DEFERRED** (không có node_modules / mạng) → chạy khi có toolchain
-- [ ] AC6 test thiết bị thật (OTA/scene/timer/await-ack) — **CHẶN**: cần JDK17+Android SDK / macOS+Xcode + thiết bị + productId bồn tắm đá
+- [◑] AC6 test thiết bị thật (OTA/scene/timer/await-ack) — **build APK XONG (2026-06-30)**; còn cần thiết bị/emulator + Tuya SDK init (console SHA-256) + productId bồn tắm đá để verify runtime
 
 ## Nhật ký chạy (Run log) — mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú |
 |---|---|---|---|
+| 2026-06-30 | Đổi App ID + tạo keystore prod | ✅ | **Android package** `com.coolbathmobile`→`com.walrus.wellnesscb` (applicationId+namespace+source). **iOS Bundle ID**→`com.walrus.wellness` (pbxproj Debug+Release). Tạo **prod keystore** `apps/mobile/android/app/walrus-release.keystore` (gitignored; pass ở `~/.gradle/gradle.properties`, KHÔNG commit) + wire release signingConfig + thêm exclude `modularCampAnno` vào **lib** build.gradle (để assembleRelease/lint qua). `assembleDebug`+`assembleRelease` đều SUCCESSFUL. **SHA-256 đăng ký Tuya console (fingerprint công khai, không bí mật):** debug `FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C` · release `C0:05:44:FC:78:3A:DF:31:96:AD:B7:56:35:9B:E1:91:FA:58:5A:4C:3A:7A:60:5F:42:A6:D0:8E:63:B2:54:71`. ⚠️ SHA-256 cũ (72:19…) ĐÃ HỦY — đó là `~/.android/debug.keystore` global, KHÔNG phải key ký app. |
+| 2026-06-30 | RUNTIME thật (Pixel_6 emulator + Metro) | ✅ **APP CHẠY** | `adb install` + launch `com.coolbathmobile` → MainActivity displayed +1.2s · `ReactNativeJS: Running "CoolBathMobile" {fabric:true}` (New Arch/TurboModule OK) · render đúng UI welcome WALRUS ("The ritual starts here" + Google/Apple/email). **Không crash, không FATAL, không lỗi Tuya init.** Chỉ 1 `ReactNoCrashSoftException` (onWindowFocusChange context-not-ready — warning timing RN bridgeless, vô hại) + banner dev SafeAreaView-deprecated. Tuya SDK init **lazy** (chưa exercise lúc khởi động) → cổng console SHA-256 chỉ kích hoạt khi gọi Tuya method đầu (login/pairing). |
+| 2026-06-30 | BUILD-VERIFY lần 2 (`apps/mobile` Android) sau khi sửa import + API drift | ✅ **BUILD SUCCESSFUL** | `compileDebugKotlin` + `:app:assembleDebug` xanh → APK `app-debug.apk` 156MB (18 dex). **Đính chính chẩn đoán lần 1 (SAI):** quét lại đủ 55 artifact → class KHÔNG thiếu; lỗi = **8 import sai package + API drift**. Sửa 5 file (Pairing/Timer/Ota/Auth/Home/Member/Message), xác minh từng symbol bằng `javap` trên `thingsmart:7.5.6`. Không thêm dependency, không cần console. Bảng fix: [research note](../../docs/research/tuya-android-sdk-missing-modules.md). Còn AC6 device-test + hoàn thiện stub. |
+| 2026-06-30 | BUILD-VERIFY thật lần đầu (`apps/mobile` Android) | 🔴 FAIL → (chẩn đoán "thiếu module" về sau bị bác) | Máy giờ có JDK17+SDK (trước đó không). Wire AppKey/Secret+aar+Maven-repo vào `apps/mobile/android` (thiếu, chỉ `example/` có) + exclude `thingsmart-modularCampAnno` SNAPSHOT (lỗi hạ tầng, đã fix) → `compileDebugKotlin` lộ **7/13 file Unresolved reference** (Auth/Home/Pairing/Timer/Ota/Message/Member). ⚠️ Kết luận ban đầu "thiếu Gradle dependency, cần Tuya Console" **về sau xác định là SAI** (xem dòng trên) — thực ra là import sai package + API drift. |
 | 2026-06-30 | REVIEW Mesh/Matter wire (B) | ✅ + 1 fix | Workflow adversarial (parity/codegen/iOS-logic, 8 agent): 5 raw → **1 defect thật** (iOS getMeshList chỉ trả Tuya, thiếu SIG → **đã fix** gộp getSIGMeshList+getMeshList, single-resolve partial-tolerant). 4 dismiss đúng: double-resolve activate ĐÃ guard (resolve/reject→nil), onMeshDeviceFound `{dataJson}` KHỚP JS type (MeshSubDevice là type của activate-promise, không phải event), nil-guard ổn. parity/codegen sạch. |
 | 2026-06-30 | B: revise spec + wire Mesh (Matter documented) | ✅ code / ⏳ verify | **TuyaMesh spec revised:** +`homeId`+`meshType` ('sig'/'tuya') vào startMeshClient/stop/search/activate/publish/multicast (3-mặt parity tự-check khớp). **iOS Mesh WIRED best-effort:** create SIG/Tuya + getMeshList + publishMeshDps/multicast (ThingSmartBleMesh bleMeshWithMeshId:homeId: + publishNodeId/multiPublish) + client/search/activate (ThingSmartSIGMeshManager initSIGMeshManager/startSearch/startActive + ThingBLEMeshManager startScan/activeMeshDevice + delegate didScaned/didActive→onMeshDeviceFound/resolve). **Android Mesh:** signature đồng bộ; body giữ intended-call (package SDK KHÔNG có trong doc). **TuyaMatter:** documented-skeleton 2 nền tảng (iOS header = verbatim unified intended-call; bị chặn ở cách dựng ThingSmartActivatorTypeMatterModel — open question; Android chặn package). ⚠️ iOS mesh: verify property model (meshId/mac), ttl SIG, name/pwd Tuya scan, SIG DP shape. README/sources/note cập nhật. |
 | 2026-06-30 | RESEARCH iOS Matter+Mesh → wire 1 phần | ✅ note + 1 phần | /tuya-research: WebFetch 4 trang chính thức → note **docs/research/tuya-home-sdk-matter-mesh-ios.md** (verbatim iOS Matter unified ThingSmartActivatorDiscovery + SIG mesh ThingSmartBleMesh/ThingSmartSIGMeshManager + Tuya mesh ThingBLEMeshManager). **Phát hiện:** (1) iOS Matter = unified API (KHÁC Android dedicated) → spec parse/connect/commission lệch; (2) iOS mesh cần `homeId` (bleMeshWithMeshId:homeId:) + tách SIG/Tuya manager → spec TuyaMesh thiếu homeId/meshType. **WIRED iOS Mesh:** createSigMesh (createSIGMeshWithHomeId:) + createTuyaMesh (createBleMeshWithMeshName:homeId:) + getMeshList (home getMeshListWithSuccess:). Còn lại (client/search/activate/publish/multicast) + iOS Matter giữ TODO + **upgrade comment = verbatim intended-call**. Android Matter/Mesh giữ skeleton (import package KHÔNG có trong doc). sources.md +3 link. **Kết luận: wire trọn 2 module cần CHỈNH SPEC nhỏ (homeId/meshType cho Mesh, redesign Matter theo unified) — ice-bath gần như không cần → tùy chọn.** |
@@ -78,6 +102,9 @@ Android wired đầy đủ (trừ nhóm TODO-verify đã ghi); iOS: event infra 
 | 2026-06-29 | PLAN | ✅ | Tạo plan/context/progress (15 bước: C0/C1 prereq + module theo 3 đợt P1–P3) + đăng ký INDEX. Dựa trên research full-surface (11 note). Chưa code. |
 
 ## Vấn đề đang chặn (Blockers)
-- **Build/test native:** cần JDK17 + Android SDK (Android) / Mac + Xcode (iOS) — máy hiện tại chưa có (như m1-tuya-sdk-library).
+- **🔴 Thiếu Gradle dependency cho 7 module (Auth/Home/Pairing/Timer/Ota/Message/Member):** cần truy cập Tuya IoT Developer Platform (tab "Get SDK") để lấy đúng
+  artifact các module này ở version khớp 7.5.6 — không tra được qua doc công khai/brute-force Maven. Xem
+  [docs/research/tuya-android-sdk-missing-modules.md](../../docs/research/tuya-android-sdk-missing-modules.md). **Chặn cứng AC6 + mọi build Android tiếp theo.**
+- **Build/test native (iOS):** cần Mac + Xcode — máy hiện tại (macOS) có Xcode cần kiểm tra lại riêng, chưa thử trong lượt build này (chỉ build Android).
 - **dpId/schema bồn tắm đá:** cần thiết bị thật + productId từ client → chặn AC device của B4/B7/B8.
 - **Verify chữ ký:** nhiều API có 2 thế hệ + iOS chưa verbatim → verify trên reference khi code từng bước.

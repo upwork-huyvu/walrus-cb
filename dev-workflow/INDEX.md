@@ -10,11 +10,26 @@
 > (admin web)** vào M1 (trước đây C/D thuộc M2). Ngân sách $250 ban đầu **cần ET lại**.
 > M1 nay được chia nhỏ thành các feature A/B/C/D bên dưới.
 
+> ⚠️ **MẠNG ĐÃ THÔNG (2026-06-30).** Registry npm trước đây bị E503/chặn → nhiều feature ghi "tsc/jest deferred (no
+> node_modules+503)" và đánh dấu code dựa trên **type-review thủ công**. Verify thật trên `m1-mobile-dashboard` vừa
+> phát hiện 2 file ("code xong" trong progress) **chưa từng tồn tại trên đĩa**. → Mọi feature còn dòng "deferred" cần
+> chạy `npm install` (hoặc `yarn`/`corepack yarn` tùy app) + `tsc`/`jest`/`eslint` thật trước khi tin progress.md cũ.
+>
+> 🐛 **ROOT CAUSE đã sửa (2026-06-30):** `.gitignore` gốc có rule `**/lib/` (ý định: ignore build output
+> `packages/tuya-react-native/lib/`) nhưng glob quá rộng → nuốt luôn `apps/mobile/src/lib/` và `apps/admin/lib/`
+> (2 thư mục **source thật**, không phải build output). Đây chính là lý do `lib/format.ts`, `lib/debounce.ts`
+> (m1-mobile-dashboard) và `lib/auth.ts` (m1-admin-push) liên tục bị coi là "thiếu trên đĩa" giữa các session — file
+> được tạo nhưng **không bao giờ commit**, nên không sống sót qua session/worktree mới. Đã thu hẹp rule thành
+> `packages/*/lib/`. `apps/mobile/src/lib/*` sống sót (untracked). **`apps/admin/lib/*` thì KHÔNG** — file thật sự
+> chưa từng tồn tại lại trên đĩa (không chỉ untracked) cho tới khi build-thử 2026-06-30 phát hiện `tsc`/`next build`
+> fail 100% (mọi route import `@/lib/api`, `@/lib/auth` không resolve) và dựng lại theo đúng contract README/code gọi.
+> **2 thư mục `lib/*` này giờ cần `git add` ở lần commit tới**, nếu không sẽ tái diễn lỗi này.
+
 ## Đang làm / Tồn đọng
 | Feature (slug) | Milestone | Phần | Phase | Trạng thái | Cập nhật | Thư mục |
 |---|---|---|---|---|---|---|
-| m1-tuya-sdk-library | M1·A | mobile/lib | DEV | in_progress (audit ✅ API Android đúng; **build-ready wired** aar+gradle.properties+Maven repos, BLE pairing + iOS RCT_EXPORT_MODULE done; còn JDK17+Android SDK + console SHA-256/DC + iOS 17 method) | 2026-06-29 | [↗](m1-tuya-sdk-library/progress.md) |
-| m1-tuya-sdk-expansion | M1·A+ | mobile/lib | DEV | in_progress — **15/15 bước code XONG** (12 TurboModule: +Scene/Timer/Message/Member/Matter/Mesh, Home weather/listener, Pairing combo/auto-token) + **2 review adversarial** (Đợt2 1 fix, Đợt3 0 finding) + README. Android wired phần lớn; Scene/Matter/Mesh/pairing-adv = skeleton+intended-call. **Chặn:** JDK17+SDK/Xcode + device cho AC6 | 2026-06-30 | [↗](m1-tuya-sdk-expansion/progress.md) |
+| m1-tuya-sdk-library | M1·A | mobile/lib | DEV | in_progress (audit ✅ API Android đúng; **build-ready wired** aar+gradle.properties+Maven repos, BLE pairing + iOS RCT_EXPORT_MODULE done; **JDK17+Android SDK đã có sẵn trên máy (xác nhận 2026-06-30, note cũ "máy đang JDK8" SAI/lỗi thời)** — còn console SHA-256/DC + iOS 17 method) | 2026-06-30 | [↗](m1-tuya-sdk-library/progress.md) |
+| m1-tuya-sdk-expansion | M1·A+ | mobile/lib | TEST | **BUILD XANH 2026-06-30** — `:jimmy-vu_react-native-turbo-tuya:compileDebugKotlin` + `:app:assembleDebug` **BUILD SUCCESSFUL** (APK `app-debug.apk` 156MB). 12 TurboModule compile sạch. **ĐÍNH CHÍNH chẩn đoán "thiếu module → cần console" (SAI):** quét lại đủ 55 artifact → mọi class ĐỀU CÓ trong `thingsmart:7.5.6`; lỗi thật = **8 import sai package + API drift** (enum `THING_AP/EZ`, `ThingTimerBuilder.Builder`, `IDevOTAListener.firmwareUpgradeStatus`, `MemberBean.getNickName/getMemberStatus`, DND không có trên Android `IThingPush` → stub…). Xác minh bằng `javap` trên SDK thật → [docs/research/tuya-android-sdk-missing-modules.md](../docs/research/tuya-android-sdk-missing-modules.md). Còn: chạy thiết bị thật verify runtime + hoàn thiện stub (DND/joinByCode/getTimerList…) + console SHA-256 cho SDK init | 2026-06-30 | [↗](m1-tuya-sdk-expansion/progress.md) |
 | m1-backend-scaffold | M1·C1 | backend | DEV | in_progress (B1–B5 + **Tuya token LIVE ✅** Central EU; AC3 DB Supabase chờ) | 2026-06-29 | [↗](m1-backend-scaffold/progress.md) |
 | m1-backend-user-mgmt | M1·C2 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-28 | [↗](m1-backend-user-mgmt/progress.md) |
 | m1-backend-admin-auth | M1·C3 | backend | DEV | in_progress (B1–B3 code xong; env→verify live) | 2026-06-29 | [↗](m1-backend-admin-auth/progress.md) |
@@ -22,7 +37,7 @@
 | m1-mobile-auth | M1·B2 | mobile | TEST | code_done — **B1–B4 XONG** (auth.ts adapter+mock · AuthScreen login/register email+OTP+Google/Apple scaffold · useAuth + App gating splash→home/auth + onSessionExpired→auth + logout · Welcome→auth). `tsc`/`jest` deferred (no node_modules+503). Google/Apple cần native SDK (idToken). AC5 device chờ build. Chốt: Tuya account=định danh M1; Supabase sau | 2026-06-30 | [↗](m1-mobile-auth/progress.md) |
 | m1-mobile-pairing | M1·B4 | mobile | DEV | in_progress — **B1–B4 code XONG** (adapter pairing+mock · deviceStore AsyncStorage · PairingScreen state-machine Wi-Fi/BLE · success→connectDevice). `tsc`/`jest` deferred (no node_modules+503). Còn AC5 device round-trip + thay `ensureHome` tạm bằng auth/home thật | 2026-06-30 | [↗](m1-mobile-pairing/progress.md) |
 | m1-mobile-scaffold | M1·B(clone UI) | mobile | DEV | in_progress — **B1–B6 code XONG** (clone UI 12 screens + **B6 nối lib Tuya**: adapter require+mock, DP-id, useAppState device→Tuya). `tsc`/`jest` deferred (no node_modules+503). Còn AC6 device round-trip (build+thiết bị+DP schema) → rồi feature mobile pairing/dashboard | 2026-06-30 | [↗](m1-mobile-scaffold/progress.md) |
-| m1-mobile-dashboard | M1·B5 | mobile | DEV | in_progress — **B1–B9 code XONG** (B1–B6 dashboard + **B7–B9 fix audit**: tuyaError reuse lib `TuyaErrors`+log · debounce publish+timeout read · reducer dpPatch diff+CleaningPanel cleanup). 5 file test thuần. `tsc`/`jest` deferred (no node_modules). H-2 DP schema thật + AC6/HW chờ build+thiết bị; nit L-1/L-2/L-3 backlog | 2026-06-30 | [↗](m1-mobile-dashboard/progress.md) |
+| m1-mobile-dashboard | M1·B5 | mobile | DEV | in_progress — **B1–B9 code XONG + verify PASS** (mạng đã thông → `npm install`+`jest` 34/34+`tsc` clean+`eslint` 0 lỗi; sửa 2 divergence code-vs-đĩa phát hiện qua verify thật: `lib/format.ts`+`lib/debounce.ts` từng ghi "code xong" nhưng chưa từng tồn tại trên đĩa + 1 TS-quirk `withTimeout<any>`). **AC7 ĐẠT.** Còn: H-2 DP schema thật + AC6/HW1-8 chờ build+thiết bị; nit L-1/L-2/L-3 backlog | 2026-06-30 | [↗](m1-mobile-dashboard/progress.md) |
 | m1-admin-push | M1·C+D | backend+admin | DEV | in_progress — Option A **Tuya Cloud App Push** (reuse `TuyaCloudService`+`AdminAuthGuard`, KHÔNG Firebase). **B1–B6 + lib/auth CODE XONG**: backend (env biz_type · DTO · `NotificationsService` push+template + spec · controller/module/app.module) + admin (`lib/api.ts`+`lib/auth.ts` tự tạo · `notifications/` gửi: page+action+layout+`SendPushForm` parse `${var}` · `notifications/templates` tạo+list duyệt · proxy+nav). **Divergence đã gỡ:** vá `lib/auth` (vốn thiếu, scope `m1-admin-web`) → mọi import `@/...` resolve. `tsc`/`jest`/`build` defer (E503 Nexus). AC6 live BLOCKED: subscribe product + duyệt template + token-reg **M3** `m3-push-fcm` | 2026-06-30 | [↗](m1-admin-push/progress.md) |
 
 ## Backlog M1 — chia theo brief mở rộng (chạy `/plan <slug>` khi tới)
@@ -56,7 +71,7 @@
 ## Bị chặn
 | Feature (slug) | Đang chờ gì | Từ ngày |
 |---|---|---|
-| m1-tuya-sdk-library | Build-ready đã wire (2026-06-29). Chặn cứng: **JDK17 + Android SDK** (máy đang JDK8, chưa có SDK) → không assembleDebug được tại chỗ. Còn console: applicationId TRÙNG package + keystore SHA-256 + DC. iOS cần Mac. Xem progress.md. | 2026-06-29 |
+| m1-tuya-sdk-library | Build-ready đã wire (2026-06-29). **JDK17 + Android SDK xác nhận đã có sẵn trên máy (2026-06-30)** — không còn là blocker. Còn: console applicationId TRÙNG package + keystore SHA-256 + DC. iOS cần Mac. Xem progress.md. | 2026-06-29 |
 
 ---
 ### Quy ước
