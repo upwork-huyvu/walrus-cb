@@ -24,6 +24,17 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Google Sign-In: URL scheme = REVERSED iOS client id (public, KHÔNG bí mật).
+	     = đảo GOOGLE_IOS_CLIENT_ID (vnig...) trong src/config/google.ts. Chi tiết: GOOGLE_SIGNIN_SETUP.md -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.118408958508-vnigt7uncnsu8lobhvb9p5hfefre2u1j</string>
+			</array>
+		</dict>
+	</array>
 	<!-- Tuya Smart Life SDK — giá trị nạp từ secrets.xcconfig (gitignored) qua build setting. -->
 	<key>ThingSmartAppKey</key>
 	<string>$(THING_SMART_APPKEY)</string>
