@@ -53,13 +53,20 @@ export async function loginEmailCode(country: string, email: string, code: strin
   return mapUser(await lib.Tuya.loginWithEmailCode(country, email, code));
 }
 
-// type: 'gg' Google · 'ap' Apple · 'fb' Facebook. token = idToken từ native SDK (B4 — chưa wire native).
-export async function thirdLogin(token: string, type: 'gg' | 'ap' | 'fb'): Promise<AuthUser> {
+// type: 'gg' Google (idToken) · 'ap' Apple (identityToken) · 'fb' Facebook. token = từ native SDK.
+// extra: chỉ cho Apple → {userIdentifier,email,nickname,snsNickname} (Apple chỉ trả lần đầu authorize).
+// Bridge iOS parse extraInfo JSON string → NSDictionary (docs/research/tuya-ios-third-party-login.md).
+export async function thirdLogin(
+  token: string,
+  type: 'gg' | 'ap' | 'fb',
+  extra?: Record<string, string | undefined>,
+): Promise<AuthUser> {
   if (!authAvailable) {
     mockLoggedIn = true;
     return MOCK_USER;
   }
-  const extraInfo = type === 'gg' ? '{"pubVersion":1}' : '';
+  const extraInfo =
+    type === 'gg' ? '{"pubVersion":1}' : type === 'ap' && extra ? JSON.stringify(extra) : '';
   return mapUser(await lib.Tuya.thirdLogin(DEFAULT_COUNTRY, token, type, extraInfo));
 }
 

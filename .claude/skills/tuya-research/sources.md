@@ -64,6 +64,7 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | Preparation (create App SDK, package/bundle, SHA-256) | ✅ https://developer.tuya.com/en/docs/app-development/preparation?id=Ka69nt983bhh5 |
 | **Data Center mappings** (EU=Western Europe, launched 2025-11-25) | ✅ https://developer.tuya.com/en/docs/iot/oem-app-data-center-distributed?id=Kafi0ku9l07qb |
 | Third-party login (thirdLogin: gg/ap/fb, idToken) | ✅ https://developer.tuya.com/en/docs/app-development/userthirdlogin?id=Ka6a9oalounvd |
+| **iOS Third-party login** (`loginByAuth2WithType:` — Apple `ap`/identityToken/NSDictionary extraInfo, Google `gg`) → note [tuya-ios-third-party-login.md](../../../docs/research/tuya-ios-third-party-login.md) | ✅ https://developer.tuya.com/en/docs/app-development/iOS-user-thirdparty?id=Kaixu9bbogqxi |
 | Email register/login (sendVerifyCodeWithUserName, loginWithEmail) | ✅ https://developer.tuya.com/en/docs/app-development/useremail?id=Ka6a99luv3tr1 |
 | Home Information Management (createHome, role==2 owner) | ✅ https://developer.tuya.com/en/docs/app-development/familyrelations?id=Ka6ki8h2c2yo5 |
 | Wi-Fi EZ Mode (getActivatorToken 10min, ActivatorBuilder TY_EZ) | ✅ https://developer.tuya.com/en/docs/app-development/quick-connection-mode?id=Kaixju76a5iq9 |

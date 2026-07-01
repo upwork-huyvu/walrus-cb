@@ -11,6 +11,8 @@ import {
   describeError,
   type AuthUser,
 } from '../services/auth';
+import { signInGoogle } from '../services/googleAuth';
+import { signInApple } from '../services/appleAuth';
 
 type Mode = 'login' | 'register';
 type Props = { navigate: Navigate; onAuthed: (u: AuthUser) => void };
@@ -40,8 +42,14 @@ export default function AuthScreen({ navigate, onAuthed }: Props) {
     setError('');
     try {
       succeed(await fn());
-    } catch (e) {
-      setError(describeError(e));
+    } catch (e: any) {
+      // Google/AppleSignInError có message tiếng Việt sẵn → dùng thẳng (đừng đẩy qua TuyaErrors kẻo mangle).
+      // 'CANCELLED' = user tự huỷ (đóng picker/sheet) → im lặng, không hiện lỗi.
+      if (e?.name === 'GoogleSignInError' || e?.name === 'AppleSignInError') {
+        if (e.code !== 'CANCELLED') setError(e.message);
+      } else {
+        setError(describeError(e));
+      }
     } finally {
       setBusy(false);
     }
@@ -60,9 +68,19 @@ export default function AuthScreen({ navigate, onAuthed }: Props) {
     }
   };
 
-  // B4 scaffold: idToken thật phải lấy từ native SDK (Google/Apple) — chưa wire trong Metro.
-  // Dev/mock: thirdLogin trả user giả (luồng chạy được); real không idToken sẽ lỗi → hiện describeError.
-  const doThird = (type: 'gg' | 'ap') => run(() => thirdLogin('', type));
+  // Lấy token THẬT từ native SDK rồi mới gọi Tuya thirdLogin (mock trả token/user giả trong Metro).
+  const doThird = (type: 'gg' | 'ap') =>
+    run(async () => {
+      if (type === 'gg') return thirdLogin(await signInGoogle(), 'gg');
+      // Apple: identityToken + profile (Apple chỉ trả email/fullName lần đầu) → extraInfo cho Tuya.
+      const cred = await signInApple();
+      return thirdLogin(cred.identityToken, 'ap', {
+        userIdentifier: cred.user,
+        email: cred.email ?? undefined,
+        nickname: cred.fullName ?? undefined,
+        snsNickname: cred.fullName ?? undefined,
+      });
+    });
 
   const input = (
     value: string,
