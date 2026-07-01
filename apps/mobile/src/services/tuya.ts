@@ -85,7 +85,7 @@ export async function initSdk(): Promise<boolean> {
 export async function readDevice(devId: string): Promise<DeviceSnapshot> {
   if (!tuyaAvailable || !devId) return { ...MOCK };
   // timeout để không kẹt 'connecting'/loading nếu native treo (audit M-2).
-  const snap = await withTimeout(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Đọc thiết bị');
+  const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Đọc thiết bị');
   const d = parseDeviceDps(snap?.dpsJson ?? '{}');
   return {
     currentTemp: d.currentTemp,
