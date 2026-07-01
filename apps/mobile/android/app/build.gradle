@@ -72,6 +72,14 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// ===== Secret project-local (KHÔNG commit) =====
+// Đọc apps/mobile/android/secrets.properties (gitignored) — copy từ secrets.properties.example.
+// Fallback: -P / ~/.gradle/gradle.properties (cho CI). secret(k) trả "" nếu không có.
+def secretsProps = new Properties()
+def secretsFile = rootProject.file("secrets.properties")
+if (secretsFile.exists()) { secretsFile.withInputStream { secretsProps.load(it) } }
+ext.secret = { String k -> secretsProps.getProperty(k) ?: project.findProperty(k) ?: "" }
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -84,10 +92,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
-        // Tuya AppKey/Secret nạp từ gradle.properties (gitignored) → manifest meta-data
+        // Tuya AppKey/Secret nạp từ secrets.properties (project-local, gitignored) → manifest meta-data
         manifestPlaceholders = [
-            THING_SMART_APPKEY: (project.findProperty("THING_SMART_APPKEY") ?: ""),
-            THING_SMART_SECRET: (project.findProperty("THING_SMART_SECRET") ?: ""),
+            THING_SMART_APPKEY: secret("THING_SMART_APPKEY"),
+            THING_SMART_SECRET: secret("THING_SMART_SECRET"),
         ]
     }
     signingConfigs {
@@ -97,14 +105,14 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        // Release: nạp từ ~/.gradle/gradle.properties (NGOÀI repo). Keystore = walrus-release.keystore
-        // (gitignored). Nếu thiếu prop (CI/dev khác) → release tự rơi về debug để vẫn build được.
+        // Release: nạp từ secrets.properties (project-local, gitignored). Keystore = app/walrus-release.keystore
+        // (gitignored). Thiếu prop (CI/dev khác) → release tự rơi về debug để vẫn build được.
         release {
-            if (project.hasProperty('WALRUS_RELEASE_STORE_FILE')) {
-                storeFile file(WALRUS_RELEASE_STORE_FILE)
-                storePassword WALRUS_RELEASE_STORE_PASSWORD
-                keyAlias WALRUS_RELEASE_KEY_ALIAS
-                keyPassword WALRUS_RELEASE_KEY_PASSWORD
+            if (secret("WALRUS_RELEASE_STORE_FILE")) {
+                storeFile file(secret("WALRUS_RELEASE_STORE_FILE"))
+                storePassword secret("WALRUS_RELEASE_STORE_PASSWORD")
+                keyAlias secret("WALRUS_RELEASE_KEY_ALIAS")
+                keyPassword secret("WALRUS_RELEASE_KEY_PASSWORD")
             }
         }
     }
@@ -113,7 +121,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig project.hasProperty('WALRUS_RELEASE_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
+            signingConfig secret("WALRUS_RELEASE_STORE_FILE") ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

@@ -1,0 +1,5 @@
+// Base config cho scheme RELEASE.
+// Nối CocoaPods (bắt buộc) + secrets.xcconfig (project-local).
+// Xcode: set file này làm "Based on Configuration File" cho target CoolBathMobile ở cấu hình Release.
+#include "../Pods/Target Support Files/Pods-CoolBathMobile/Pods-CoolBathMobile.release.xcconfig"
+#include? "../secrets.xcconfig"

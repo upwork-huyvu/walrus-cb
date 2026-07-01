@@ -16,6 +16,10 @@ docs/sdk/keys.txt
 **/.env.*
 !**/.env.example
 
+# Secret project-local (chỉ commit *.example)
+**/secrets.properties
+**/secrets.xcconfig
+
 # Tuya security files (binary, per-app)
 **/security-algorithm*.aar
 **/ios_core_sdk.tar.gz

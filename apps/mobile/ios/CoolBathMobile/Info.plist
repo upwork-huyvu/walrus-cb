@@ -24,6 +24,11 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<!-- Tuya Smart Life SDK — giá trị nạp từ secrets.xcconfig (gitignored) qua build setting. -->
+	<key>ThingSmartAppKey</key>
+	<string>$(THING_SMART_APPKEY)</string>
+	<key>ThingSmartAppSecret</key>
+	<string>$(THING_SMART_APPSECRET)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
