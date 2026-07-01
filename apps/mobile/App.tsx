@@ -27,6 +27,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import AuthScreen from './src/screens/AuthScreen';
 import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
+import { initSdk } from './src/services/tuya';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
@@ -44,9 +45,13 @@ export default function App() {
   const [splashDone, setSplashDone] = useState(false);
   const routed = useRef(false);
 
+  // 0) Init Tuya SDK MỘT lần trước mọi call auth/pairing (nếu không getUserInstance()=null → crash).
   // 1) Kiểm tra phiên lúc khởi động. 2) Phiên hết hạn (SDK kick) → về auth.
   useEffect(() => {
-    auth.bootstrap();
+    void (async () => {
+      await initSdk();
+      auth.bootstrap();
+    })();
     const sub = onSessionExpired(() => {
       auth.reset();
       setScreen('auth');
