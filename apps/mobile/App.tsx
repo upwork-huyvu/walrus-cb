@@ -28,6 +28,7 @@ import AuthScreen from './src/screens/AuthScreen';
 import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
 import { initSdk } from './src/services/tuya';
+import { configureGoogle } from './src/services/googleAuth';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
@@ -50,6 +51,7 @@ export default function App() {
   useEffect(() => {
     void (async () => {
       await initSdk();
+      configureGoogle(); // cấu hình Google Sign-In 1 lần (no-op nếu native chưa có / client id trống)
       auth.bootstrap();
     })();
     const sub = onSessionExpired(() => {

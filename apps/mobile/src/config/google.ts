@@ -8,5 +8,7 @@
 //   - Android client (package com.walrus.wellnesscb + SHA-1) → KHÔNG cần điền ở đây, Google tự khớp.
 //
 // Để trống = Google Sign-In sẽ lỗi (DEVELOPER_ERROR) tới khi điền client thật.
-export const GOOGLE_WEB_CLIENT_ID = ''; // '<xxxxxxxx>.apps.googleusercontent.com'
-export const GOOGLE_IOS_CLIENT_ID = ''; // '<xxxxxxxx>.apps.googleusercontent.com'
+// ⚠️ WEB phải là client type WEB (root "web" trong file tải về), KHÔNG phải Desktop/installed —
+//    dùng sai loại → idToken = null. Đây là client 'rh83...' (root "web"), không phải 'vkcr...' (installed).
+export const GOOGLE_WEB_CLIENT_ID = '118408958508-rh83jmqo8h0secjc4sbpn8n2gf3ldcig.apps.googleusercontent.com';
+export const GOOGLE_IOS_CLIENT_ID = '118408958508-vnigt7uncnsu8lobhvb9p5hfefre2u1j.apps.googleusercontent.com';
