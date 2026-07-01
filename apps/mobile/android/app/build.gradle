@@ -77,13 +77,18 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.coolbathmobile"
+    namespace "com.walrus.wellnesscb"
     defaultConfig {
-        applicationId "com.coolbathmobile"
+        applicationId "com.walrus.wellnesscb"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Tuya AppKey/Secret nạp từ gradle.properties (gitignored) → manifest meta-data
+        manifestPlaceholders = [
+            THING_SMART_APPKEY: (project.findProperty("THING_SMART_APPKEY") ?: ""),
+            THING_SMART_SECRET: (project.findProperty("THING_SMART_SECRET") ?: ""),
+        ]
     }
     signingConfigs {
         debug {
@@ -92,22 +97,38 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release: nạp từ ~/.gradle/gradle.properties (NGOÀI repo). Keystore = walrus-release.keystore
+        // (gitignored). Nếu thiếu prop (CI/dev khác) → release tự rơi về debug để vẫn build được.
+        release {
+            if (project.hasProperty('WALRUS_RELEASE_STORE_FILE')) {
+                storeFile file(WALRUS_RELEASE_STORE_FILE)
+                storePassword WALRUS_RELEASE_STORE_PASSWORD
+                keyAlias WALRUS_RELEASE_KEY_ALIAS
+                keyPassword WALRUS_RELEASE_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig project.hasProperty('WALRUS_RELEASE_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
 }
 
+// Tuya SDK kéo theo "thingsmart-modularCampAnno" chỉ tồn tại bản SNAPSHOT (không có ở
+// maven-releases/maven-commercial-releases) → loại trừ theo đúng hướng dẫn tích hợp của Tuya.
+configurations.all {
+    exclude group: "com.thingclips.smart", module: "thingsmart-modularCampAnno"
+}
+
 dependencies {
+    // Tuya security file (security-algorithm-*.aar trong app/libs) — bắt buộc
+    implementation fileTree(include: ['*.aar'], dir: 'libs')
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 

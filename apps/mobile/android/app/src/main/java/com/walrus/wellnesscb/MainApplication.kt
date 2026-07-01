@@ -1,4 +1,4 @@
-package com.coolbathmobile
+package com.walrus.wellnesscb
 
 import android.app.Application
 import com.facebook.react.PackageList

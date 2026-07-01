@@ -7,3 +7,19 @@ IOS_SECRET=vnt9dgd4f58phk8qhwqr74mf3kenwjdg
 CLOUD_DATA_CENTER=Central Europe Data Center
 CLOUD_CLIEND_ID=v75ujhfs848hcc599gug
 CLOUD_CLIEND_SECRET=7776790777d54a46a404ac26248244d3
+
+# ===== App identity + signing (để add vào Tuya console) =====
+# Fingerprint SHA-256 là PUBLIC (không bí mật) — Tuya cần package + SHA-256.
+ANDROID_PACKAGE_NAME=com.walrus.wellnesscb
+IOS_BUNDLE_ID=com.walrus.wellness
+
+# SHA-256 chứng chỉ ký (dạng có dấu ":")
+ANDROID_SHA256_DEBUG=FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C
+ANDROID_SHA256_RELEASE=C0:05:44:FC:78:3A:DF:31:96:AD:B7:56:35:9B:E1:91:FA:58:5A:4C:3A:7A:60:5F:42:A6:D0:8E:63:B2:54:71
+
+# SHA-256 dạng liền (nếu ô Tuya không nhận dấu ":")
+ANDROID_SHA256_DEBUG_PLAIN=fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c
+ANDROID_SHA256_RELEASE_PLAIN=c00544fc783adf3196adb756359be191fa585a4c3a7a605f42a6d08e63b25471
+
+# Keystore PROD: apps/mobile/android/app/walrus-release.keystore (alias: walrus)
+# ⚠️ MẬT KHẨU keystore KHÔNG ghi ở đây (file này đã push GitHub) — nằm ở ~/.gradle/gradle.properties (local).
