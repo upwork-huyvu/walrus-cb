@@ -34,6 +34,7 @@ Android & iOS. Cần điền `API_BASE_URL`/`PUSH_API_KEY` (mobile) + `FCM_*`/`P
 - [x] AC8 — tsc+eslint+jest backend(29/29) & mobile(70/70) XANH · ✅
 
 ## Nhật ký chạy (Run log) — mới nhất ở trên
+| 2026-07-02 | DEV (admin UI) | ✅ | Chuyển UI gửi thông báo admin sang **FCM tự do (bỏ template)**: backend `/push/send` nhận `uids[]`/`all` (+`sendToUids`/`sendToAll`/`listAllUids`; spec 5/5); admin `SendPushForm` = tên+mô tả+người nhận+data điều hướng, `sendPushAction`→`/push/send`, `page.tsx` bỏ load template, gỡ nav Template. backend tsc/jest/eslint + admin tsc/eslint sạch. |
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
 | 2026-07-02 | TEST B5–B7 | ✅ | mobile `tsc` clean (fix u?.uid null) · `jest` **70/70** (api.test 3 + push.test 6 mới) · eslint 0 err. google-services.json gitignored + PUSH_SETUP.md. |

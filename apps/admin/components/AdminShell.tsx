@@ -10,7 +10,6 @@ const NAV = [
   { href: '/users', label: 'Người dùng Tuya', ico: '❄' },
   { href: '/admins', label: 'Quản trị viên', ico: '⚜' },
   { href: '/notifications', label: 'Gửi thông báo', ico: '✉' },
-  { href: '/notifications/templates', label: 'Template', ico: '▤' },
 ];
 
 function activeHref(path: string): string {

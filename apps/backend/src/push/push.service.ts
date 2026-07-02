@@ -18,6 +18,13 @@ export type SendResult = {
   skipped?: boolean; // true khi FCM chưa cấu hình / user không có token
 };
 
+// Kết quả gửi hàng loạt (per-uid) → khớp UI admin: total/success/failed.
+export type BatchSendResult = {
+  total: number;
+  success: number;
+  failed: number;
+};
+
 // Mã lỗi FCM cho token đã hết hiệu lực → cần prune khỏi DB.
 const DEAD_TOKEN_CODES = new Set([
   'messaging/registration-token-not-registered',
@@ -70,5 +77,29 @@ export class PushService {
       failed: res.failureCount,
       pruned: dead.length,
     };
+  }
+
+  /**
+   * Gửi tới nhiều uid (per-uid). total = số người nhận; success = người nhận có ≥1 thiết bị nhận được;
+   * failed = còn lại (không token / mọi thiết bị lỗi). Khớp shape UI admin.
+   */
+  async sendToUids(
+    uids: string[],
+    payload: PushPayload,
+  ): Promise<BatchSendResult> {
+    let success = 0;
+    let failed = 0;
+    for (const uid of uids) {
+      const res = await this.sendToUid(uid, payload);
+      if (res.sent > 0) success += 1;
+      else failed += 1;
+    }
+    return { total: uids.length, success, failed };
+  }
+
+  /** Gửi tới TẤT CẢ user đã đăng ký FCM token (distinct uid trong push_tokens). */
+  async sendToAll(payload: PushPayload): Promise<BatchSendResult> {
+    const uids = await this.tokens.listAllUids();
+    return this.sendToUids(uids, payload);
   }
 }

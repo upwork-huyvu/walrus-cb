@@ -44,6 +44,15 @@ export class PushTokensService {
     return rows.map((r) => r.token);
   }
 
+  /** Danh sách uid (duy nhất) có ít nhất 1 token — dùng cho "gửi tất cả" (chỉ user đã đăng ký FCM). */
+  async listAllUids(): Promise<string[]> {
+    const rows = await this.prisma.pushToken.findMany({
+      distinct: ['tuyaUid'],
+      select: { tuyaUid: true },
+    });
+    return rows.map((r) => r.tuyaUid);
+  }
+
   /** Xoá các token chết (FCM báo not-registered) → dọn DB. */
   async pruneTokens(tokens: string[]): Promise<void> {
     if (tokens.length === 0) return;

@@ -2,14 +2,32 @@ import { PushService } from './push.service';
 import type { PushTokensService } from './push-tokens.service';
 import type { FirebaseMessaging } from './firebase.provider';
 
-function makeTokens(list: string[]) {
+function makeTokens(list: string[], allUids: string[] = []) {
   return {
     listTokensByUid: jest.fn().mockResolvedValue(list),
+    listAllUids: jest.fn().mockResolvedValue(allUids),
     pruneTokens: jest.fn().mockResolvedValue(undefined),
   } as unknown as PushTokensService & {
     listTokensByUid: jest.Mock;
+    listAllUids: jest.Mock;
     pruneTokens: jest.Mock;
   };
+}
+
+// messaging trả về theo token: token bắt đầu 'ok' → success, còn lại → fail.
+function fakeMessaging() {
+  const send = jest.fn(({ tokens }: { tokens: string[] }) =>
+    Promise.resolve({
+      successCount: tokens.filter((t) => t.startsWith('ok')).length,
+      failureCount: tokens.filter((t) => !t.startsWith('ok')).length,
+      responses: tokens.map((t) =>
+        t.startsWith('ok')
+          ? { success: true }
+          : { success: false, error: { code: 'x' } },
+      ),
+    }),
+  );
+  return { sendEachForMulticast: send } as unknown as FirebaseMessaging;
 }
 
 describe('PushService.sendToUid', () => {
@@ -66,5 +84,28 @@ describe('PushService.sendToUid', () => {
     expect(res).toEqual({ sent: 1, failed: 2, pruned: 1 });
     // Chỉ token 'not-registered' bị prune; lỗi internal-error KHÔNG prune (có thể tạm thời).
     expect(tokens.pruneTokens).toHaveBeenCalledWith(['tok_dead']);
+  });
+});
+
+describe('PushService.sendToUids / sendToAll', () => {
+  const payload = { title: 'T', body: 'B' };
+
+  it('sendToUids: uid có token nhận được → success; uid không token → failed', async () => {
+    // uid_a có token 'ok1'; uid_b không token (listTokensByUid trả [] ở lần 2).
+    const tokens = makeTokens([]);
+    (tokens.listTokensByUid as jest.Mock)
+      .mockResolvedValueOnce(['ok1'])
+      .mockResolvedValueOnce([]);
+    const svc = new PushService(fakeMessaging(), tokens);
+    const res = await svc.sendToUids(['uid_a', 'uid_b'], payload);
+    expect(res).toEqual({ total: 2, success: 1, failed: 1 });
+  });
+
+  it('sendToAll: lấy distinct uid rồi gửi từng người', async () => {
+    const tokens = makeTokens(['ok1'], ['uid_x', 'uid_y']);
+    const svc = new PushService(fakeMessaging(), tokens);
+    const res = await svc.sendToAll(payload);
+    expect(tokens.listAllUids).toHaveBeenCalled();
+    expect(res).toEqual({ total: 2, success: 2, failed: 0 });
   });
 });

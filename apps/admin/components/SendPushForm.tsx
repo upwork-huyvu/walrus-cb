@@ -3,41 +3,20 @@
 import { useActionState, useMemo, useState } from 'react';
 import { sendPushAction, type SendPushState } from '@/app/notifications/actions';
 
-export type Template = {
-  template_id: string;
-  name?: string;
-  title?: string;
-  content?: string;
-};
 export type Recipient = { uid: string; label: string };
 
 const initialState: SendPushState = {};
 
 /**
- * Form gửi push: chọn template → chọn người nhận (multi-select từ danh sách user Tuya /
- * nhập UID thủ công / gửi TẤT CẢ) → điền biến `${var}` → gửi.
+ * Form gửi thông báo FCM TỰ DO (không template): tên (title) + mô tả (body) + cấu hình
+ * (người nhận + data điều hướng khi tap). Người nhận: chọn từ danh sách / nhập UID / gửi tất cả.
  */
-export default function SendPushForm({
-  templates,
-  recipients,
-}: {
-  templates: Template[];
-  recipients: Recipient[];
-}) {
-  const [state, formAction, pending] = useActionState(
-    sendPushAction,
-    initialState,
-  );
-  const [templateId, setTemplateId] = useState(templates[0]?.template_id ?? '');
+export default function SendPushForm({ recipients }: { recipients: Recipient[] }) {
+  const [state, formAction, pending] = useActionState(sendPushAction, initialState);
   const [mode, setMode] = useState<'select' | 'all'>('select');
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [manual, setManual] = useState('');
-
-  const selected = useMemo(
-    () => templates.find((t) => t.template_id === templateId),
-    [templates, templateId],
-  );
-  const vars = useMemo(() => extractVars(selected), [selected]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const manualUids = useMemo(
     () =>
@@ -59,75 +38,44 @@ export default function SendPushForm({
       else n.add(uid);
       return n;
     });
-  const allInList =
-    recipients.length > 0 && recipients.every((r) => checked.has(r.uid));
+  const allInList = recipients.length > 0 && recipients.every((r) => checked.has(r.uid));
   const toggleAllInList = () =>
     setChecked(() => (allInList ? new Set() : new Set(recipients.map((r) => r.uid))));
 
-  const canSend = !!templateId && (mode === 'all' || effectiveUids.length > 0);
+  const canSend = mode === 'all' || effectiveUids.length > 0;
   const rowLabel = { flexDirection: 'row' as const, gap: 8, alignItems: 'center' };
 
   return (
-    <form
-      action={formAction}
-      className="card"
-      style={{ width: '100%', maxWidth: 560 }}
-    >
+    <form action={formAction} className="card" style={{ width: '100%', maxWidth: 560 }}>
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="uids" value={JSON.stringify(effectiveUids)} />
 
+      {/* Nội dung tự do */}
       <label>
-        Template (đã duyệt)
-        <select
-          name="templateId"
-          value={templateId}
-          onChange={(e) => setTemplateId(e.target.value)}
-          required
-        >
-          {templates.length === 0 ? (
-            <option value="">— chưa có template —</option>
-          ) : null}
-          {templates.map((t) => (
-            <option key={t.template_id} value={t.template_id}>
-              {t.name ?? t.template_id}
-            </option>
-          ))}
-        </select>
+        Tên thông báo (tiêu đề)
+        <input name="title" required maxLength={100} placeholder="Ví dụ: Nhắc vệ sinh bồn" />
       </label>
-
-      {selected ? (
-        <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-          <strong>{selected.title}</strong>
-          <br />
-          {selected.content}
-        </p>
-      ) : null}
+      <label>
+        Mô tả (nội dung)
+        <textarea name="body" required rows={3} maxLength={500} placeholder="Nội dung hiển thị trong thông báo…" />
+      </label>
 
       {/* Người nhận */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 18 }}>
           <label style={rowLabel}>
-            <input
-              type="radio"
-              checked={mode === 'select'}
-              onChange={() => setMode('select')}
-            />
+            <input type="radio" checked={mode === 'select'} onChange={() => setMode('select')} />
             Chọn người nhận
           </label>
           <label style={rowLabel}>
-            <input
-              type="radio"
-              checked={mode === 'all'}
-              onChange={() => setMode('all')}
-            />
+            <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} />
             Gửi tất cả
           </label>
         </div>
 
         {mode === 'all' ? (
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            ⚠️ Gửi tới <strong>TẤT CẢ</strong> user Tuya — backend duyệt toàn bộ
-            danh sách rồi gửi từng người (Tuya không có gửi hàng loạt). Có thể lâu nếu nhiều user.
+            ⚠️ Gửi tới <strong>TẤT CẢ</strong> user đã đăng ký nhận thông báo (có FCM token). Backend gửi từng người.
           </p>
         ) : (
           <>
@@ -137,37 +85,24 @@ export default function SendPushForm({
                 style={{ maxHeight: 200, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}
               >
                 <label style={{ ...rowLabel, color: 'var(--gold)' }}>
-                  <input
-                    type="checkbox"
-                    checked={allInList}
-                    onChange={toggleAllInList}
-                  />
+                  <input type="checkbox" checked={allInList} onChange={toggleAllInList} />
                   Chọn tất cả trong danh sách ({recipients.length})
                 </label>
                 {recipients.map((r) => (
                   <label key={r.uid} style={rowLabel}>
-                    <input
-                      type="checkbox"
-                      checked={checked.has(r.uid)}
-                      onChange={() => toggle(r.uid)}
-                    />
+                    <input type="checkbox" checked={checked.has(r.uid)} onChange={() => toggle(r.uid)} />
                     {r.label}
                   </label>
                 ))}
               </div>
             ) : (
               <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                Chưa có user Tuya trong danh sách — nhập UID thủ công bên dưới.
+                Chưa có user trong danh sách — nhập UID thủ công bên dưới.
               </p>
             )}
             <label>
               Nhập UID thủ công (phẩy / xuống dòng)
-              <textarea
-                value={manual}
-                onChange={(e) => setManual(e.target.value)}
-                rows={2}
-                placeholder="ay15..., ay16..."
-              />
+              <textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={2} placeholder="ay15..., ay16..." />
             </label>
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
               Đã chọn: <strong>{effectiveUids.length}</strong> người nhận
@@ -176,24 +111,33 @@ export default function SendPushForm({
         )}
       </div>
 
-      {vars.map((v) => (
-        <label key={v}>
-          {`Biến \${${v}}`}
-          <input name={`param.${v}`} required />
-        </label>
-      ))}
+      {/* Cấu hình nâng cao: điều hướng khi tap noti */}
+      <button
+        type="button"
+        className="ghost"
+        onClick={() => setShowAdvanced((s) => !s)}
+        style={{ alignSelf: 'flex-start', fontSize: 13 }}
+      >
+        {showAdvanced ? '▾' : '▸'} Cấu hình nâng cao (điều hướng khi mở)
+      </button>
+      {showAdvanced ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label>
+            Mở màn hình (screen)
+            <input name="screen" placeholder="ví dụ: device-detail (để trống = mở app)" />
+          </label>
+          <label>
+            devId (nếu mở màn thiết bị)
+            <input name="devId" placeholder="devId của thiết bị" />
+          </label>
+        </div>
+      ) : null}
 
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
-        <p
-          style={{
-            color: state.failed ? 'var(--warning)' : 'var(--success)',
-            fontSize: 13,
-            margin: 0,
-          }}
-        >
+        <p style={{ color: state.failed ? 'var(--warning)' : 'var(--success)', fontSize: 13, margin: 0 }}>
           {state.failed
-            ? `Đã gửi ${state.success}/${state.total} · ${state.failed} lỗi`
+            ? `Đã gửi ${state.success}/${state.total} · ${state.failed} không nhận được`
             : `✅ Đã gửi ${state.success}/${state.total} thành công`}
         </p>
       ) : null}
@@ -203,17 +147,4 @@ export default function SendPushForm({
       </button>
     </form>
   );
-}
-
-/** Trích các biến `${var}` (duy nhất) từ title + content của template. */
-function extractVars(t?: { title?: string; content?: string }): string[] {
-  if (!t) return [];
-  const text = `${t.title ?? ''} ${t.content ?? ''}`;
-  const set = new Set<string>();
-  const re = /\$\{([^}]+)\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    set.add(m[1].trim());
-  }
-  return [...set];
 }
