@@ -7,6 +7,21 @@ export type TuyaPushResult = {
   send_status: boolean;
 };
 
+/** Kết quả 1 push trong batch (per-uid). */
+export type PushResultItem = {
+  uid: string;
+  ok: boolean;
+  error?: string;
+};
+
+/** Tổng hợp gửi push (1 hoặc nhiều uid / tất cả). Tuya loop per-uid → aggregate. */
+export type PushBatchResult = {
+  total: number;
+  success: number;
+  failed: number;
+  results: PushResultItem[];
+};
+
 /** Kết quả tạo template: POST /v1.0/iot-03/msg-templates/app-notifications */
 export type TuyaCreateTemplateResult = {
   template_id: string;

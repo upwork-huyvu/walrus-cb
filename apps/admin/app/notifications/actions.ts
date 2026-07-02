@@ -5,25 +5,41 @@ import { apiFetch } from '@/lib/api';
 
 export type SendPushState = {
   ok?: boolean;
-  sendStatus?: boolean;
+  total?: number;
+  success?: number;
+  failed?: number;
   error?: string;
 };
 
 /**
- * Server Action: gửi push tới 1 user qua backend (Tuya Cloud App Push).
- * Đọc uid + templateId + các biến `param.<tên>` từ FormData → POST /notifications/push.
+ * Server Action: gửi push qua backend (Tuya Cloud App Push).
+ * Người nhận: mode='all' (tất cả) hoặc danh sách `uids` (JSON). Biến từ field `param.<tên>`.
+ * Backend loop per-uid → trả {total, success, failed}.
  */
 export async function sendPushAction(
   _prev: SendPushState,
   formData: FormData,
 ): Promise<SendPushState> {
-  const uid = String(formData.get('uid') ?? '').trim();
   const templateId = String(formData.get('templateId') ?? '').trim();
-  if (!uid || !templateId) {
-    return { error: 'Thiếu UID hoặc template.' };
+  const all = String(formData.get('mode') ?? 'select') === 'all';
+  if (!templateId) {
+    return { error: 'Thiếu template.' };
   }
 
-  // Gom biến template: các field đặt tên "param.<tên>".
+  let uids: string[] = [];
+  if (!all) {
+    try {
+      const parsed = JSON.parse(String(formData.get('uids') ?? '[]'));
+      if (Array.isArray(parsed)) uids = parsed.map((x) => String(x));
+    } catch {
+      uids = [];
+    }
+    if (uids.length === 0) {
+      return { error: 'Chọn ít nhất 1 người nhận (hoặc chọn "Gửi tất cả").' };
+    }
+  }
+
+  // Gom biến template: field đặt tên "param.<tên>".
   const params: Record<string, string> = {};
   for (const [key, value] of formData.entries()) {
     if (key.startsWith('param.')) {
@@ -31,16 +47,30 @@ export async function sendPushAction(
     }
   }
 
+  const body = all
+    ? { templateId, params, all: true }
+    : { templateId, params, uids };
+
   const res = await apiFetch('/notifications/push', {
     method: 'POST',
-    body: JSON.stringify({ uid, templateId, params }),
+    body: JSON.stringify(body),
   });
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     redirect('/login');
   }
   if (!res.ok) {
-    return { error: `Gửi thất bại: ${res.status}` };
+    const b = (await res.json().catch(() => null)) as { message?: string } | null;
+    return { error: b?.message ?? `Gửi thất bại: ${res.status}` };
   }
-  const data = (await res.json()) as { send_status?: boolean };
-  return { ok: true, sendStatus: data.send_status ?? false };
+  const data = (await res.json()) as {
+    total?: number;
+    success?: number;
+    failed?: number;
+  };
+  return {
+    ok: true,
+    total: data.total ?? 0,
+    success: data.success ?? 0,
+    failed: data.failed ?? 0,
+  };
 }

@@ -11,5 +11,6 @@ import { DeleteJobsService } from './delete-jobs.service';
   imports: [TuyaModule, AdminAuthModule], // AdminAuthModule cấp AdminAuthGuard cho UsersController
   controllers: [UsersController, CronController],
   providers: [UsersService, DeleteJobsService],
+  exports: [UsersService], // NotificationsModule dùng để enumerate uid khi "gửi tất cả"
 })
 export class UsersModule {}

@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AppConfigService } from '../config/app-config.service';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
+import { UsersService } from '../users/users.service';
 import type { CreateTemplateDto } from './dto/create-template.dto';
 import type { SendPushDto } from './dto/send-push.dto';
 import type {
+  PushBatchResult,
+  PushResultItem,
   TuyaCreateTemplateResult,
   TuyaPushResult,
   TuyaTemplate,
@@ -26,26 +29,66 @@ export class NotificationsService {
   constructor(
     private readonly tuya: TuyaCloudService,
     private readonly config: AppConfigService,
+    private readonly users: UsersService,
   ) {}
 
-  /** Gửi 1 push tới 1 user theo template đã duyệt. */
-  async sendPush(dto: SendPushDto): Promise<TuyaPushResult> {
+  /**
+   * Gửi push tới nhiều user (uids) hoặc TẤT CẢ (all=true). Tuya nhận 1 uid/lần →
+   * loop tuần tự per-uid + tổng hợp kết quả (không có endpoint batch).
+   */
+  async sendPush(dto: SendPushDto): Promise<PushBatchResult> {
     const bizType = this.config.require('TUYA_APP_BIZ_TYPE');
     // template_param PHẢI là chuỗi JSON đã escape (không phải object).
     const templateParam = JSON.stringify(dto.params ?? {});
+    const uids = dto.all ? await this.allUserUids() : (dto.uids ?? []);
     this.logger.log(
-      `Gửi push uid=${dto.uid} template=${dto.templateId} biz_type=${bizType}`,
+      `Gửi push template=${dto.templateId} biz_type=${bizType} → ${uids.length} user${dto.all ? ' (ALL)' : ''}`,
     );
-    return this.tuya.request<TuyaPushResult>({
-      method: 'POST',
-      path: PUSH_PATH,
-      body: {
-        uid: dto.uid,
-        biz_type: bizType,
-        template_id: dto.templateId,
-        template_param: templateParam,
-      },
-    });
+
+    const results: PushResultItem[] = [];
+    for (const uid of uids) {
+      try {
+        await this.tuya.request<TuyaPushResult>({
+          method: 'POST',
+          path: PUSH_PATH,
+          body: {
+            uid,
+            biz_type: bizType,
+            template_id: dto.templateId,
+            template_param: templateParam,
+          },
+        });
+        results.push({ uid, ok: true });
+      } catch (e) {
+        results.push({
+          uid,
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    const success = results.filter((r) => r.ok).length;
+    this.logger.log(
+      `Push template=${dto.templateId}: ${success}/${uids.length} thành công`,
+    );
+    return {
+      total: uids.length,
+      success,
+      failed: uids.length - success,
+      results,
+    };
+  }
+
+  /** Enumerate toàn bộ uid user Tuya (phân trang) cho "gửi tất cả". */
+  private async allUserUids(): Promise<string[]> {
+    const uids: string[] = [];
+    for (let page = 1; page <= 100; page++) {
+      const res = await this.users.listUsers({ page_no: page, page_size: 100 });
+      uids.push(...res.list.map((u) => u.uid));
+      if (!res.has_more) break;
+    }
+    return uids;
   }
 
   /** Danh sách template (xem id + trạng thái duyệt). */
