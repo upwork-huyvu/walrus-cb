@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { getCurrentUser, isLoggedIn, logout as authLogout, type AuthUser } from '../services/auth';
+import { signOutGoogle } from '../services/googleAuth';
 
 export type AuthStatus = 'checking' | 'authed' | 'guest';
 
@@ -45,6 +46,9 @@ export function useAuth(): Auth {
 
   const signOut = useCallback(async () => {
     await authLogout();
+    // Clear cả state Google Sign-In, nếu không lần signIn() sau sẽ tự trả account đã cache
+    // (không hiện picker → không đổi được tài khoản). Best-effort, đã nuốt lỗi bên trong.
+    await signOutGoogle();
     setUser(null);
     setStatus('guest');
   }, []);
