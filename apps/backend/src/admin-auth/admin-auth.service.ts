@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AppConfigService } from '../config/app-config.service';
@@ -75,5 +76,26 @@ export class AdminAuthService {
       throw new ForbiddenException('Tài khoản không có quyền admin');
     }
     return { id: user.id, email: user.email };
+  }
+
+  /** Danh sách admin trong allowlist (email + ngày tạo). */
+  async listAdmins() {
+    return this.prisma.adminUser.findMany({ orderBy: { createdAt: 'asc' } });
+  }
+
+  /**
+   * Gỡ 1 admin khỏi allowlist (revoke quyền admin). KHÔNG xoá tài khoản Supabase Auth —
+   * chỉ mất quyền admin. Chặn tự xoá chính mình để không tự khoá.
+   */
+  async deleteAdmin(id: string, currentEmail: string) {
+    const target = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (!target) {
+      throw new NotFoundException('Không tìm thấy admin');
+    }
+    if (target.email === currentEmail) {
+      throw new ForbiddenException('Không thể tự gỡ quyền admin của chính mình');
+    }
+    await this.prisma.adminUser.delete({ where: { id } });
+    return { deleted: true, email: target.email };
   }
 }
