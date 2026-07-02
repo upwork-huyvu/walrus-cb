@@ -11,7 +11,16 @@ export default function LoginPage() {
   return (
     <main className="center">
       <form action={formAction} className="card">
-        <h1 style={{ margin: 0, fontSize: 20 }}>Admin đăng nhập</h1>
+        <div className="sidebar-head" style={{ padding: '0 0 8px' }}>
+          <span className="mark" style={{ fontSize: 26 }}>
+            ❄
+          </span>
+          <div className="wordmark">
+            Cool Bath
+            <small>Admin</small>
+          </div>
+        </div>
+        <h1 style={{ margin: 0, fontSize: 24 }}>Đăng nhập</h1>
         <label>
           Email
           <input name="email" type="email" autoComplete="username" required />

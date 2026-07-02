@@ -54,7 +54,7 @@ export default function CreateTemplateForm() {
 
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
-        <p style={{ color: '#16a34a', fontSize: 13, margin: 0 }}>
+        <p style={{ color: 'var(--success)', fontSize: 13, margin: 0 }}>
           ✅ Đã tạo {state.templateId ?? ''} — chờ Tuya duyệt (≤2 ngày làm việc)
         </p>
       ) : null}
