@@ -91,11 +91,33 @@
   secret iOS resolve rỗng tới khi set "Based on Configuration File" trong Xcode. Và `android/app/libs/`
   thiếu `security-algorithm-*.aar` → `init()` crash runtime. (Ngoài scope Google login, ghi để nhớ.)
 
+## Device verify (Android) + bug logout + DC issue (2026-07-02)
+- **AC6 Android VERIFIED** (SM-A325F): build thật (JDK17; copy `security-algorithm-*.aar`→`app/libs`; tạo
+  `android/secrets.properties` Tuya AppKey/Secret; `assembleDebug` OK 164MB). Google login E2E: picker→consent
+  →idToken (aud=Web `rh83..`)→`thirdLogin('gg')`→**Home**; persist qua restart. 2 user Tuya thật:
+  `imax.dev.sn@gmail.com`, `showroom.imax@gmail.com`.
+- **🐛 BUG (đã FIX):** `useAuth.signOut`→`auth.logout` chỉ logout Tuya, **không gọi `signOutGoogle`** → Google
+  giữ cache → `signIn()` one-tap account cũ, **không hiện account picker**. Fix: nối `signOutGoogle()` vào
+  `src/state/useAuth.ts` (JS-only). Verified on-device: picker "Choose an account" hiện đủ 3 acc. **Cần commit.**
+- **🎯 DC MISMATCH (root cause `/users` rỗng):** `thirdLogin` truyền `countryCode='49'` → account rơi
+  **Western Europe DC** (app tạo sau 2025-11-25 → mọi nước EU về Western Europe), nhưng project ở **Central
+  Europe** → backend không thấy user. **FIX KHÔNG PHẢI ở code** — zone do **bảng mapping OEM app trên portal**
+  quyết (client không override được; bridge không có region API là ĐÚNG). **Client chọn Option A:** OEM App →
+  Required Setting → Data Center → **Customize Rules** map EU→Central Europe → **launch (1 lần/app)** → **rebuild
+  app** (giữ nguyên `countryCode='49'`) → xoá user Western Europe cũ + re-register. ⚠️ DC account cố định lúc
+  đăng ký → 2 user cũ (`imax`/`showroom` `we...`) phải **tạo lại** ở Central Europe. "Show zone" Android không
+  preview pre-login được (chỉ đọc `Domain.regionCode` sau login). Chi tiết → [[m1-backend-user-mgmt]] context.
+- **🔒 CHỐT CUỐI (2026-07-02) — đính chính Option A ở trên:** **Customize Rules chỉ OEM App, App SDK KHÔNG
+  có** → không tự ép Central Europe được. DC do **ngày tạo appKey** (post-split → Western Europe); không
+  countryCode nào cứu. Central Europe = **ticket Tuya** hoặc **Option B** (dời project→Western Europe). Đã
+  **expose country code** trên [AuthScreen.tsx](../../apps/mobile/src/screens/AuthScreen.tsx) + truyền vào
+  `thirdLogin` ([auth.ts](../../apps/mobile/src/services/auth.ts)) — **chỉ để xem/thử, KHÔNG đổi được DC.**
+
 ## Liên kết
 - Plan: [plan.md](plan.md)
 - Progress: [progress.md](progress.md)
 - Research liên quan: [tuya-google-login.md](../../docs/research/tuya-google-login.md)
-- Feature gốc: [[m1-mobile-auth]] · liên quan [[m1-mobile-pairing]] (cần Owner Home)
+- Feature gốc: [[m1-mobile-auth]] · liên quan [[m1-mobile-pairing]] (cần Owner Home) · DC blocker của [[m1-backend-user-mgmt]]
 
 ## Tóm tắt khi hoàn thành (điền lúc FINISH)
 <chưa hoàn thành>

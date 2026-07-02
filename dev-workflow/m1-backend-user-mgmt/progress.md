@@ -1,18 +1,20 @@
 # Progress: UserModule — list/detail/xoá user + delete_jobs retry
 
 - **Slug:** `m1-backend-user-mgmt`
-- **Phase hiện tại:** `DEV` (code xong; **live verify 2026-07-02 → BLOCKED bởi Tuya platform, KHÔNG phải code**)
-- **Trạng thái:** `blocked_external` (backend đúng; `/users` trả rỗng do app chưa release + account chưa enterprise-verify)
+- **Phase hiện tại:** `DEV` (code xong; **ROOT CAUSE `/users` rỗng = DC mismatch, xác nhận 2026-07-02; đang research fix**)
+- **Trạng thái:** `blocked_external` (backend đúng; account đăng ký ở **Western Europe** ≠ project **Central Europe** → project không thấy user)
 - **Cập nhật lần cuối:** 2026-07-02
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
-⚠️ **LIVE VERIFY 2026-07-02: backend ĐÚNG nhưng `GET /users` = `total:0`.** Đã chứng minh backend chuẩn
-(project Cloud key `v75ujhfs..` + ký HMAC OK + schema `walruswellnesscb` + DC Central Europe — probe token OK
-mọi host). App **đã Link My App** vào project (Devices tab) nhưng **Status "Building"**. Tạo **user MỚI sau
-link** (`showroom.imax@`) → **vẫn total:0** ⇒ không phải timing/code. → **Gate Tuya platform:** app chưa
-release (Building) + account chưa **enterprise verify** (UI Operation→User Management cũng thiếu, cùng gốc).
-**Việc client:** release App SDK / hoàn tất enterprise verification / ticket Tuya. Chi tiết → context.md.
-(App-auth key `p37v9tnv..` **KHÔNG** dùng cho OpenAPI — cho `1004 sign invalid`; giữ project key.)
+🎯 **ROOT CAUSE XÁC NHẬN (client soi console 2026-07-02): DATA CENTER MISMATCH.**
+Cloud Project = **Central Europe** (`openapi.tuyaeu.com`) nhưng account end-user đăng ký lại rơi vào
+**Western Europe** (zone Tuya tách ~2025-11-25, `openapi-weaz.tuyaeu.com` — cô lập). DC lệch → project
+Central Europe **không bao giờ thấy** user Western Europe → `GET /v2.0/apps/{schema}/users` = `total:0`.
+Nguyên nhân: mobile `thirdLogin` truyền **`countryCode='49'` cứng** → route account sang Western Europe.
+**Fix nằm ở MOBILE (feature [[m1-mobile-google-login]]/auth), không phải backend:** cho account đăng ký
+đúng **Central Europe** (+ show/pick zone lúc register). Backend đã đúng 100% — **giữ nguyên**.
+> ⚠️ Giả thuyết cũ "Status Building / enterprise-verify" (2026-07-02, ~70% conf) **bị SUPERSEDE** bởi DC
+> mismatch — đó mới là gốc thật. (App-auth key `p37v9tnv..` KHÔNG dùng cho OpenAPI — `1004 sign invalid`.)
 
 ## Checklist các bước (đồng bộ plan mục 4)
 - [x] B1 — UserModule: list + detail · **done** (UsersService/Controller + DTO + types + env TUYA_APP_SCHEMA)
@@ -28,11 +30,15 @@ release (Building) + account chưa **enterprise verify** (UI Operation→User Ma
 ## Nhật ký chạy (Run log) — mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú |
 |---|---|---|---|
+| 2026-07-02 | **ROOT CAUSE = DC MISMATCH (client confirm)** | 🎯 | Client soi Tuya console: account đăng ký ở **Western Europe DC**, project ở **Central Europe DC** → lệch → project không thấy user → `total:0`. Khớp probe hôm nay (query `openapi-weaz.tuyaeu.com` bị "data center suspended" vì project chỉ bật Central Europe). Nguồn lệch: mobile `thirdLogin(countryCode='49')` cứng → route Western Europe. **SUPERSEDE** giả thuyết "Building/enterprise-verify" bên dưới. Fix ở **mobile** (đăng ký đúng Central Europe + show zone); backend giữ nguyên. Đang research cơ chế DC + mapping country (workflow). |
 | 2026-07-02 | **LIVE VERIFY /users (device + cloud)** | ⚠️ blocked | Backend **ĐÚNG hết**: credential = project Cloud key `v75ujhfs..` (App-auth key `p37v9tnv..` sai loại → `1004 sign invalid`, không mint token); ký HMAC OK; schema `walruswellnesscb`; DC Central Europe (probe 6 host: token OK EU/US, các DC khác "suspended" vì project chưa bật). `GET /v2.0/apps/{schema}/users` → **`total:0`** với **CẢ** user cũ (`imax.dev.sn@`) LẪN user **MỚI tạo sau khi Link My App** (`showroom.imax@`) → **loại timing/propagation**. App **đã Link My App** (Devices tab, project walrus, Central Europe) nhưng **Status = "Building"**, Linked Devices 0. Console **Operation → User Management KHÔNG có** (account chưa enterprise-verify). ⇒ **Gate Tuya platform** (app chưa release + account chưa verify), KHÔNG phải code. Fix = release App SDK / enterprise verification / ticket Tuya. Research: workflow (App Authorization ≠ OpenAPI cred; Link My App là cơ chế đúng; UI xem user = Operation→User Management / Data Center→App user). |
 | 2026-06-28 | TEST B1–B3 | ✅ | `nest build` OK; jest **12/12** (tuya-sign 6 + users.service 3 + cron 3); e2e `/health` OK; eslint 0 error. |
 | 2026-06-28 | DEV B1–B3 | ✅ | UsersModule (list/detail/delete + cron) + DeleteJobsService; env TUYA_APP_SCHEMA/CRON_SECRET; vercel.json crons (0 * * * *); class-validator/transformer. |
 | 2026-06-28 | RESEARCH+PLAN | ✅ | `docs/research/tuya-cloud-user-management.md`; plan/context/progress; INDEX. |
 
 ## Vấn đề đang chặn (Blockers)
-- Không chặn code. Live verify cần env: `TUYA_APP_SCHEMA`, Tuya Cloud `TUYA_ACCESS_ID/SECRET`, Supabase `DATABASE_URL`/`DIRECT_URL`, `CRON_SECRET`.
-- Endpoint user hiện **chưa có auth admin** → C3 (`m1-backend-admin-auth`) sẽ bảo vệ.
+- 🎯 **`/users` = total:0 vì DC MISMATCH (KHÔNG phải backend):** account ở **Western Europe**, project ở
+  **Central Europe**. Fix ở **mobile** (đăng ký account đúng Central Europe — sửa `thirdLogin` countryCode/zone;
+  xem [[m1-mobile-google-login]]). ⚠️ DC account **cố định lúc đăng ký đầu** → user cũ (imax/showroom ở Western
+  Europe) có thể phải **tạo lại** ở Central Europe. Backend `/users` sẽ tự chạy khi account về đúng DC.
+- Endpoint user đã có auth admin (C3 done). Live verify env đủ (đã chạy thật 2026-07-02).
