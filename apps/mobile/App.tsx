@@ -33,6 +33,7 @@ import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
 import { getHomeList } from './src/services/home';
 import { decideAfterAuth } from './src/state/homeGate';
+import { onForegroundMessage, onNotificationTap, getInitialRoute } from './src/services/push';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
@@ -67,6 +68,23 @@ export default function App() {
       setScreen('auth');
     });
     return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Push FCM: hiện noti khi FOREGROUND (Notifee) + điều hướng khi tap (background/quit).
+  useEffect(() => {
+    const unsubForeground = onForegroundMessage();
+    const unsubTap = onNotificationTap((route) =>
+      navigate(route.screen as ScreenName, route.params as Record<string, unknown>),
+    );
+    // Mở app từ QUIT bằng cách tap noti → điều hướng tới màn đích.
+    void getInitialRoute().then((route) => {
+      if (route) navigate(route.screen as ScreenName, route.params as Record<string, unknown>);
+    });
+    return () => {
+      unsubForeground();
+      unsubTap();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

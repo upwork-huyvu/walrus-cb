@@ -12,7 +12,10 @@
   "dependencies": {
     "@invertase/react-native-apple-authentication": "^2.5.1",
     "@jimmy-vu/react-native-turbo-tuya": "file:../../packages/tuya-react-native",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-firebase/app": "^25.1.0",
+    "@react-native-firebase/messaging": "^25.1.0",
     "@react-native-google-signin/google-signin": "^16.1.2",
     "@react-native/new-app-screen": "0.85.0",
     "react": "19.2.3",

@@ -33,6 +33,13 @@ export const envSchema = z.object({
 
   // --- Cron nội bộ (Vercel Cron gọi endpoint retry delete_jobs) ---
   CRON_SECRET: z.string().min(1).optional(), // SERVER-ONLY
+
+  // --- Firebase Cloud Messaging (M3 push) — service account SERVER-ONLY ---
+  FCM_PROJECT_ID: z.string().min(1).optional(),
+  FCM_CLIENT_EMAIL: z.string().min(1).optional(),
+  FCM_PRIVATE_KEY: z.string().min(1).optional(), // SERVER-ONLY (\n escaped trong env → un-escape lúc init)
+  // API key tĩnh bảo vệ endpoint đăng ký token của mobile (MVP: tin uid từ app). SERVER + native config.
+  PUSH_API_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
