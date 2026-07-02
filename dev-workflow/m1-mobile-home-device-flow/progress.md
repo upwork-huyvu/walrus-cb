@@ -8,7 +8,8 @@
 - **Cập nhật lần cuối:** 2026-07-02
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
-Toàn bộ B0–B7 code XONG + verify JS (tsc clean · eslint 0 err · jest 15/15 test mới pass).
+B0–B8 code XONG + verify JS (tsc clean · eslint 0 err · jest 17/17 test mới pass). B8 đã sửa 3🟡+2🔵 từ audit.
+Còn backlog nit: L-1 (FlatList khi list to) · L-4 (verify nguồn device list native trên thiết bị).
 **Còn lại (BLOCKED trên toolchain/thiết bị):** build native để xác thực `getHomeDeviceList`
 (Kotlin/ObjC) + round-trip thật: login Tuya → home-gate → tạo/chọn nhà → device-list hiện thiết bị
 thật → pair thiết bị thật → confirm+đặt tên → về list → detail. Cần Mac/Android SDK + thiết bị + tài
@@ -26,6 +27,7 @@ khoản Tuya Owner (DC=EU). Khi build được: chạy checklist thiết bị. C
 - [x] B5 — Nâng cấp confirm pairing kiểu SmartLife + đặt tên · done (pairingStepLabel + step 'naming' + renameDevice; pairing.test)
 - [x] B6 — Device Detail = DashboardScreen + gộp ritual · done (devId→connect effect; section NGHI THỨC; back→device-list)
 - [x] B7 — Kiểm/port tính năng còn thiếu từ replit · done (CleaningPanel đã đủ double-confirm+countdown+freq/day/time; không thiếu)
+- [x] B8 — Sửa audit findings · done (M-1 bỏ double-connect · M-2 home-gate lỗi→Thử lại · M-3 owner-priority+test · L-2 log rename · L-3 guard homeId). L-1/L-4 backlog.
 
 ## Checklist tiêu chí hoàn thành (đồng bộ với plan.md mục 3)
 - [x] AC1 — Login → chưa home → Create Home; có → device-list · JS ✅ (homeGate.test + App effect). Device: chờ build.
@@ -40,6 +42,7 @@ khoản Tuya Owner (DC=EU). Khi build được: chạy checklist thiết bị. C
 ## Nhật ký chạy (Run log) — mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
+| 2026-07-02 | FIX-PLAN+DEV B8 | ✅ | Sửa 3🟡+2🔵 từ audit: M-1 (DeviceList bỏ connectDevice) · M-2 (home-gate lỗi→gateError+Thử lại, không tạo nhà trùng) · M-3 (decideAfterAuth owner-priority + 2 test) · L-2 (log renameDevice) · L-3 (guard homeId null). `tsc` clean · `eslint` 0 err · `jest` 17/17. |
 | 2026-07-02 | TEST B5–B7 | ✅ | `tsc` clean · `eslint` 0 error · `jest` test mới 15/15 (home 6 + homeGate 2 + pairing 8... thực 15 tổng). B7: xác nhận CleaningPanel đã đủ parity với replit → không thiếu tính năng. |
 | 2026-07-02 | DEV B5–B7 | ✅ | B5 PairingScreen: `pairingStepLabel`+step 'naming'+`renameDevice`(adapter+test); B6 DashboardScreen: effect connect theo devId + section NGHI THỨC (session/breathwork/progress) + back→device-list; B7 kiểm CleaningPanel parity (đủ). |
 | 2026-07-02 | TEST B2–B4 | ✅ | `tsc` clean · `eslint` 0 error (77 warning inline-style theo convention repo) · `jest`: homeGate 2/2 + home 6/6 pass. ⚠️ pre-existing fail `appleAuth.test.ts` (thiếu dep `@invertase/react-native-apple-authentication`, không liên quan). |

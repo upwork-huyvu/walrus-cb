@@ -6,7 +6,7 @@
 - **Milestone:** M1 · B3 (home setup) + B4 (pairing) + B5 (dashboard) — gộp lại thành 1 luồng điều hướng đúng
 - **Phần liên quan:** mobile (RN CLI) + lib (`packages/tuya-react-native` — bổ sung `getHomeDeviceList`)
 - **Ngày tạo:** 2026-07-02
-- **Cập nhật lần cuối:** 2026-07-02
+- **Cập nhật lần cuối:** 2026-07-02 (thêm B8 sau audit)
 
 ## 1. Mục tiêu & phạm vi
 Sửa logic điều hướng UI mobile để bám đúng luồng app Tuya SmartLife thật:
@@ -135,6 +135,15 @@ sung thêm các tính năng còn thiếu so với bản `replit_generate/` đang
      "thiếu so với replit" và thuộc luồng home/device/detail).
    - File đụng tới: theo bảng B0.
    - Kiểm thử: từng mục có tiêu chí riêng; `tsc`+`eslint`+`jest` toàn app (AC8).
+
+8. **B8 — Sửa phát hiện audit (2026-07-02)** *(thêm sau /audit)*
+   - Việc cần làm: **M-1** bỏ `connectDevice` trong `DeviceListScreen.openDevice` (để device-detail
+     sở hữu kết nối, tránh gọi 2 lần); **M-2** home-gate lỗi `getHomeList` → hiện state lỗi + nút Thử lại
+     (KHÔNG tự route create-home → tránh tạo nhà trùng); **M-3** `decideAfterAuth` ưu tiên home owner
+     (`admin || role===2`); **L-2** log lỗi `renameDevice` trong catch; **L-3** guard `homeId` undefined
+     trước khi gọi `getHomeDeviceList`.
+   - File đụng tới: `App.tsx`, `state/homeGate.ts`(+test), `screens/DeviceListScreen.tsx`, `screens/PairingScreen.tsx`.
+   - Kiểm thử: cập nhật `homeGate.test` (case owner-priority); `tsc`+`eslint`+`jest`. (L-1 FlatList/L-4 verify-native để backlog.)
 
 ## 5. Rủi ro & câu hỏi mở
 - ⚠️ **Native rebuild để có `getHomeDeviceList` thật** — có thể blocked nếu chưa có

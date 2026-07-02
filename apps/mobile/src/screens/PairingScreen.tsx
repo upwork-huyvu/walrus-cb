@@ -123,8 +123,12 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     try {
       const name = deviceName.trim();
       if (name && name !== result.name) await renameDevice(result.devId, name);
-    } catch {
-      // Đặt tên lỗi không nên chặn hoàn tất — thiết bị đã pair; user đổi tên lại ở detail sau.
+    } catch (e) {
+      // Đặt tên lỗi không nên chặn hoàn tất — thiết bị đã pair; user đổi tên lại ở detail sau. Nhưng vẫn log (audit L-2).
+      if (typeof __DEV__ !== 'undefined' && __DEV__) {
+        // eslint-disable-next-line no-console
+        console.warn('[pairing] renameDevice failed', describeError(e));
+      }
     }
     await state.connectDevice(result.devId);
     setSaving(false);

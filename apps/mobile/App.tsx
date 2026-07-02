@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import {
   DARK_THEME,
   LIGHT_THEME,
@@ -41,6 +41,8 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [homeId, setHomeId] = useState<number | undefined>(undefined);
   const [activeDevId, setActiveDevId] = useState('');
+  const [gateError, setGateError] = useState('');
+  const [gateNonce, setGateNonce] = useState(0);
   const [isDark, setIsDark] = useState(true);
   const toggleTheme = useCallback(() => setIsDark((d) => !d), []);
   const appState = useAppState();
@@ -76,24 +78,27 @@ export default function App() {
   }, [splashDone, auth.status]);
 
   // Home-gate: khi ở màn 'home-gate' → kiểm home list → chưa có nhà thì Create Home TRƯỚC, có thì Device List.
+  // gateNonce: bump để chạy lại khi user bấm "Thử lại".
   useEffect(() => {
     if (screen !== 'home-gate') return;
     let cancelled = false;
+    setGateError('');
     void (async () => {
       try {
         const decision = decideAfterAuth(await getHomeList());
         if (cancelled) return;
         if (decision.homeId != null) setHomeId(decision.homeId);
         setScreen(decision.screen);
-      } catch {
-        // Lỗi đọc home list (native/mạng) → cho tạo nhà (an toàn hơn là kẹt màn trắng).
-        if (!cancelled) setScreen('create-home');
+      } catch (e: any) {
+        // KHÔNG tự route create-home khi lỗi (audit M-2): user đã có nhà + lỗi tạm thời → tránh tạo nhà TRÙNG.
+        // Hiện lỗi + nút Thử lại; chỉ vào Create Home khi getHomeList thành công và rỗng.
+        if (!cancelled) setGateError(e?.message ?? 'Không tải được danh sách nhà — kiểm tra kết nối rồi thử lại.');
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [screen]);
+  }, [screen, gateNonce]);
 
   useEffect(() => {
     // RN CLI: font đã link native (không cần Font.loadAsync). Prefetch logo cho mượt.
@@ -142,10 +147,24 @@ export default function App() {
       currentScreen = <AuthScreen navigate={navigate} onAuthed={auth.onAuthed} />;
       break;
     case 'home-gate':
-      // Transient: effect ở trên đang quyết định create-home | device-list.
+      // Transient: effect ở trên đang quyết định create-home | device-list. Lỗi → hiện Thử lại (không tạo nhà trùng).
       currentScreen = (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
-          <ActivityIndicator color={theme.ochre} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg, paddingHorizontal: 32 }}>
+          {gateError ? (
+            <>
+              <Text style={{ color: theme.white, fontSize: 15, textAlign: 'center', marginBottom: 20 }}>
+                {gateError}
+              </Text>
+              <Pressable
+                onPress={() => setGateNonce((n) => n + 1)}
+                style={{ borderWidth: 1, borderColor: theme.ochre, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 36 }}
+              >
+                <Text style={{ color: theme.ochre, fontSize: 14, letterSpacing: 1 }}>THỬ LẠI</Text>
+              </Pressable>
+            </>
+          ) : (
+            <ActivityIndicator color={theme.ochre} />
+          )}
         </View>
       );
       break;

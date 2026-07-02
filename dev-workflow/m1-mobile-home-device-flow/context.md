@@ -17,6 +17,10 @@
 - **2026-07-02** — Giữ **router string-switch** hiện có (App.tsx + navigation.ts),
   chỉ thêm screen + param `devId`/`homeId`. Lý do: nhất quán code hiện tại, không
   kéo thêm phụ thuộc react-navigation trong phạm vi feature này.
+- **2026-07-02 (sau audit)** — Thêm B8 hardening từ audit: sửa 3🟡 (M-1 double-connect, M-2 home-gate
+  lỗi→tạo nhà trùng, M-3 chọn home không theo owner) + 2🔵 (L-2 log rename, L-3 guard homeId). Lý do:
+  audit phát hiện là bug/hardening triển khai (plan không sai) nhưng user yêu cầu sửa ngay. L-1(FlatList)/
+  L-4(verify native) để backlog vì rủi ro thấp / cần thiết bị.
 - **2026-07-02** — Bỏ auto-create home ngầm trong `ensureHome()`; tạo home do màn
   **Create Home** gọi tường minh. Lý do: user phải thấy màn tạo nhà khi chưa có home (AC1).
 
@@ -104,6 +108,13 @@ Chỉ B7 cần kiểm `CleaningPanel` có đủ máy trạng thái clean-now dou
 | `apps/mobile/src/screens/DeviceListScreen.tsx` | Landing: list/empty/pull-refresh/+Add; tap→device-detail |
 | `apps/mobile/src/services/pairing.ts` (+test) | +renameDevice, +pairingStepLabel; ensureHome delegate home.ts |
 | `packages/tuya-react-native` | +getHomeDeviceList (spec `HomeDeviceItem`, facade, Kotlin, ObjC) |
+
+## Audit 2026-07-02 (docs/audit/2026-07-02-m1-mobile-home-device-flow.md)
+0🔴 · 0🟠 · **3🟡** · 4🔵. Follow-up (feed /fix-plan):
+- **M-1** bỏ `connectDevice` trong `DeviceListScreen.openDevice` (gọi 2 lần với device-detail → race).
+- **M-2** home-gate lỗi `getHomeList` → state lỗi+Thử lại, KHÔNG tự route create-home (nguy cơ tạo nhà trùng).
+- **M-3** `decideAfterAuth` ưu tiên home owner (`admin||role===2`), xử lý lỗi permission khi pair.
+- L-2 log lỗi renameDevice · L-3 guard homeId undefined trước getHomeDeviceList · L-1 FlatList khi list to · L-4 verify nguồn device list native.
 
 ## Cạm bẫy phát sinh
 - `App.tsx` router remount screen khi đổi `screen` (element type khác nhau giữa các case) → quay lại

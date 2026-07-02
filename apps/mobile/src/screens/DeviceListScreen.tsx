@@ -30,8 +30,15 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setErr('');
+      // Chưa có homeId (điều hướng bất thường) → không gọi native với id=0; hiện empty-state.
+      if (homeId == null) {
+        setDevices([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       try {
-        setDevices(await getHomeDeviceList(homeId ?? 0));
+        setDevices(await getHomeDeviceList(homeId));
       } catch (e: any) {
         setErr(e?.message ?? 'Không tải được danh sách thiết bị');
       } finally {
@@ -47,7 +54,7 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
   }, [load]);
 
   const openDevice = (d: HomeDevice) => {
-    void state.connectDevice(d.devId);
+    // Chỉ điều hướng — device-detail (DashboardScreen) tự connect theo devId (tránh gọi connectDevice 2 lần).
     navigate('device-detail', { devId: d.devId });
   };
 
