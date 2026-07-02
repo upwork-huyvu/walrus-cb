@@ -9,6 +9,10 @@ export type ScreenName =
   | 'onboard-experience'
   | 'onboard-device'
   | 'auth'
+  | 'home-gate' // transient: sau login → kiểm home list → create-home | device-list
+  | 'create-home' // chưa có nhà → tạo nhà trước (chuẩn Tuya SmartLife)
+  | 'device-list' // landing sau login: danh sách thiết bị của home
+  | 'device-detail' // tap 1 thiết bị → điều khiển (DashboardScreen) + ritual
   | 'pairing'
   | 'home'
   | 'dashboard'

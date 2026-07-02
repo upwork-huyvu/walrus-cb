@@ -34,7 +34,8 @@ export default function AuthScreen({ navigate, onAuthed }: Props) {
 
   const succeed = (u: AuthUser) => {
     onAuthed(u);
-    navigate('home');
+    // Chuẩn Tuya SmartLife: sau login qua home-gate (chưa có nhà → Create Home; có → Device List).
+    navigate('home-gate');
   };
 
   const run = async (fn: () => Promise<AuthUser>) => {

@@ -23,14 +23,16 @@ import {
   onPairingProgress,
   onBleScan,
   describeError,
+  renameDevice,
+  pairingStepLabel,
   type PairedDevice,
   type BleScanItem,
   type Subscription,
 } from '../services/pairing';
 
-type Step = 'choose' | 'scanning' | 'progress' | 'success' | 'error';
+type Step = 'choose' | 'scanning' | 'progress' | 'naming' | 'error';
 type WifiMode = 'EZ' | 'AP';
-type Props = { navigate: Navigate; state: AppState };
+type Props = { navigate: Navigate; state: AppState; homeId?: number };
 
 // Guard timeout phía JS: nếu native không bao giờ resolve/reject → reject sau ms (audit M-5).
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -43,8 +45,10 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 const PAIR_TIMEOUT_MS = 130_000;
 
-export default function PairingScreen({ navigate, state }: Props) {
+export default function PairingScreen({ navigate, state, homeId }: Props) {
   const C = useTheme();
+  // homeId tường minh từ Device List (đã qua home-gate). Fallback ensureHome chỉ khi vào pairing trực tiếp.
+  const resolveHomeId = async () => homeId ?? (await ensureHome());
   const [step, setStep] = useState<Step>('choose');
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
@@ -53,6 +57,8 @@ export default function PairingScreen({ navigate, state }: Props) {
   const [progressStep, setProgressStep] = useState('');
   const [result, setResult] = useState<PairedDevice | null>(null);
   const [errMsg, setErrMsg] = useState('');
+  const [deviceName, setDeviceName] = useState('');
+  const [saving, setSaving] = useState(false);
   const subs = useRef<Subscription[]>([]);
 
   useEffect(() => {
@@ -71,7 +77,8 @@ export default function PairingScreen({ navigate, state }: Props) {
 
   const finishSuccess = (dev: PairedDevice) => {
     setResult(dev);
-    setStep('success');
+    setDeviceName(dev.name || 'Walrus Ice Bath'); // gợi ý tên mặc định, user sửa được
+    setStep('naming'); // chuẩn SmartLife: kết nối OK → đặt tên trước khi hoàn tất
   };
   const finishError = (e: unknown) => {
     setErrMsg(describeError(e));
@@ -82,8 +89,8 @@ export default function PairingScreen({ navigate, state }: Props) {
     setStep('progress');
     setProgressStep(`starting (${wifiMode})`);
     try {
-      const homeId = await ensureHome();
-      finishSuccess(await withTimeout(pairWifi(homeId, wifiMode, ssid, password), PAIR_TIMEOUT_MS));
+      const hid = await resolveHomeId();
+      finishSuccess(await withTimeout(pairWifi(hid, wifiMode, ssid, password), PAIR_TIMEOUT_MS));
     } catch (e) {
       finishError(e);
     }
@@ -100,16 +107,29 @@ export default function PairingScreen({ navigate, state }: Props) {
     setStep('progress');
     setProgressStep('connecting');
     try {
-      const homeId = await ensureHome();
-      finishSuccess(await withTimeout(pairBleWifi(homeId, item.uuid, ssid, password), PAIR_TIMEOUT_MS));
+      const hid = await resolveHomeId();
+      finishSuccess(await withTimeout(pairBleWifi(hid, item.uuid, ssid, password), PAIR_TIMEOUT_MS));
     } catch (e) {
       finishError(e);
     }
   };
 
   const done = async () => {
-    if (result) await state.connectDevice(result.devId);
-    navigate('home');
+    if (!result) {
+      navigate('device-list', { homeId });
+      return;
+    }
+    setSaving(true);
+    try {
+      const name = deviceName.trim();
+      if (name && name !== result.name) await renameDevice(result.devId, name);
+    } catch {
+      // Đặt tên lỗi không nên chặn hoàn tất — thiết bị đã pair; user đổi tên lại ở detail sau.
+    }
+    await state.connectDevice(result.devId);
+    setSaving(false);
+    // Pair xong → quay về Device List (thiết bị mới sẽ xuất hiện khi list refetch lúc remount) (AC4).
+    navigate('device-list', { homeId });
   };
 
   const inputStyle = {
@@ -180,7 +200,7 @@ export default function PairingScreen({ navigate, state }: Props) {
               <View style={{ height: 10 }} />
               <GhostButton label="Pair via Bluetooth" onPress={startScan} />
               <View style={{ height: 10 }} />
-              <GhostButton label="Skip for now" onPress={() => navigate('home')} />
+              <GhostButton label="Skip for now" onPress={() => navigate('device-list', { homeId })} />
             </>
           )}
 
@@ -210,21 +230,40 @@ export default function PairingScreen({ navigate, state }: Props) {
           {step === 'progress' && (
             <View style={{ alignItems: 'center' }}>
               <ActivityIndicator size="large" color={C.ochre} />
-              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 14, marginTop: 16 }}>
-                Pairing… {progressStep ? `(${progressStep})` : ''}
+              <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 16, marginTop: 20 }}>
+                {pairingStepLabel(progressStep)}
+              </Text>
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginTop: 8, textAlign: 'center' }}>
+                Giữ thiết bị gần điện thoại và trong tầm Wi-Fi. Việc này có thể mất tới 2 phút.
               </Text>
             </View>
           )}
 
-          {step === 'success' && (
+          {step === 'naming' && (
             <>
-              <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 20, marginBottom: 8 }}>
-                {result?.name || 'Device'} paired ✓
+              <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 22, marginBottom: 6 }}>
+                Đã kết nối ✓
               </Text>
-              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, marginBottom: 24 }}>
-                devId: {result?.devId}
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, marginBottom: 20 }}>
+                Đặt tên cho thiết bị của bạn để dễ nhận biết trong danh sách.
               </Text>
-              <PrimaryButton label="Done" onPress={done} />
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, marginBottom: 6 }}>Tên thiết bị</Text>
+              <TextInput
+                style={inputStyle}
+                value={deviceName}
+                onChangeText={setDeviceName}
+                placeholder="Ví dụ: Bồn tắm phòng khách"
+                placeholderTextColor={C.muted}
+                editable={!saving}
+                returnKeyType="done"
+                onSubmitEditing={done}
+              />
+              <View style={{ height: 8 }} />
+              {saving ? (
+                <ActivityIndicator color={C.ochre} />
+              ) : (
+                <PrimaryButton label="Hoàn tất" onPress={done} disabled={deviceName.trim().length === 0} />
+              )}
             </>
           )}
 
@@ -238,7 +277,7 @@ export default function PairingScreen({ navigate, state }: Props) {
               </Text>
               <PrimaryButton label="Try again" onPress={() => setStep('choose')} />
               <View style={{ height: 10 }} />
-              <GhostButton label="Back" onPress={() => navigate('home')} />
+              <GhostButton label="Back" onPress={() => navigate('device-list', { homeId })} />
             </>
           )}
         </ScrollView>

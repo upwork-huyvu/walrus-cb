@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Image } from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
 import {
   DARK_THEME,
   LIGHT_THEME,
@@ -25,16 +25,22 @@ import PairingScreen from './src/screens/PairingScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import AuthScreen from './src/screens/AuthScreen';
+import CreateHomeScreen from './src/screens/CreateHomeScreen';
+import DeviceListScreen from './src/screens/DeviceListScreen';
 import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
 import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
+import { getHomeList } from './src/services/home';
+import { decideAfterAuth } from './src/state/homeGate';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
   const [sessionMinutes, setSessionMinutes] = useState(0);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [userName, setUserName] = useState('');
+  const [homeId, setHomeId] = useState<number | undefined>(undefined);
+  const [activeDevId, setActiveDevId] = useState('');
   const [isDark, setIsDark] = useState(true);
   const toggleTheme = useCallback(() => setIsDark((d) => !d), []);
   const appState = useAppState();
@@ -62,12 +68,32 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sau splash + đã biết trạng thái → route MỘT lần (authed→home, guest→onboarding).
+  // Sau splash + đã biết trạng thái → route MỘT lần (authed→home-gate, guest→onboarding).
   useEffect(() => {
     if (routed.current || !splashDone || auth.status === 'checking') return;
     routed.current = true;
-    setScreen(auth.status === 'authed' ? 'home' : 'onboard-welcome');
+    setScreen(auth.status === 'authed' ? 'home-gate' : 'onboard-welcome');
   }, [splashDone, auth.status]);
+
+  // Home-gate: khi ở màn 'home-gate' → kiểm home list → chưa có nhà thì Create Home TRƯỚC, có thì Device List.
+  useEffect(() => {
+    if (screen !== 'home-gate') return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const decision = decideAfterAuth(await getHomeList());
+        if (cancelled) return;
+        if (decision.homeId != null) setHomeId(decision.homeId);
+        setScreen(decision.screen);
+      } catch {
+        // Lỗi đọc home list (native/mạng) → cho tạo nhà (an toàn hơn là kẹt màn trắng).
+        if (!cancelled) setScreen('create-home');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [screen]);
 
   useEffect(() => {
     // RN CLI: font đã link native (không cần Font.loadAsync). Prefetch logo cho mượt.
@@ -80,6 +106,8 @@ export default function App() {
     const seconds = params.seconds;
     if (typeof minutes === 'number') setSessionMinutes(minutes);
     if (typeof seconds === 'number') setSessionSeconds(seconds);
+    if (typeof params.homeId === 'number') setHomeId(params.homeId);
+    if (typeof params.devId === 'string') setActiveDevId(params.devId);
     setScreen(to);
   };
 
@@ -113,8 +141,25 @@ export default function App() {
     case 'auth':
       currentScreen = <AuthScreen navigate={navigate} onAuthed={auth.onAuthed} />;
       break;
+    case 'home-gate':
+      // Transient: effect ở trên đang quyết định create-home | device-list.
+      currentScreen = (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg }}>
+          <ActivityIndicator color={theme.ochre} />
+        </View>
+      );
+      break;
+    case 'create-home':
+      currentScreen = <CreateHomeScreen navigate={navigate} onHomeCreated={setHomeId} />;
+      break;
+    case 'device-list':
+      currentScreen = <DeviceListScreen navigate={navigate} state={state} homeId={homeId} />;
+      break;
+    case 'device-detail':
+      currentScreen = <DashboardScreen navigate={navigate} state={state} devId={activeDevId} />;
+      break;
     case 'pairing':
-      currentScreen = <PairingScreen navigate={navigate} state={state} />;
+      currentScreen = <PairingScreen navigate={navigate} state={state} homeId={homeId} />;
       break;
     case 'dashboard':
       currentScreen = <DashboardScreen navigate={navigate} state={state} />;
