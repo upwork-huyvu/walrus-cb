@@ -4,23 +4,24 @@
 > Luôn giữ "Hành động kế tiếp" chính xác.
 
 - **Slug:** `m1-mobile-google-login`
-- **Phase hiện tại:** `TEST` (code B1–B4 done; B5/AC6 device deferred)
-- **Trạng thái:** `in_progress` (code_done — chờ commit + device)
-- **Cập nhật lần cuối:** 2026-07-01
+- **Phase hiện tại:** `DONE` (B1–B4 code + **AC6 device VERIFIED 2026-07-02** trên Android thật)
+- **Trạng thái:** `verified` (Android device PASS — chờ commit fix logout; iOS device vẫn chờ Mac)
+- **Cập nhật lần cuối:** 2026-07-02
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
-**B1–B4 code XONG + config ĐÃ ĐIỀN** (google.ts WEB=`rh83..`/iOS=`vnig..`; Info.plist reversed id) ·
-verified tsc 0 · jest 39/39 · plist OK. Còn **B5/AC6 device**: (1) xác nhận **Tuya console** dán Web id
-`rh83..` (không phải `vkcr..`); (2) iOS `AppDelegate` openURL + `pod install` + build (Mac); (3) chạy
-checklist AC6. → **Đề xuất commit** (nhớ `git add` googleAuth.ts + test + GOOGLE_SIGNIN_SETUP.md).
+**AC6 ANDROID ĐÃ VERIFY (2026-07-02, SM-A325F):** Google→account picker→consent→idToken(aud=Web `rh83..`)
+→`thirdLogin('gg')`→**Home**; session persist qua restart. Tuya console Google config nằm ở **App SDK →
+App Authorization** (Web id `rh83..` — đã đúng). **Phát sinh + đã FIX 1 bug:** logout không gọi
+`signOutGoogle` → picker không hiện (xem run log). → **Đề xuất COMMIT:** fix `src/state/useAuth.ts` +
+`git add` googleAuth.ts/test/GOOGLE_SIGNIN_SETUP.md (nếu chưa). iOS device vẫn chờ Mac (AppDelegate openURL + pod).
 
 ## Checklist các bước (đồng bộ với plan.md mục 4)
 - [x] B1 — Install + link native package · **done** (v16.1.2, autolink OK, tsc clean)
 - [x] B2 — Helper `services/googleAuth.ts` (`configureGoogle` + `signInGoogle`) · **done** (jest 5/5)
 - [x] B3 — Nối `AuthScreen.doThird('gg')` → idToken thật · **done** (run nuốt CANCELLED; 'ap' vẫn scaffold)
 - [x] B4 — Cấu hình native (iOS URL scheme + doc console) · **done** (Info.plist CFBundleURLTypes + GOOGLE_SIGNIN_SETUP.md; plist lint OK)
-- [ ] B5 — E2E thật (deferred — chờ client + build) · blocked
-- [ ] B5 — E2E thật (deferred — chờ client + build) · blocked
+- [x] B5 — E2E thật (Android device SM-A325F) · **done 2026-07-02** (Google→Home, session persist)
+- [x] B6 — Fix bug logout không `signOutGoogle` (picker không hiện) · **done** (`useAuth.ts`, verified on-device)
 
 ## Checklist tiêu chí hoàn thành (đồng bộ với plan.md mục 3)
 - [x] AC1 — install + autolink OK (`tsc` resolve, `rn config` thấy module) ✅
@@ -28,18 +29,19 @@ checklist AC6. → **Đề xuất commit** (nhớ `git add` googleAuth.ts + test
 - [x] AC3 — `doThird('gg')` dùng idToken thật (không còn `''`); mock/dev vẫn chạy ✅ *(round-trip thật chờ AC6)*
 - [x] AC4 — client ID rỗng → lỗi rõ (NO_CONFIG), không crash; `tsc`/`jest`/`eslint` sạch ✅ *(device chờ AC6)*
 - [x] AC5 — iOS URL scheme + doc setup console đầy đủ ✅ (Info.plist + GOOGLE_SIGNIN_SETUP.md)
-- [ ] AC6 — device: Google → Home; Tuya account = Owner Home *(deferred — BLOCKED chờ client console + build)*
+- [x] AC6 — device (Android): Google → Home ✅ (SM-A325F, 2026-07-02). *(iOS chờ Mac)*
 
-## Checklist thiết bị (AC6 — chạy khi có build + client ID + console) ⏳
-- [ ] Bấm "Continue with Google" → hiện account picker Google.
-- [ ] Chọn account → nhận idToken → `thirdLogin` OK → vào **Home**.
-- [ ] Tuya account sau login là **Owner** của Home (pairing hoạt động).
-- [ ] Client ID trống/sai → báo lỗi rõ (không crash trần).
-- [ ] Kill app → mở lại → vẫn Home (phiên persist).
+## Checklist thiết bị (AC6 — Android verified 2026-07-02) ✅
+- [x] Bấm "Continue with Google" → hiện account picker Google. *(chỉ hiện sau khi fix logout `signOutGoogle`; trước fix bị one-tap account cũ)*
+- [x] Chọn account → nhận idToken (aud=Web `rh83..`) → `thirdLogin('gg')` OK → vào **Home**.
+- [ ] Tuya account sau login là **Owner** của Home (pairing hoạt động). *(device card còn giá trị MOCK 12°/6° → thuộc feature pairing, chưa verify ở đây)*
+- [x] Kill app → mở lại → vẫn Home (phiên persist). ✅
+- **Bonus verify:** email đăng ký = user Tuya thật (`imax.dev.sn@gmail.com` + `showroom.imax@gmail.com`).
 
 ## Nhật ký chạy (Run log) — mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
+| 2026-07-02 | **DEVICE VERIFY (AC6 Android) + FIX bug logout** | ✅ | **Build Android thật + cài SM-A325F** (JDK17 Temurin; copy `security-algorithm-*.aar`→`app/libs`; tạo `android/secrets.properties` Tuya AppKey/Secret từ keys.txt; `assembleDebug` BUILD SUCCESSFUL 164MB). **Google login E2E PASS:** account picker→consent→idToken (aud=Web `rh83..`, verify từ idToken JWT trong prefs)→`thirdLogin('gg')`→**Home**; session persist qua cold restart (MMKV `Login_user_main`). **Verify email đăng ký:** `imax.dev.sn@gmail.com` + `showroom.imax@gmail.com` = Tuya user thật. **🐛 BUG phát hiện + FIX:** `useAuth.signOut`→`authLogout` **chỉ logout Tuya, KHÔNG gọi `signOutGoogle`** → Google giữ cache → `signIn()` one-tap account cũ, **không hiện picker**. Fix: nối `signOutGoogle()` vào `useAuth.signOut` (JS-only, Metro reload). **Verified on-device:** logout bằng app→tap Google→`AccountPickerActivity` "Choose an account" hiện đủ 3 acc. **Tuya console:** Google login config = **App SDK → App Authorization** (Web id `rh83..` — client đã dán đúng). |
 | 2026-07-02 | config fill + secret-hygiene | ✅ | Client bỏ file OAuth vào `assets/google/`. Rút id public → điền `google.ts` (WEB=`rh83..` **sửa lỗi điền nhầm `vkcr..`=Desktop**, iOS=`vnig..`) + Info.plist reversed id. **XOÁ 3 file raw** (1 file `web` có `client_secret` — untracked nên sạch, không cần rotate) + gitignore `**/client_secret*.json`. tsc 0 · jest 39/39 · plist OK. **Cần xác nhận Tuya console dùng Web id `rh83..`.** |
 | 2026-07-01 | DEV+TEST B4 | ✅ | Info.plist +`CFBundleURLTypes` (reversed iOS client id placeholder) · tạo `apps/mobile/GOOGLE_SIGNIN_SETUP.md` (Google Cloud 3 client + fill google.ts + iOS URL scheme/openURL + Tuya console + ai-làm-gì). `plutil -lint` OK. AppDelegate openURL để làm lúc build iOS (cần pod). → AC5 đạt. **B1–B4 code XONG.** |
 | 2026-07-01 | env-config audit | 📋 | Workflow map toàn bộ env: mobile KHÔNG có `.env`; config = TS const public + secrets.properties/xcconfig native. **Lòi LEAK:** `docs/sdk/keys.txt` track trong git (secret thật) → user hoãn ("tự lo"), ghi memory [[keys-txt-leak-deferred]]. Ghi context. |
@@ -50,5 +52,6 @@ checklist AC6. → **Đề xuất commit** (nhớ `git add` googleAuth.ts + test
 | 2026-07-01 | PLAN | ✅ | Tạo plan/context/progress + đăng ký INDEX. 5 bước (B1–B5). Đầu vào: dep có nhưng chưa install, client ID trống, `doThird` còn `''`. Chờ Gate ①. |
 
 ## Vấn đề đang chặn (Blockers)
-- **AC6/B5 BLOCKED** — chờ **client** tạo OAuth client (Google Cloud) + dán Web Client ID vào
-  Tuya console (Android + iOS) + SHA-1 khớp; và cần build native (Mac cho iOS). B1–B4 không bị chặn.
+- ✅ **AC6 Android GỠ CHẶN 2026-07-02** — Google login device PASS (xem run log). Client đã tạo OAuth
+  + dán Web id `rh83..` vào App Authorization; SHA-1 debug `5E:8F:16..` khớp.
+- **iOS device** vẫn chờ **Mac** (AppDelegate openURL + `pod install` + build). Không chặn Android.

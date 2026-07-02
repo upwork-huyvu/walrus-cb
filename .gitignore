@@ -39,3 +39,4 @@ packages/*/lib/
 # Google OAuth client downloads — client_secret*.json chứa secret, KHÔNG commit
 **/client_secret*.json
 **/GoogleService-Info.plist
+.playwright-mcp/*
