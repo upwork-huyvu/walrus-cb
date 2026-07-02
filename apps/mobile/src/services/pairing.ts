@@ -70,12 +70,15 @@ export function onBleScan(cb: (e: BleScanItem) => void): Subscription {
   return { remove: () => mockBleCbs.delete(cb) };
 }
 
-// --- Home (upstream tạm: chưa có m1-mobile-home-setup) ---
+// --- Home ---
+// ⚠️ TẠM cho tới B5: PairingScreen sẽ nhận homeId tường minh từ Device List (đã qua home-gate),
+// bỏ hẳn ensureHome. Trong lúc đó ensureHome delegate sang services/home.ts (không nhân đôi logic):
+// lấy home đầu tiên; nếu chưa có thì tạo mặc định (chỉ là fallback dev, luồng chuẩn tạo home ở màn Create Home).
+import { getHomeList, createHome } from './home';
 export async function ensureHome(): Promise<number> {
-  if (!pairingAvailable) return 1;
-  const list = await lib.Tuya.getHomeList();
-  if (Array.isArray(list) && list.length > 0) return list[0].homeId;
-  const h = await lib.Tuya.createHome('Walrus Home', 0, 0, '', []);
+  const list = await getHomeList();
+  if (list.length > 0) return list[0].homeId;
+  const h = await createHome('Walrus Home');
   return h.homeId;
 }
 
@@ -134,6 +137,26 @@ export async function pairBleWifi(
 
 export function stopBleWifi(uuid: string): void {
   if (pairingAvailable) lib.Tuya.stopBleWifiPairing(uuid);
+}
+
+// --- Đặt tên thiết bị sau khi pair (bước confirm cuối, chuẩn SmartLife). Native vắng → no-op. ---
+export async function renameDevice(devId: string, name: string): Promise<void> {
+  if (!pairingAvailable) return;
+  await lib.Tuya.renameDevice(devId, name);
+}
+
+// Map các "step" kỹ thuật từ onPairingProgress → nhãn tiếng Việt kiểu SmartLife (searching→found→…).
+export function pairingStepLabel(step: string): string {
+  const s = step.toLowerCase();
+  if (s.includes('start')) return 'Đang bắt đầu…';
+  if (s.includes('scan') || s.includes('find')) return 'Đang tìm thiết bị…';
+  if (s.includes('found') || s.includes('discover')) return 'Đã tìm thấy thiết bị';
+  if (s.includes('ble') || s.includes('connect')) return 'Đang kết nối thiết bị…';
+  if (s.includes('register') || s.includes('active') || s.includes('bind') && !s.includes('success'))
+    return 'Đang đăng ký lên cloud…';
+  if (s.includes('init')) return 'Đang khởi tạo…';
+  if (s.includes('bind_success') || s.includes('success')) return 'Kết nối thành công';
+  return 'Đang ghép nối…';
 }
 
 // --- Error mô tả (dùng TuyaErrors của lib nếu có) ---

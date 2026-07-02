@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Image } from 'react-native';
+import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import {
   DARK_THEME,
   LIGHT_THEME,
@@ -25,16 +25,24 @@ import PairingScreen from './src/screens/PairingScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import AuthScreen from './src/screens/AuthScreen';
+import CreateHomeScreen from './src/screens/CreateHomeScreen';
+import DeviceListScreen from './src/screens/DeviceListScreen';
 import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
 import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
+import { getHomeList } from './src/services/home';
+import { decideAfterAuth } from './src/state/homeGate';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
   const [sessionMinutes, setSessionMinutes] = useState(0);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [userName, setUserName] = useState('');
+  const [homeId, setHomeId] = useState<number | undefined>(undefined);
+  const [activeDevId, setActiveDevId] = useState('');
+  const [gateError, setGateError] = useState('');
+  const [gateNonce, setGateNonce] = useState(0);
   const [isDark, setIsDark] = useState(true);
   const toggleTheme = useCallback(() => setIsDark((d) => !d), []);
   const appState = useAppState();
@@ -62,12 +70,35 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sau splash + đã biết trạng thái → route MỘT lần (authed→home, guest→onboarding).
+  // Sau splash + đã biết trạng thái → route MỘT lần (authed→home-gate, guest→onboarding).
   useEffect(() => {
     if (routed.current || !splashDone || auth.status === 'checking') return;
     routed.current = true;
-    setScreen(auth.status === 'authed' ? 'home' : 'onboard-welcome');
+    setScreen(auth.status === 'authed' ? 'home-gate' : 'onboard-welcome');
   }, [splashDone, auth.status]);
+
+  // Home-gate: khi ở màn 'home-gate' → kiểm home list → chưa có nhà thì Create Home TRƯỚC, có thì Device List.
+  // gateNonce: bump để chạy lại khi user bấm "Thử lại".
+  useEffect(() => {
+    if (screen !== 'home-gate') return;
+    let cancelled = false;
+    setGateError('');
+    void (async () => {
+      try {
+        const decision = decideAfterAuth(await getHomeList());
+        if (cancelled) return;
+        if (decision.homeId != null) setHomeId(decision.homeId);
+        setScreen(decision.screen);
+      } catch (e: any) {
+        // KHÔNG tự route create-home khi lỗi (audit M-2): user đã có nhà + lỗi tạm thời → tránh tạo nhà TRÙNG.
+        // Hiện lỗi + nút Thử lại; chỉ vào Create Home khi getHomeList thành công và rỗng.
+        if (!cancelled) setGateError(e?.message ?? 'Không tải được danh sách nhà — kiểm tra kết nối rồi thử lại.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [screen, gateNonce]);
 
   useEffect(() => {
     // RN CLI: font đã link native (không cần Font.loadAsync). Prefetch logo cho mượt.
@@ -80,6 +111,8 @@ export default function App() {
     const seconds = params.seconds;
     if (typeof minutes === 'number') setSessionMinutes(minutes);
     if (typeof seconds === 'number') setSessionSeconds(seconds);
+    if (typeof params.homeId === 'number') setHomeId(params.homeId);
+    if (typeof params.devId === 'string') setActiveDevId(params.devId);
     setScreen(to);
   };
 
@@ -113,8 +146,39 @@ export default function App() {
     case 'auth':
       currentScreen = <AuthScreen navigate={navigate} onAuthed={auth.onAuthed} />;
       break;
+    case 'home-gate':
+      // Transient: effect ở trên đang quyết định create-home | device-list. Lỗi → hiện Thử lại (không tạo nhà trùng).
+      currentScreen = (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.bg, paddingHorizontal: 32 }}>
+          {gateError ? (
+            <>
+              <Text style={{ color: theme.white, fontSize: 15, textAlign: 'center', marginBottom: 20 }}>
+                {gateError}
+              </Text>
+              <Pressable
+                onPress={() => setGateNonce((n) => n + 1)}
+                style={{ borderWidth: 1, borderColor: theme.ochre, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 36 }}
+              >
+                <Text style={{ color: theme.ochre, fontSize: 14, letterSpacing: 1 }}>THỬ LẠI</Text>
+              </Pressable>
+            </>
+          ) : (
+            <ActivityIndicator color={theme.ochre} />
+          )}
+        </View>
+      );
+      break;
+    case 'create-home':
+      currentScreen = <CreateHomeScreen navigate={navigate} onHomeCreated={setHomeId} />;
+      break;
+    case 'device-list':
+      currentScreen = <DeviceListScreen navigate={navigate} state={state} homeId={homeId} />;
+      break;
+    case 'device-detail':
+      currentScreen = <DashboardScreen navigate={navigate} state={state} devId={activeDevId} />;
+      break;
     case 'pairing':
-      currentScreen = <PairingScreen navigate={navigate} state={state} />;
+      currentScreen = <PairingScreen navigate={navigate} state={state} homeId={homeId} />;
       break;
     case 'dashboard':
       currentScreen = <DashboardScreen navigate={navigate} state={state} />;
