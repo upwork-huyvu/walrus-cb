@@ -71,15 +71,21 @@ export default function AuthScreen({ navigate, onAuthed }: Props) {
   // Lấy token THẬT từ native SDK rồi mới gọi Tuya thirdLogin (mock trả token/user giả trong Metro).
   const doThird = (type: 'gg' | 'ap') =>
     run(async () => {
-      if (type === 'gg') return thirdLogin(await signInGoogle(), 'gg');
+      // countryCode dùng cho cả social login → Tuya suy ra data center từ đây.
+      if (type === 'gg') return thirdLogin(await signInGoogle(), 'gg', undefined, country);
       // Apple: identityToken + profile (Apple chỉ trả email/fullName lần đầu) → extraInfo cho Tuya.
       const cred = await signInApple();
-      return thirdLogin(cred.identityToken, 'ap', {
-        userIdentifier: cred.user,
-        email: cred.email ?? undefined,
-        nickname: cred.fullName ?? undefined,
-        snsNickname: cred.fullName ?? undefined,
-      });
+      return thirdLogin(
+        cred.identityToken,
+        'ap',
+        {
+          userIdentifier: cred.user,
+          email: cred.email ?? undefined,
+          nickname: cred.fullName ?? undefined,
+          snsNickname: cred.fullName ?? undefined,
+        },
+        country,
+      );
     });
 
   const input = (
@@ -152,10 +158,11 @@ export default function AuthScreen({ navigate, onAuthed }: Props) {
 
           {input(email, setEmail, 'hello@yourname.com', { keyboard: 'email-address' })}
           {input(password, setPassword, 'Password (≥ 6 chars)', { secure: true })}
+          {/* Country code luôn hiện (áp cho CẢ email lẫn Google/Apple) — Tuya suy ra data center từ mã này */}
+          {input(country, setCountry, 'Country code (e.g. 49)', { keyboard: 'number-pad' })}
 
           {mode === 'register' && (
             <>
-              {input(country, setCountry, 'Country code (e.g. 49)', { keyboard: 'number-pad' })}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 22 }}>
                 <View style={{ flex: 1, borderBottomWidth: 1, borderBottomColor: C.border, paddingBottom: 10 }}>
                   <TextInput

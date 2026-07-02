@@ -60,6 +60,7 @@ export async function thirdLogin(
   token: string,
   type: 'gg' | 'ap' | 'fb',
   extra?: Record<string, string | undefined>,
+  country: string = DEFAULT_COUNTRY, // countryCode → Tuya suy ra data center (không override được ở client)
 ): Promise<AuthUser> {
   if (!authAvailable) {
     mockLoggedIn = true;
@@ -67,7 +68,7 @@ export async function thirdLogin(
   }
   const extraInfo =
     type === 'gg' ? '{"pubVersion":1}' : type === 'ap' && extra ? JSON.stringify(extra) : '';
-  return mapUser(await lib.Tuya.thirdLogin(DEFAULT_COUNTRY, token, type, extraInfo));
+  return mapUser(await lib.Tuya.thirdLogin(country, token, type, extraInfo));
 }
 
 export async function isLoggedIn(): Promise<boolean> {
