@@ -29,6 +29,18 @@ export async function sendEmailCode(email: string, country: string, type: CodeTy
   await lib.Tuya.sendVerifyCode(email, country, type);
 }
 
+// Đổi password = reset qua OTP email (Tuya App SDK KHÔNG có change-by-old-password khi đang login).
+// Flow: sendEmailCode(type 3) → resetPassword(code, newPassword). Sau reset nên đăng nhập lại.
+export async function resetPassword(
+  country: string,
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  if (!authAvailable) return; // mock: chấp nhận
+  await lib.Tuya.resetEmailPassword(country, email, code, newPassword);
+}
+
 export async function registerEmail(country: string, email: string, password: string, code: string): Promise<AuthUser> {
   if (!authAvailable) {
     mockLoggedIn = true;

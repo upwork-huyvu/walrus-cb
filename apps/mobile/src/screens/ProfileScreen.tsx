@@ -61,6 +61,23 @@ export default function ProfileScreen({ navigate, state, user, onSignOut }: Prop
             {row('UID', user?.uid ?? '')}
           </View>
 
+          {/* Bảo mật: đổi password (Tuya reset-qua-OTP; Google/Apple do provider quản) */}
+          <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 18, marginBottom: 20 }}>
+            <Pressable
+              onPress={() => navigate('change-password')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 18,
+                paddingVertical: 16,
+              }}
+            >
+              <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15 }}>Change password</Text>
+              <Text style={{ color: C.muted, fontSize: 16 }}>›</Text>
+            </Pressable>
+          </View>
+
           {/* Giao diện */}
           <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 18, marginBottom: 28 }}>
             <View

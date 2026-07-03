@@ -31,6 +31,7 @@ import MeScreen from './src/screens/MeScreen';
 import HomeManagementScreen from './src/screens/HomeManagementScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import ReminderScreen from './src/screens/ReminderScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import HelpScreen from './src/screens/HelpScreen';
@@ -52,6 +53,7 @@ const TABBED: Partial<Record<ScreenName, TabKey>> = {
   'home-management': 'account',
   notifications: 'account',
   profile: 'account',
+  'change-password': 'account',
 };
 
 export default function App() {
@@ -236,6 +238,11 @@ export default function App() {
     case 'profile':
       currentScreen = (
         <ProfileScreen navigate={navigate} state={state} user={auth.user} onSignOut={handleSignOut} />
+      );
+      break;
+    case 'change-password':
+      currentScreen = (
+        <ChangePasswordScreen navigate={navigate} state={state} user={auth.user} onSignOut={handleSignOut} />
       );
       break;
     case 'device-detail':

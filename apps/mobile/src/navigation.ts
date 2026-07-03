@@ -21,6 +21,7 @@ export type ScreenName =
   | 'home-management' // Account → quản lý nhà (list + tạo + chọn nhà)
   | 'notifications' // Account → thông báo
   | 'profile' // Account → cấu hình thông tin + đăng xuất
+  | 'change-password' // Profile → đổi password (Tuya reset qua OTP email)
   | 'pairing'
   | 'home'
   | 'dashboard'
