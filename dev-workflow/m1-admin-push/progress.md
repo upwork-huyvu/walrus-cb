@@ -4,15 +4,24 @@
 > đọc đầu vào và cập nhật cuối mỗi lượt. Luôn giữ phần "Hành động kế tiếp" chính xác.
 
 - **Slug:** `m1-admin-push`
-- **Phase hiện tại:** `DEV`
+- **Phase hiện tại:** `TEST` (code xong + jest 8/8; console ĐÃ cấu hình — còn biz_type env + template duyệt + gửi thật)
 - **Trạng thái:** `in_progress`
-- **Cập nhật lần cuối:** 2026-06-30 08:50
+- **Cập nhật lần cuối:** 2026-07-03
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
-**B1–B6 + lib/auth = CODE XONG** (toàn bộ feature). User đã chốt: vá `lib/auth.ts` ngay (đã làm) + làm B6 (đã làm).
-Mọi import `@/...` của admin giờ resolve → **hết blocker module-resolution**. Còn lại = **verify defer**:
-(a) chạy `tsc`/`jest`/`next build` khi gỡ được E503 Nexus; (b) AC6 live chờ subscribe product + duyệt template + M3.
-Khả dĩ tiếp: chạy `/audit` track backend/admin, hoặc chuyển sang feature khác.
+**CONSOLE ĐÃ CẤU HÌNH (user xác nhận 2026-07-03):** subscribe **App Push Notification** + upload push
+credential **CẢ iOS (APNs) + Android (FCM)** lên Tuya console. Mobile cũng ĐÃ có màn nhận
+(NotificationsScreen đọc Message Center per-user — xem [[m1-mobile-home-device-flow]] B14). Còn lại theo thứ tự:
+1. **`TUYA_APP_BIZ_TYPE` CHƯA có trong `apps/backend/.env`** → lấy số biz_type từ trang service vừa
+   subscribe trên console (định danh app, integer) → điền env → restart backend. Thiếu nó `sendPush` throw.
+2. **Template:** check trạng thái qua admin web `/notifications/templates` (hoặc `GET /notifications/templates`);
+   chưa có → tạo → **chờ Tuya duyệt ≤2 ngày** (chỉ template APPROVED gửi được).
+3. **Gửi thật E2E:** admin `/notifications` → chọn user (vd `imax.dev.sn@`, uid `we...`) → gửi → mở app
+   **Account → Notifications** xem tin hiện (in-app KHÔNG cần FCM — tin lưu Message Center).
+4. **(M3 `m3-push-fcm`) System push ngoài màn hình:** console ĐÃ up FCM/APNs cert; còn PHÍA APP:
+   tích `google-services.json` + `firebase-messaging` + gọi `registerDevice(token,'fcm')` (bridge đã wire) + rebuild.
+⚠️ Backend đang chạy DC **Western Europe** (`openapi-weaz.tuyaeu.com`) — subscribe/authorize service phải
+trên đúng project walrus + DC này.
 
 ## Checklist các bước (đồng bộ với plan.md mục 4)
 - [x] B1 — Backend: config + DTO + types · done (code; tsc defer)
@@ -35,6 +44,7 @@ Khả dĩ tiếp: chạy `/audit` track backend/admin, hoặc chuyển sang feat
 > Mỗi lần DEV/TEST/FIX-PLAN ghi 1 dòng: thời gian · bước · kết quả · ghi chú.
 
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
+| 2026-07-03 | **CONSOLE CONFIGURED + đầu-nhận mobile XONG** | 🟡 | User xác nhận đã cấu hình Tuya console: **subscribe App Push Notification + upload cert push iOS (APNs) + Android (FCM)**. Backend jest notifications **8/8 PASS** (verify lại). Mobile đầu-nhận đã build ([[m1-mobile-home-device-flow]] B14): native `getMessageList` wired + NotificationsScreen đọc Message Center per-user — kiến trúc: admin chọn uid → backend push per-uid → Tuya Message Center per-user → app đọc SDK. **CÒN THIẾU:** (1) `TUYA_APP_BIZ_TYPE` chưa có trong `.env` (user lấy từ console); (2) template tạo + Tuya duyệt; (3) gửi thật E2E; (4) FCM phía APP (google-services + firebase-messaging + registerDevice) = M3. Phiên dừng NGAY TRƯỚC bước check `GET /notifications/templates` (user interrupt) — resume từ đó. |
 |---|---|---|---|
 | 2026-06-30 08:50 | DEV B6+lib/auth | ✅ | User chốt vá+làm. `lib/auth.ts` (login set cookie admin_token + logout) khớp backend `/admin/auth/login`. B6: `templates/page.tsx`+`actions.ts`+`CreateTemplateForm.tsx`+nav. **Grep xác nhận mọi import `@/...` đều resolve** → hết blocker module |
 | 2026-06-30 08:35 | TEST B4–B5 | ⏸️ defer | Admin không build tại chỗ (E503 + **thiếu `@/lib/auth`** — divergence). Review tay: action signature khớp `useActionState`, parse `${var}` đúng, proxy+nav OK |

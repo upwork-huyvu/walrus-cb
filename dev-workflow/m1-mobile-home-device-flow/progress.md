@@ -3,17 +3,27 @@
 > `/dev`, `/test`, `/fix-plan` đọc đầu vào và cập nhật cuối mỗi lượt. Luôn giữ "Hành động kế tiếp" chính xác.
 
 - **Slug:** `m1-mobile-home-device-flow`
-- **Phase hiện tại:** `TEST` (code toàn bộ B0–B7 XONG; còn verify native trên thiết bị thật)
+- **Phase hiện tại:** `TEST` (B0–B14 code XONG; APK mới nhất ĐÃ CÀI máy — chờ demo + commit B14)
 - **Trạng thái:** `in_progress`
-- **Cập nhật lần cuối:** 2026-07-02
+- **Cập nhật lần cuối:** 2026-07-03
 
 ## ▶ Hành động kế tiếp (đọc cái này trước tiên)
-B0–B8 code XONG + verify JS (tsc clean · eslint 0 err · jest 17/17 test mới pass). B8 đã sửa 3🟡+2🔵 từ audit.
-Còn backlog nit: L-1 (FlatList khi list to) · L-4 (verify nguồn device list native trên thiết bị).
-**Còn lại (BLOCKED trên toolchain/thiết bị):** build native để xác thực `getHomeDeviceList`
-(Kotlin/ObjC) + round-trip thật: login Tuya → home-gate → tạo/chọn nhà → device-list hiện thiết bị
-thật → pair thiết bị thật → confirm+đặt tên → về list → detail. Cần Mac/Android SDK + thiết bị + tài
-khoản Tuya Owner (DC=EU). Khi build được: chạy checklist thiết bị. Cân nhắc `/audit` mobile sau đó.
+**TRẠNG THÁI DỪNG PHIÊN 2026-07-03 (note đầy đủ để resume):**
+1. **CHƯA COMMIT — B14 account features:** `TuyaMessageModule.kt` (native getMessageList/getMessageHasNew),
+   `services/messages.ts`, `NotificationsScreen.tsx` (viết lại — list Message Center), `ChangePasswordScreen.tsx`
+   (mới), `services/auth.ts` (+resetPassword), `ProfileScreen.tsx` (+row Change password), `navigation.ts`
+   (+change-password), `App.tsx` (route) + docs B14/console-notes. Verify đã xanh: mobile tsc 0 · eslint 0 ·
+   jest 61/61 · backend notifications 8/8 · compileDebugKotlin OK. → commit khi user gật.
+2. **APK MỚI (170MB, có native message) ĐÃ CÀI SM-A325F** — máy đang khoá, CHƯA demo: (a) Account→Notifications
+   (đọc Message Center thật), (b) Profile settings→Change password (OTP type-3), (c) toàn bộ UI English mới.
+3. **Pipeline thông báo:** console user ĐÃ cấu hình (subscribe + FCM/APNs cert) → việc còn lại ghi ở
+   [[m1-admin-push]] progress (biz_type env → template duyệt → gửi thật E2E).
+4. **Chờ client:** video/ảnh 4 slide intro (IntroScreen đang placeholder TAP TO PLAY).
+5. Backlog cũ giữ nguyên: L-1 FlatList · L-4 verify device-list native · pair round-trip với bồn thật ·
+   iOS toàn tuyến (cần Mac). `/audit` mobile sau khi demo.
+⚠️ **iCloud/Finder tạo file nhân bản `"* 2.*"` trong `android/**/build/`** làm build fail (Duplicate
+resources / file name validation) — đã dọn 16 file (2026-07-03). Tái diễn thì: `find . -path "*/build/*"
+-name "* 2.*" -delete`. Khuyên tắt iCloud sync cho repo (repo nằm trong ~/Documents).
 
 ## Checklist các bước (đồng bộ với plan.md mục 4)
 - [x] B0 — Đối chiếu replit vs app + chốt bản đồ điều hướng · done (không thiếu tính năng chức năng; gap = nav flow. Bảng trong context.md)
@@ -42,6 +52,7 @@ khoản Tuya Owner (DC=EU). Khi build được: chạy checklist thiết bị. C
 ## Nhật ký chạy (Run log) — mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
+| 2026-07-03 | **B14 — ACCOUNT features: đổi password + notifications theo user** | ✅ code | (1) **Đổi password**: Tuya CÓ hỗ trợ dạng **reset-qua-OTP** (`resetEmailPassword` native đã wire; KHÔNG có change-by-old-password khi login — spec NativeTuyaAuth). App: [ChangePasswordScreen](../../apps/mobile/src/screens/ChangePasswordScreen.tsx) (email prefill + country + SEND CODE type-3 + new/confirm pass ≥8 + notice Google/Apple do provider quản; xong → success → Sign in again = signOut) + `auth.resetPassword` + row Profile settings + route `change-password`. (2) **Theme sáng/tối**: đã có switch Dark mode trong Profile settings (giữ). (3) **Notifications THEO USER**: backend đã gửi per-uid/all (SendPushDto uids[]/all, jest 8/8 pass — không cần code mới); mobile wire **native** `getMessageList`+`getMessageHasNew` trong TuyaMessageModule.kt (**verbatim javap SDK 7.5.6**: IThingMessage.getMessageList(int,int,cb<MessageListBean>), MessageBean.msgTypeContent=title...; `compileDebugKotlin` BUILD SUCCESSFUL) + [services/messages.ts](../../apps/mobile/src/services/messages.ts) adapter+mock + [NotificationsScreen](../../apps/mobile/src/screens/NotificationsScreen.tsx) list (unread dot + type glyph + pull-refresh + load-more + xoá optimistic). Kiến trúc: admin chọn user → backend push per-uid qua Tuya Cloud → Tuya message center per-user → app đọc SDK (mobile không cần endpoint backend mới). Verify: mobile tsc 0 · eslint 0 · jest 61/61; backend notifications 8/8. **Native đổi → CẦN REBUILD APK** (đang build). |
 | 2026-07-03 | **B13 — BOTTOM TAB 5 mục (Device/Reminder/Shop/Help/Account) + 3 màn mới** | ✅ code | User đưa design menu Maintenance + FAQ. (1) **[TabIcons.tsx](../../apps/mobile/src/components/TabIcons.tsx)**: 5 icon SVG stroke tint được (snowflake/clock/bag/help/person — không dùng emoji). (2) **BottomTabBar** 5 tab: Device→device-list · Reminder→reminder · Shop→shop · Help→help · Account→me. (3) **[ReminderScreen](../../apps/mobile/src/screens/ReminderScreen.tsx)**: filter reminder 90 ngày (FAQ), days-left + progress + quá hạn/cảnh báo ≤7 ngày + "Mark filter as changed" + link Shop; ngày thay lưu local [filterStore.ts](../../apps/mobile/src/services/filterStore.ts). (4) **[ShopScreen](../../apps/mobile/src/screens/ShopScreen.tsx)**: 3 mục (filters/tablets/accessories) → mở walruswellness.com/shop + note filter chính hãng. (5) **[HelpScreen](../../apps/mobile/src/screens/HelpScreen.tsx)**: FAQ ĐẦY ĐỦ copy client (4 section × 15 QA, accordion mở=ochre ⌄/đóng=trắng ›, câu đầu mở sẵn như design) + card "Still need help?" → mailto support@walruswellness.com. Account tab = MeScreen cũ (nhà/thông báo/cấu hình). tsc 0 · eslint 0. Còn: chụp UI device (máy khoá). |
 | 2026-07-03 | **B12 — PAIRING redesign 5 màn theo design + nhớ Wi-Fi local** | ✅ code | User đưa 5 ảnh design pairing. Viết lại [PairingScreen.tsx](../../apps/mobile/src/screens/PairingScreen.tsx): (1) intro "Pair your Walrus." + card "Same Wi-Fi required" 📶 + WI-FI NAME/PASSWORD (Tuya bắt buộc, style CAPS) + "Search for device" + fallback EZ⇄AP thu gọn + Skip; (2) "Searching…" radar 📡 (BLE scan, thấy device đầu → sang found; 60s timeout → error); (3) "Ready to pair." card viền ochre (name+▂▄▆+Device ID/Signal Strong/Network/Status Ready) + "Connect to this device" + Search again; (4) "Connecting…" checklist Authenticating→Syncing settings→Finalizing (nhích theo `onPairingProgress` thật, sub-label `pairingStepLabel`); (5) "Paired." ✓ + DEVICE NAME (giữ đặt tên) + "Go to home" (rename+connect+về device-list). Error riêng. Giữ guard: timeout 130s, back chỉ ở màn tĩnh. **+ Nhớ Wi-Fi LOCAL** ([wifiStore.ts](../../apps/mobile/src/services/wifiStore.ts) AsyncStorage): prefill lúc mở, save lúc Search/Pair. tsc 0 · eslint 0 · pairing.test 7/7. Còn: chụp UI device (máy khoá). |
 | 2026-07-03 | **B11 — Intro chuyển sang SAU LOGIN ĐẦU + DEVICE VERIFY TOÀN LUỒNG** | ✅ 📱 | User đổi yêu cầu: intro show **sau lần đăng nhập đầu tiên** (không phải lúc mở app). Sửa: boot guest→welcome thẳng; `AuthScreen.succeed`→check cờ→`intro`\|`home-gate`; `IntroScreen.finish`→`home-gate`. **VERIFY TRÊN SM-A325F (fresh install pm clear):** welcome "The ritual starts here." (logo G 4 màu + táo Apple SVG ✅) → Sign in "Welcome back." ✅ → Create account form (labels CAPS+SHOW+confirm+SEND CODE) ✅ → country dropdown "Chọn quốc gia" + search + bảng WE ✅ → login Google (picker) → **INTRO slide 1 hiện sau login** ✅ → Next×3+Get started → **"My Home" TỰ TẠO trên Tuya thật** → Device tab "⌂ My Home ▾ +" + empty-state "Thêm thiết bị đầu tiên/Thêm ngay" ✅ → Me tab (avatar+menu 3 dòng) ✅. Nit fix: tab glyph `❄`→`❄︎` (variation selector — Android render emoji xanh thay vì tint). tsc 0 · eslint 0. |
