@@ -39,4 +39,6 @@ packages/*/lib/
 # Google OAuth client downloads — client_secret*.json chứa secret, KHÔNG commit
 **/client_secret*.json
 **/GoogleService-Info.plist
+# Firebase (FCM) app config — chứa định danh project, KHÔNG commit
+**/google-services.json
 .playwright-mcp/*

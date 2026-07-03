@@ -12,15 +12,16 @@ export type SendPushState = {
 };
 
 /**
- * Server Action: gửi push qua backend (Tuya Cloud App Push).
- * Người nhận: mode='all' (tất cả) hoặc danh sách `uids` (JSON). Biến từ field `param.<tên>`.
- * Backend loop per-uid → trả {total, success, failed}.
+ * Server Action: gửi thông báo FCM TỰ DO (không template) qua backend `/push/send`.
+ * title (tên) + body (mô tả) + data (điều hướng khi tap) + người nhận (uids JSON / all).
+ * Backend gửi per-uid → trả {total, success, failed}.
  */
 export async function sendPushAction(
   _prev: SendPushState,
   formData: FormData,
 ): Promise<SendPushState> {
-  const templateId = String(formData.get('templateId') ?? '').trim();
+  const title = String(formData.get('title') ?? '').trim();
+  const body = String(formData.get('body') ?? '').trim();
   const all = String(formData.get('mode') ?? 'select') === 'all';
   if (!templateId) {
     return { error: 'Template is required.' };
@@ -39,21 +40,21 @@ export async function sendPushAction(
     }
   }
 
-  // Gom biến template: field đặt tên "param.<tên>".
-  const params: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    if (key.startsWith('param.')) {
-      params[key.slice('param.'.length)] = String(value);
-    }
-  }
+  // data điều hướng khi tap (tuỳ chọn).
+  const data: Record<string, string> = {};
+  const screen = String(formData.get('screen') ?? '').trim();
+  const devId = String(formData.get('devId') ?? '').trim();
+  if (screen) data.screen = screen;
+  if (devId) data.devId = devId;
 
-  const body = all
-    ? { templateId, params, all: true }
-    : { templateId, params, uids };
+  const payload: Record<string, unknown> = { title, body };
+  if (Object.keys(data).length > 0) payload.data = data;
+  if (all) payload.all = true;
+  else payload.uids = uids;
 
-  const res = await apiFetch('/notifications/push', {
+  const res = await apiFetch('/push/send', {
     method: 'POST',
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
   if (res.status === 401) {
     redirect('/login');
@@ -62,15 +63,15 @@ export async function sendPushAction(
     const b = (await res.json().catch(() => null)) as { message?: string } | null;
     return { error: b?.message ?? `Send failed: ${res.status}` };
   }
-  const data = (await res.json()) as {
+  const d = (await res.json()) as {
     total?: number;
     success?: number;
     failed?: number;
   };
   return {
     ok: true,
-    total: data.total ?? 0,
-    success: data.success ?? 0,
-    failed: data.failed ?? 0,
+    total: d.total ?? 0,
+    success: d.success ?? 0,
+    failed: d.failed ?? 0,
   };
 }

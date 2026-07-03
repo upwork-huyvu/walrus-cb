@@ -1,13 +1,8 @@
-import Link from 'next/link';
-import SendPushForm, {
-  type Recipient,
-  type Template,
-} from '@/components/SendPushForm';
+import SendPushForm, { type Recipient } from '@/components/SendPushForm';
 import { apiGet } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
-type TemplateList = { list?: Template[]; total?: number } | Template[];
 type UserRow = { uid: string; username?: string; email?: string };
 type UserList = { list?: UserRow[] };
 
@@ -39,6 +34,7 @@ export default async function NotificationsPage() {
         <div>
           <h1 className="page-title">Send notifications</h1>
           <p className="page-sub">
+<<<<<<< HEAD
             Tuya Cloud App Push · pick an approved template → choose recipients (multiple users / all) → send
           </p>
         </div>
@@ -52,6 +48,14 @@ export default async function NotificationsPage() {
       ) : null}
 
       <SendPushForm templates={templates} recipients={recipients} />
+=======
+            Nhập tên + mô tả → chọn người nhận (nhiều user / tất cả) → gửi qua FCM (không cần template)
+          </p>
+        </div>
+      </div>
+
+      <SendPushForm recipients={recipients} />
+>>>>>>> cce61e68d806dd27955b7123e9a3850b608d37a0
     </main>
   );
 }

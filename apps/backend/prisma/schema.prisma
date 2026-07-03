@@ -45,3 +45,17 @@ model DeleteJob {
 
   @@map("delete_jobs")
 }
+
+/// FCM device token map với Tuya uid (M3 push). 1 token = 1 thiết bị; 1 uid có thể nhiều token.
+/// token @unique → upsert idempotent (đăng ký lại không nhân bản); prune khi FCM báo not-registered.
+model PushToken {
+  id        String   @id @default(uuid())
+  tuyaUid   String
+  token     String   @unique
+  platform  String // 'android' | 'ios'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tuyaUid])
+  @@map("push_tokens")
+}

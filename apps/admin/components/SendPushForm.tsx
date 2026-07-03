@@ -3,41 +3,20 @@
 import { useActionState, useMemo, useState } from 'react';
 import { sendPushAction, type SendPushState } from '@/app/notifications/actions';
 
-export type Template = {
-  template_id: string;
-  name?: string;
-  title?: string;
-  content?: string;
-};
 export type Recipient = { uid: string; label: string };
 
 const initialState: SendPushState = {};
 
 /**
- * Form gửi push: chọn template → chọn người nhận (multi-select từ danh sách user Tuya /
- * nhập UID thủ công / gửi TẤT CẢ) → điền biến `${var}` → gửi.
+ * Form gửi thông báo FCM TỰ DO (không template): tên (title) + mô tả (body) + cấu hình
+ * (người nhận + data điều hướng khi tap). Người nhận: chọn từ danh sách / nhập UID / gửi tất cả.
  */
-export default function SendPushForm({
-  templates,
-  recipients,
-}: {
-  templates: Template[];
-  recipients: Recipient[];
-}) {
-  const [state, formAction, pending] = useActionState(
-    sendPushAction,
-    initialState,
-  );
-  const [templateId, setTemplateId] = useState(templates[0]?.template_id ?? '');
+export default function SendPushForm({ recipients }: { recipients: Recipient[] }) {
+  const [state, formAction, pending] = useActionState(sendPushAction, initialState);
   const [mode, setMode] = useState<'select' | 'all'>('select');
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [manual, setManual] = useState('');
-
-  const selected = useMemo(
-    () => templates.find((t) => t.template_id === templateId),
-    [templates, templateId],
-  );
-  const vars = useMemo(() => extractVars(selected), [selected]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const manualUids = useMemo(
     () =>
@@ -59,23 +38,19 @@ export default function SendPushForm({
       else n.add(uid);
       return n;
     });
-  const allInList =
-    recipients.length > 0 && recipients.every((r) => checked.has(r.uid));
+  const allInList = recipients.length > 0 && recipients.every((r) => checked.has(r.uid));
   const toggleAllInList = () =>
     setChecked(() => (allInList ? new Set() : new Set(recipients.map((r) => r.uid))));
 
-  const canSend = !!templateId && (mode === 'all' || effectiveUids.length > 0);
+  const canSend = mode === 'all' || effectiveUids.length > 0;
   const rowLabel = { flexDirection: 'row' as const, gap: 8, alignItems: 'center' };
 
   return (
-    <form
-      action={formAction}
-      className="card"
-      style={{ width: '100%', maxWidth: 560 }}
-    >
+    <form action={formAction} className="card" style={{ width: '100%', maxWidth: 560 }}>
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="uids" value={JSON.stringify(effectiveUids)} />
 
+      {/* Nội dung tự do */}
       <label>
         Template (approved)
         <select
@@ -94,14 +69,6 @@ export default function SendPushForm({
           ))}
         </select>
       </label>
-
-      {selected ? (
-        <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-          <strong>{selected.title}</strong>
-          <br />
-          {selected.content}
-        </p>
-      ) : null}
 
       {/* Người nhận */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -146,11 +113,7 @@ export default function SendPushForm({
                 </label>
                 {recipients.map((r) => (
                   <label key={r.uid} style={rowLabel}>
-                    <input
-                      type="checkbox"
-                      checked={checked.has(r.uid)}
-                      onChange={() => toggle(r.uid)}
-                    />
+                    <input type="checkbox" checked={checked.has(r.uid)} onChange={() => toggle(r.uid)} />
                     {r.label}
                   </label>
                 ))}
@@ -185,13 +148,7 @@ export default function SendPushForm({
 
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
-        <p
-          style={{
-            color: state.failed ? 'var(--warning)' : 'var(--success)',
-            fontSize: 13,
-            margin: 0,
-          }}
-        >
+        <p style={{ color: state.failed ? 'var(--warning)' : 'var(--success)', fontSize: 13, margin: 0 }}>
           {state.failed
             ? `Sent ${state.success}/${state.total} · ${state.failed} failed`
             : `✅ Sent ${state.success}/${state.total} successfully`}
@@ -203,17 +160,4 @@ export default function SendPushForm({
       </button>
     </form>
   );
-}
-
-/** Trích các biến `${var}` (duy nhất) từ title + content của template. */
-function extractVars(t?: { title?: string; content?: string }): string[] {
-  if (!t) return [];
-  const text = `${t.title ?? ''} ${t.content ?? ''}`;
-  const set = new Set<string>();
-  const re = /\$\{([^}]+)\}/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    set.add(m[1].trim());
-  }
-  return [...set];
 }
