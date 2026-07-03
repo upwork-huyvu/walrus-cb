@@ -66,6 +66,23 @@ export async function createHome(
   return mapHome(await lib.Tuya.createHome(name, lon, lat, geoName, rooms));
 }
 
+/** Chọn nhà "hiện tại" từ list: ưu tiên nhà Owner (role=2)/admin (pairing owner-only), fallback nhà đầu. */
+export function pickCurrentHome(homes: HomeInfo[]): HomeInfo | null {
+  if (!homes || homes.length === 0) return null;
+  return homes.find((h) => h.admin || h.role === 2) ?? homes[0];
+}
+
+/**
+ * Đảm bảo user có ít nhất 1 nhà (chuẩn Tuya SmartLife): nếu chưa có nhà nào → tạo mặc định **"My Home"**.
+ * Trả về nhà hiện tại (owner-priority). Dùng ở home-gate sau login để vào thẳng device-list.
+ */
+export async function ensureDefaultHome(): Promise<HomeInfo> {
+  const homes = await getHomeList();
+  if (homes.length === 0) return createHome('My Home');
+  // pickCurrentHome không null vì list không rỗng.
+  return pickCurrentHome(homes) as HomeInfo;
+}
+
 /** Thiết bị trong 1 home → màn device list. Native vắng → mock (1 thiết bị demo). */
 export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
   if (!homeAvailable) return [...mockDevices];

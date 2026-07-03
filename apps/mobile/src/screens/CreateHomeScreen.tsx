@@ -32,9 +32,9 @@ export default function CreateHomeScreen({ navigate, onHomeCreated }: Props) {
     try {
       const home = await createHome(name.trim());
       onHomeCreated?.(home.homeId);
-      navigate('device-list', { homeId: home.homeId });
+      navigate('device-list', { homeId: home.homeId, homeName: home.name });
     } catch (e: any) {
-      setErr(e?.message ?? 'Tạo nhà thất bại — thử lại');
+      setErr(e?.message ?? 'Could not create home — try again');
       setLoading(false);
     }
   };
@@ -45,16 +45,16 @@ export default function CreateHomeScreen({ navigate, onHomeCreated }: Props) {
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 32, flexGrow: 1, justifyContent: 'center' }}>
           <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 3, marginBottom: 10 }}>
-            BƯỚC ĐẦU TIÊN
+            FIRST STEP
           </Text>
           <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 30, marginBottom: 10 }}>
-            Tạo nhà của bạn
+            Create your home
           </Text>
           <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 14, lineHeight: 21, marginBottom: 28 }}>
-            Thiết bị Walrus sẽ được thêm vào nhà này. Bạn là chủ nhà (Owner).
+            Your Walrus devices will be added to this home. You are the Owner.
           </Text>
 
-          <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, marginBottom: 6 }}>Tên nhà</Text>
+          <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, marginBottom: 6 }}>Home name</Text>
           <TextInput
             style={{
               borderWidth: 1,
@@ -69,7 +69,7 @@ export default function CreateHomeScreen({ navigate, onHomeCreated }: Props) {
             }}
             value={name}
             onChangeText={setName}
-            placeholder="Ví dụ: Nhà của tôi"
+            placeholder="e.g. My Home"
             placeholderTextColor={C.muted}
             autoFocus
             editable={!loading}
@@ -85,7 +85,7 @@ export default function CreateHomeScreen({ navigate, onHomeCreated }: Props) {
           {loading ? (
             <ActivityIndicator color={C.ochre} />
           ) : (
-            <PrimaryButton label="Tạo nhà" onPress={submit} disabled={!canSubmit} />
+            <PrimaryButton label="Create home" onPress={submit} disabled={!canSubmit} />
           )}
         </ScrollView>
       </SafeAreaView>

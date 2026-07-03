@@ -14,11 +14,12 @@ import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getHomeDeviceList, type HomeDevice } from '../services/home';
 
-type Props = { navigate: Navigate; state: AppState; homeId?: number };
+type Props = { navigate: Navigate; state: AppState; homeId?: number; homeName?: string };
 
-// Màn landing sau login (chuẩn Tuya SmartLife): danh sách thiết bị của home hiện tại.
-// + Add device → pairing; tap 1 thiết bị → device-detail. Remount (đổi screen) → tự refetch (AC4).
-export default function DeviceListScreen({ navigate, state, homeId }: Props) {
+// TAB Thiết bị (landing sau login) — bám layout Tuya SmartLife:
+// trên-trái = chọn nhà (⌂ tên nhà ▾ → Quản lý nhà) · trên-phải = ＋ thêm thiết bị;
+// thân = danh sách thiết bị / empty-state "Thêm thiết bị đầu tiên". Remount → tự refetch.
+export default function DeviceListScreen({ navigate, state, homeId, homeName }: Props) {
   const C = useTheme();
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +41,7 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
       try {
         setDevices(await getHomeDeviceList(homeId));
       } catch (e: any) {
-        setErr(e?.message ?? 'Không tải được danh sách thiết bị');
+        setErr(e?.message ?? 'Could not load devices');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -62,32 +63,45 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <StatusBar barStyle={state.isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={{ flex: 1 }}>
-        {/* Header: title + Add device (+) */}
+        {/* Header kiểu SmartLife: chọn nhà (trái) + thêm thiết bị (phải) */}
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            paddingHorizontal: 28,
-            marginTop: 36,
-            marginBottom: 20,
+            paddingHorizontal: 24,
+            marginTop: 24,
+            marginBottom: 16,
           }}
         >
-          <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 28 }}>Thiết bị</Text>
+          <Pressable
+            onPress={() => navigate('home-management')}
+            hitSlop={10}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}
+          >
+            <Text style={{ fontSize: 18, color: C.white }}>⌂</Text>
+            <Text
+              numberOfLines={1}
+              style={{ fontFamily: F.headline, color: C.white, fontSize: 22, flexShrink: 1 }}
+            >
+              {homeName || 'My Home'}
+            </Text>
+            <Text style={{ color: C.muted, fontSize: 12 }}>▾</Text>
+          </Pressable>
           <Pressable
             onPress={() => navigate('pairing', { homeId })}
             hitSlop={12}
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              width: 38,
+              height: 38,
+              borderRadius: 19,
               borderWidth: 1,
               borderColor: C.ochre,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ color: C.ochre, fontSize: 24, lineHeight: 26 }}>＋</Text>
+            <Text style={{ color: C.ochre, fontSize: 22, lineHeight: 24 }}>＋</Text>
           </Pressable>
         </View>
 
@@ -97,7 +111,7 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
           </View>
         ) : (
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 28, paddingBottom: 48, flexGrow: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32, flexGrow: 1 }}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.ochre} />
             }
@@ -107,22 +121,27 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
             ) : null}
 
             {devices.length === 0 ? (
-              // Empty-state: chưa có thiết bị → CTA thêm thiết bị
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
-                <Text style={{ fontFamily: F.body, color: C.white, fontSize: 16, marginBottom: 8 }}>
-                  Chưa có thiết bị nào
+              // Empty-state bám ảnh SmartLife: "Add your first device" + CTA "Add Now"
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60 }}>
+                <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 22, marginBottom: 8 }}>
+                  Add your first device
                 </Text>
                 <Text
                   style={{ fontFamily: F.body, color: C.muted, fontSize: 13, textAlign: 'center', marginBottom: 24 }}
                 >
-                  Thêm bồn Walrus của bạn để bắt đầu.
+                  Pair your Walrus to begin the ritual.
                 </Text>
                 <Pressable
                   onPress={() => navigate('pairing', { homeId })}
-                  style={{ borderWidth: 1, borderColor: C.ochre, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 36 }}
+                  style={{
+                    backgroundColor: C.ochre,
+                    borderRadius: 24,
+                    paddingVertical: 14,
+                    paddingHorizontal: 44,
+                  }}
                 >
-                  <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 14, letterSpacing: 1 }}>
-                    THÊM THIẾT BỊ
+                  <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15, letterSpacing: 0.5 }}>
+                    Add now
                   </Text>
                 </Pressable>
               </View>
@@ -144,7 +163,7 @@ export default function DeviceListScreen({ navigate, state, homeId }: Props) {
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 17 }}>
-                      {d.name || 'Thiết bị'}
+                      {d.name || 'Device'}
                     </Text>
                     <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginTop: 4 }}>
                       {d.devId}
