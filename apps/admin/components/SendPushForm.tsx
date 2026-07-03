@@ -8,8 +8,8 @@ export type Recipient = { uid: string; label: string };
 const initialState: SendPushState = {};
 
 /**
- * Form gửi thông báo FCM TỰ DO (không template): tên (title) + mô tả (body) + cấu hình
- * (người nhận + data điều hướng khi tap). Người nhận: chọn từ danh sách / nhập UID / gửi tất cả.
+ * Free-form FCM notification form (no template): title + body + config
+ * (recipients + tap-routing data). Recipients: pick from list / manual UIDs / send to all.
  */
 export default function SendPushForm({ recipients }: { recipients: Recipient[] }) {
   const [state, formAction, pending] = useActionState(sendPushAction, initialState);
@@ -50,51 +50,32 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="uids" value={JSON.stringify(effectiveUids)} />
 
-      {/* Nội dung tự do */}
+      {/* Free-form content */}
       <label>
-        Template (approved)
-        <select
-          name="templateId"
-          value={templateId}
-          onChange={(e) => setTemplateId(e.target.value)}
-          required
-        >
-          {templates.length === 0 ? (
-            <option value="">— no templates yet —</option>
-          ) : null}
-          {templates.map((t) => (
-            <option key={t.template_id} value={t.template_id}>
-              {t.name ?? t.template_id}
-            </option>
-          ))}
-        </select>
+        Title
+        <input name="title" required maxLength={100} placeholder="e.g. Time to clean your tub" />
+      </label>
+      <label>
+        Description (body)
+        <textarea name="body" required rows={3} maxLength={500} placeholder="Notification text shown to the user…" />
       </label>
 
-      {/* Người nhận */}
+      {/* Recipients */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 18 }}>
           <label style={rowLabel}>
-            <input
-              type="radio"
-              checked={mode === 'select'}
-              onChange={() => setMode('select')}
-            />
+            <input type="radio" checked={mode === 'select'} onChange={() => setMode('select')} />
             Choose recipients
           </label>
           <label style={rowLabel}>
-            <input
-              type="radio"
-              checked={mode === 'all'}
-              onChange={() => setMode('all')}
-            />
+            <input type="radio" checked={mode === 'all'} onChange={() => setMode('all')} />
             Send to all
           </label>
         </div>
 
         {mode === 'all' ? (
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            ⚠️ Sends to <strong>ALL</strong> Tuya users — the backend walks the full
-            list and sends one by one (Tuya has no bulk send). This may take a while with many users.
+            ⚠️ Sends to <strong>ALL</strong> users with a registered notification token (FCM). The backend sends one by one.
           </p>
         ) : (
           <>
@@ -104,11 +85,7 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
                 style={{ maxHeight: 200, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}
               >
                 <label style={{ ...rowLabel, color: 'var(--gold)' }}>
-                  <input
-                    type="checkbox"
-                    checked={allInList}
-                    onChange={toggleAllInList}
-                  />
+                  <input type="checkbox" checked={allInList} onChange={toggleAllInList} />
                   Select all in list ({recipients.length})
                 </label>
                 {recipients.map((r) => (
@@ -120,17 +97,12 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
               </div>
             ) : (
               <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                No Tuya users in the list — enter UIDs manually below.
+                No users in the list — enter UIDs manually below.
               </p>
             )}
             <label>
               Enter UIDs manually (comma / newline separated)
-              <textarea
-                value={manual}
-                onChange={(e) => setManual(e.target.value)}
-                rows={2}
-                placeholder="ay15..., ay16..."
-              />
+              <textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={2} placeholder="ay15..., ay16..." />
             </label>
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
               Selected: <strong>{effectiveUids.length}</strong> recipients
@@ -139,18 +111,33 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
         )}
       </div>
 
-      {vars.map((v) => (
-        <label key={v}>
-          {`Variable \${${v}}`}
-          <input name={`param.${v}`} required />
-        </label>
-      ))}
+      {/* Advanced config: deep-link on tap */}
+      <button
+        type="button"
+        className="ghost"
+        onClick={() => setShowAdvanced((s) => !s)}
+        style={{ alignSelf: 'flex-start', fontSize: 13 }}
+      >
+        {showAdvanced ? '▾' : '▸'} Advanced config (deep link on open)
+      </button>
+      {showAdvanced ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <label>
+            Open screen
+            <input name="screen" placeholder="e.g. device-detail (leave empty to just open the app)" />
+          </label>
+          <label>
+            devId (if opening a device screen)
+            <input name="devId" placeholder="device id" />
+          </label>
+        </div>
+      ) : null}
 
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
         <p style={{ color: state.failed ? 'var(--warning)' : 'var(--success)', fontSize: 13, margin: 0 }}>
           {state.failed
-            ? `Sent ${state.success}/${state.total} · ${state.failed} failed`
+            ? `Sent ${state.success}/${state.total} · ${state.failed} not delivered`
             : `✅ Sent ${state.success}/${state.total} successfully`}
         </p>
       ) : null}

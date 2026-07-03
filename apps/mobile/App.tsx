@@ -42,6 +42,7 @@ import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
 import { ensureDefaultHome } from './src/services/home';
 import { getIntroSeen } from './src/state/introFlag';
+import { onForegroundMessage, onNotificationTap, getInitialRoute } from './src/services/push';
 
 // Màn nào nằm trong bottom tab (Device/Reminder/Shop/Help/Account). Màn immersive không tab.
 const TABBED: Partial<Record<ScreenName, TabKey>> = {
@@ -90,6 +91,23 @@ export default function App() {
       setScreen('auth');
     });
     return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Push FCM: show notification in FOREGROUND (Notifee) + deep-link on tap (background/quit).
+  useEffect(() => {
+    const unsubForeground = onForegroundMessage();
+    const unsubTap = onNotificationTap((route) =>
+      navigate(route.screen as ScreenName, route.params as Record<string, unknown>),
+    );
+    // App opened from QUIT by tapping a notification → route to the target screen.
+    void getInitialRoute().then((route) => {
+      if (route) navigate(route.screen as ScreenName, route.params as Record<string, unknown>);
+    });
+    return () => {
+      unsubForeground();
+      unsubTap();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

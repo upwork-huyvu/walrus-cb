@@ -12,9 +12,9 @@ export type SendPushState = {
 };
 
 /**
- * Server Action: gửi thông báo FCM TỰ DO (không template) qua backend `/push/send`.
- * title (tên) + body (mô tả) + data (điều hướng khi tap) + người nhận (uids JSON / all).
- * Backend gửi per-uid → trả {total, success, failed}.
+ * Server Action: send a free-form FCM notification (no template) via backend `/push/send`.
+ * title + body (description) + data (deep link on tap) + recipients (uids JSON / all).
+ * Backend sends per-uid → returns {total, success, failed}.
  */
 export async function sendPushAction(
   _prev: SendPushState,
@@ -23,8 +23,9 @@ export async function sendPushAction(
   const title = String(formData.get('title') ?? '').trim();
   const body = String(formData.get('body') ?? '').trim();
   const all = String(formData.get('mode') ?? 'select') === 'all';
-  if (!templateId) {
-    return { error: 'Template is required.' };
+
+  if (!title || !body) {
+    return { error: 'Enter a title and description.' };
   }
 
   let uids: string[] = [];
@@ -40,7 +41,7 @@ export async function sendPushAction(
     }
   }
 
-  // data điều hướng khi tap (tuỳ chọn).
+  // Optional deep-link data on tap.
   const data: Record<string, string> = {};
   const screen = String(formData.get('screen') ?? '').trim();
   const devId = String(formData.get('devId') ?? '').trim();
