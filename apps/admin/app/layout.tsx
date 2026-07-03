@@ -17,14 +17,14 @@ const sans = Inter({
 
 export const metadata: Metadata = {
   title: 'Cool Bath — Admin',
-  description: 'Quản trị người dùng ice-bath',
+  description: 'Ice bath user administration',
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="vi" className={`${serif.variable} ${sans.variable}`}>
+    <html lang="en" className={`${serif.variable} ${sans.variable}`}>
       <body>{children}</body>
     </html>
   );

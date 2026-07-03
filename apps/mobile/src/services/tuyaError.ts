@@ -11,7 +11,7 @@ export type Classifier = {
 
 export type TuyaErrInfo = { code?: string; message: string; retryable: boolean };
 
-const FALLBACK = 'Có lỗi khi liên lạc với thiết bị. Vui lòng thử lại.';
+const FALLBACK = 'Unable to reach the device. Please try again.';
 
 let libClassifier: Classifier | null = null;
 try {

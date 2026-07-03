@@ -48,7 +48,7 @@ export async function signInApple(): Promise<AppleCredential> {
   if (!authAvailable) return MOCK; // Metro/dev chưa build native → chạy luồng mock
 
   if (appleAuth == null || appleAuth.isSupported !== true) {
-    throw new AppleSignInError('NOT_SUPPORTED', 'Sign in with Apple chỉ hỗ trợ trên iOS 13+.');
+    throw new AppleSignInError('NOT_SUPPORTED', 'Sign in with Apple is only available on iOS 13+.');
   }
 
   let res: any;
@@ -60,7 +60,7 @@ export async function signInApple(): Promise<AppleCredential> {
   } catch (e: any) {
     const code = e?.code;
     if (appleAuth.Error && code === appleAuth.Error.CANCELED) {
-      throw new AppleSignInError('CANCELLED', 'Đã huỷ đăng nhập Apple.');
+      throw new AppleSignInError('CANCELLED', 'Apple sign-in was cancelled.');
     }
     throw new AppleSignInError(
       appleAuth.Error && code === appleAuth.Error.FAILED ? 'FAILED' : 'UNKNOWN',
@@ -70,7 +70,7 @@ export async function signInApple(): Promise<AppleCredential> {
 
   const identityToken: string | null = res?.identityToken ?? null;
   if (!identityToken) {
-    throw new AppleSignInError('NO_ID_TOKEN', 'Apple không trả identityToken.');
+    throw new AppleSignInError('NO_ID_TOKEN', 'Apple did not return an identityToken.');
   }
   const nickname: string | null = res?.fullName?.nickname ?? res?.fullName?.givenName ?? null;
   return {

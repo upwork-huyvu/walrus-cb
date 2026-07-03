@@ -25,37 +25,37 @@ export default async function TemplatesPage() {
     const data = await apiGet<TemplateList>('/notifications/templates');
     templates = Array.isArray(data) ? data : data.list ?? [];
   } catch (e) {
-    loadError = e instanceof Error ? e.message : 'Không tải được template';
+    loadError = e instanceof Error ? e.message : 'Failed to load templates';
   }
 
   return (
     <main>
       <div className="bar">
-        <h1 className="page-title">Template thông báo</h1>
-        <Link href="/notifications">← Gửi thông báo</Link>
+        <h1 className="page-title">Notification templates</h1>
+        <Link href="/notifications">← Send notifications</Link>
       </div>
       <p className="page-sub" style={{ marginBottom: 16 }}>
-        Tuya duyệt nội dung ≤2 ngày làm việc. Chỉ template đã duyệt mới gửi được.
+        Tuya reviews content within ≤2 business days. Only approved templates can be sent.
       </p>
 
       {loadError ? (
-        <p className="error">Lỗi tải template: {loadError}</p>
+        <p className="error">Failed to load templates: {loadError}</p>
       ) : (
         <table>
           <thead>
             <tr>
               <th>Template ID</th>
-              <th>Tên</th>
-              <th>Tiêu đề</th>
-              <th>Loại</th>
-              <th>Trạng thái</th>
+              <th>Name</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {templates.length === 0 ? (
               <tr>
                 <td colSpan={5} className="muted">
-                  Chưa có template — tạo mới bên dưới.
+                  No templates yet — create one below.
                 </td>
               </tr>
             ) : (
@@ -77,7 +77,7 @@ export default async function TemplatesPage() {
         </table>
       )}
 
-      <h2 style={{ fontSize: 16, marginTop: 24 }}>Tạo template mới</h2>
+      <h2 style={{ fontSize: 16, marginTop: 24 }}>Create a new template</h2>
       <CreateTemplateForm />
     </main>
   );

@@ -55,7 +55,7 @@ export type DeviceAction =
   | { type: 'ackTimeout'; temp: number; error?: string }
   | { type: 'disconnect' };
 
-const ACK_TIMEOUT_MSG = 'Thiết bị không xác nhận lệnh đặt nhiệt độ';
+const ACK_TIMEOUT_MSG = 'Device didn’t confirm the temperature change';
 
 export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceState {
   switch (action.type) {

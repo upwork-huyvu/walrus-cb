@@ -128,8 +128,8 @@ describe('deviceMachine — dpPatch diff (audit M-3) + ackTimeout message (audit
 
   it('ackTimeout dùng message đã map nếu được truyền', () => {
     const pending = deviceReducer({ ...initialDeviceState, targetTemp: 6 }, { type: 'setTargetOptimistic', temp: 4 });
-    const s = deviceReducer(pending, { type: 'ackTimeout', temp: 4, error: 'Thiết bị offline/không kết nối.' });
-    expect(s.error).toBe('Thiết bị offline/không kết nối.');
+    const s = deviceReducer(pending, { type: 'ackTimeout', temp: 4, error: 'Device is offline or unreachable.' });
+    expect(s.error).toBe('Device is offline or unreachable.');
     expect(s.targetTemp).toBe(6);
   });
 });

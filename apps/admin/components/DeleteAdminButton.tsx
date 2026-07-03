@@ -29,7 +29,7 @@ export default function DeleteAdminButton({
         onClick={() => {
           if (
             window.confirm(
-              `Gỡ quyền admin của ${email}? (không xoá tài khoản, chỉ mất quyền truy cập)`,
+              `Revoke admin access for ${email}? (the account is kept — only access is removed)`,
             )
           ) {
             setError('');
@@ -40,7 +40,7 @@ export default function DeleteAdminButton({
           }
         }}
       >
-        {pending ? 'Đang gỡ…' : 'Gỡ quyền'}
+        {pending ? 'Revoking…' : 'Revoke'}
       </button>
     </div>
   );

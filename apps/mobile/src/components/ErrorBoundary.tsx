@@ -22,10 +22,10 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
     return (
       <View style={styles.box}>
-        <Text style={styles.title}>Đã có lỗi xảy ra</Text>
+        <Text style={styles.title}>Something went wrong</Text>
         <Text style={styles.msg}>{this.state.message}</Text>
         <Pressable onPress={this.reset} style={styles.btn}>
-          <Text style={styles.btnText}>Thử lại</Text>
+          <Text style={styles.btnText}>Try again</Text>
         </Pressable>
       </View>
     );

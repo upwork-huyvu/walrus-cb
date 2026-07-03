@@ -20,7 +20,7 @@ export type SetResult = { ok: boolean; error?: string };
 // Bọc promise với timeout → reject 'timeout' nếu native không phản hồi (audit M-2: tránh kẹt loading).
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${label} timeout sau ${ms}ms`)), ms);
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
     p.then(
       (v) => { clearTimeout(t); resolve(v); },
       (e) => { clearTimeout(t); reject(e); },
@@ -85,7 +85,7 @@ export async function initSdk(): Promise<boolean> {
 export async function readDevice(devId: string): Promise<DeviceSnapshot> {
   if (!tuyaAvailable || !devId) return { ...MOCK };
   // timeout để không kẹt 'connecting'/loading nếu native treo (audit M-2).
-  const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Đọc thiết bị');
+  const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Device read');
   const d = parseDeviceDps(snap?.dpsJson ?? '{}');
   return {
     currentTemp: d.currentTemp,

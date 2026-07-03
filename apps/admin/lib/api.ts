@@ -6,7 +6,7 @@ const TOKEN_COOKIE = 'admin_token';
 function baseUrl(): string {
   const url = process.env.API_BASE_URL;
   if (!url) {
-    throw new Error('Thiếu API_BASE_URL (xem .env.example).');
+    throw new Error('Missing API_BASE_URL (see .env.example).');
   }
   return url;
 }
@@ -39,7 +39,7 @@ export async function apiGet<T>(path: string): Promise<T> {
     redirect('/login');
   }
   if (!res.ok) {
-    throw new Error(`API lỗi ${res.status}: ${path}`);
+    throw new Error(`API error ${res.status}: ${path}`);
   }
   return (await res.json()) as T;
 }

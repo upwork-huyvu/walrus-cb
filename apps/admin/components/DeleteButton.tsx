@@ -13,7 +13,7 @@ export default function DeleteButton({ uid }: { uid: string }) {
       onClick={() => {
         if (
           window.confirm(
-            'Xoá user này? (Tuya pre-delete có ân hạn 7 ngày + xoá dữ liệu business)',
+            'Delete this user? (Tuya pre-delete has a 7-day grace period; business data is also removed)',
           )
         ) {
           startTransition(() => {
@@ -22,7 +22,7 @@ export default function DeleteButton({ uid }: { uid: string }) {
         }
       }}
     >
-      {pending ? 'Đang xoá…' : 'Xoá user'}
+      {pending ? 'Deleting…' : 'Delete user'}
     </button>
   );
 }

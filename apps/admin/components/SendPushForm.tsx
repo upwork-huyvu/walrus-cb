@@ -77,7 +77,7 @@ export default function SendPushForm({
       <input type="hidden" name="uids" value={JSON.stringify(effectiveUids)} />
 
       <label>
-        Template (đã duyệt)
+        Template (approved)
         <select
           name="templateId"
           value={templateId}
@@ -85,7 +85,7 @@ export default function SendPushForm({
           required
         >
           {templates.length === 0 ? (
-            <option value="">— chưa có template —</option>
+            <option value="">— no templates yet —</option>
           ) : null}
           {templates.map((t) => (
             <option key={t.template_id} value={t.template_id}>
@@ -112,7 +112,7 @@ export default function SendPushForm({
               checked={mode === 'select'}
               onChange={() => setMode('select')}
             />
-            Chọn người nhận
+            Choose recipients
           </label>
           <label style={rowLabel}>
             <input
@@ -120,14 +120,14 @@ export default function SendPushForm({
               checked={mode === 'all'}
               onChange={() => setMode('all')}
             />
-            Gửi tất cả
+            Send to all
           </label>
         </div>
 
         {mode === 'all' ? (
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            ⚠️ Gửi tới <strong>TẤT CẢ</strong> user Tuya — backend duyệt toàn bộ
-            danh sách rồi gửi từng người (Tuya không có gửi hàng loạt). Có thể lâu nếu nhiều user.
+            ⚠️ Sends to <strong>ALL</strong> Tuya users — the backend walks the full
+            list and sends one by one (Tuya has no bulk send). This may take a while with many users.
           </p>
         ) : (
           <>
@@ -142,7 +142,7 @@ export default function SendPushForm({
                     checked={allInList}
                     onChange={toggleAllInList}
                   />
-                  Chọn tất cả trong danh sách ({recipients.length})
+                  Select all in list ({recipients.length})
                 </label>
                 {recipients.map((r) => (
                   <label key={r.uid} style={rowLabel}>
@@ -157,11 +157,11 @@ export default function SendPushForm({
               </div>
             ) : (
               <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                Chưa có user Tuya trong danh sách — nhập UID thủ công bên dưới.
+                No Tuya users in the list — enter UIDs manually below.
               </p>
             )}
             <label>
-              Nhập UID thủ công (phẩy / xuống dòng)
+              Enter UIDs manually (comma / newline separated)
               <textarea
                 value={manual}
                 onChange={(e) => setManual(e.target.value)}
@@ -170,7 +170,7 @@ export default function SendPushForm({
               />
             </label>
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-              Đã chọn: <strong>{effectiveUids.length}</strong> người nhận
+              Selected: <strong>{effectiveUids.length}</strong> recipients
             </p>
           </>
         )}
@@ -178,7 +178,7 @@ export default function SendPushForm({
 
       {vars.map((v) => (
         <label key={v}>
-          {`Biến \${${v}}`}
+          {`Variable \${${v}}`}
           <input name={`param.${v}`} required />
         </label>
       ))}
@@ -193,13 +193,13 @@ export default function SendPushForm({
           }}
         >
           {state.failed
-            ? `Đã gửi ${state.success}/${state.total} · ${state.failed} lỗi`
-            : `✅ Đã gửi ${state.success}/${state.total} thành công`}
+            ? `Sent ${state.success}/${state.total} · ${state.failed} failed`
+            : `✅ Sent ${state.success}/${state.total} successfully`}
         </p>
       ) : null}
 
       <button className="primary" type="submit" disabled={pending || !canSend}>
-        {pending ? 'Đang gửi…' : 'Gửi thông báo'}
+        {pending ? 'Sending…' : 'Send notification'}
       </button>
     </form>
   );

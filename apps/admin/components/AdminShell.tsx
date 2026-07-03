@@ -7,9 +7,9 @@ import { logout } from '@/lib/auth';
 
 // Shell dashboard dùng chung (sidebar royal). Active item qua usePathname.
 const NAV = [
-  { href: '/users', label: 'Người dùng Tuya', ico: '❄' },
-  { href: '/admins', label: 'Quản trị viên', ico: '⚜' },
-  { href: '/notifications', label: 'Gửi thông báo', ico: '✉' },
+  { href: '/users', label: 'Tuya users', ico: '❄' },
+  { href: '/admins', label: 'Admins', ico: '⚜' },
+  { href: '/notifications', label: 'Send notifications', ico: '✉' },
   { href: '/notifications/templates', label: 'Template', ico: '▤' },
 ];
 
@@ -34,7 +34,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="sidebar-nav">
-          <div className="nav-group">Quản lý</div>
+          <div className="nav-group">Manage</div>
           {NAV.map((n) => (
             <Link
               key={n.href}
@@ -49,7 +49,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <div className="sidebar-foot">
           <form action={logout}>
             <button type="submit" style={{ width: '100%' }}>
-              Đăng xuất
+              Sign out
             </button>
           </form>
         </div>

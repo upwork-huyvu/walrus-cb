@@ -51,7 +51,7 @@ export async function signInGoogle(): Promise<string> {
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new GoogleSignInError(
       'NO_CONFIG',
-      'Chưa cấu hình Google Web Client ID (type WEB) trong src/config/google.ts — xem docs/research/tuya-google-login.md.',
+      'Google Web Client ID (type WEB) is not configured in src/config/google.ts — see docs/research/tuya-google-login.md.',
     );
   }
   configureGoogle();
@@ -60,7 +60,7 @@ export async function signInGoogle(): Promise<string> {
     // Android cần Google Play services (iOS: no-op).
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
   } catch (e: any) {
-    throw new GoogleSignInError('PLAY_SERVICES', e?.message ?? 'Thiếu Google Play services.');
+    throw new GoogleSignInError('PLAY_SERVICES', e?.message ?? 'Google Play services is unavailable.');
   }
 
   let res: any;
@@ -69,20 +69,20 @@ export async function signInGoogle(): Promise<string> {
   } catch (e: any) {
     const code = e?.code;
     if (statusCodes && (code === statusCodes.SIGN_IN_CANCELLED || code === statusCodes.IN_PROGRESS)) {
-      throw new GoogleSignInError('CANCELLED', 'Đã huỷ đăng nhập Google.');
+      throw new GoogleSignInError('CANCELLED', 'Google sign-in was cancelled.');
     }
     throw new GoogleSignInError('UNKNOWN', e?.message ?? String(e));
   }
 
   // v13+: signIn trả { type: 'success' | 'cancelled', data }. Huỷ = type !== 'success'.
   if (res?.type && res.type !== 'success') {
-    throw new GoogleSignInError('CANCELLED', 'Đã huỷ đăng nhập Google.');
+    throw new GoogleSignInError('CANCELLED', 'Google sign-in was cancelled.');
   }
   const idToken: string | null = res?.data?.idToken ?? res?.idToken ?? null;
   if (!idToken) {
     throw new GoogleSignInError(
       'NO_ID_TOKEN',
-      'Google không trả idToken — kiểm tra webClientId phải type WEB. Xem docs/research/tuya-google-login.md.',
+      'Google did not return an idToken — make sure webClientId is of type WEB. See docs/research/tuya-google-login.md.',
     );
   }
   return idToken;

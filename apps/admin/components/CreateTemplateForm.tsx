@@ -18,15 +18,15 @@ export default function CreateTemplateForm() {
   return (
     <form action={formAction} className="card" style={{ width: '100%', maxWidth: 520 }}>
       <label>
-        Tên (≤30, nội bộ)
+        Name (≤30, internal)
         <input name="name" maxLength={30} required />
       </label>
       <label>
-        {`Tiêu đề (≤40, cho phép biến \${var})`}
+        {`Title (≤40, variables \${var} allowed)`}
         <input name="title" maxLength={40} required />
       </label>
       <label>
-        {`Nội dung (≤100, cho phép biến \${var})`}
+        {`Content (≤100, variables \${var} allowed)`}
         <textarea
           name="content"
           maxLength={100}
@@ -41,26 +41,26 @@ export default function CreateTemplateForm() {
         />
       </label>
       <label>
-        Loại
+        Type
         <select name="type" defaultValue="0">
           <option value="0">0 — operations message</option>
           <option value="1">1 — system message</option>
         </select>
       </label>
       <label>
-        Ghi chú duyệt (≤100)
+        Review note (≤100)
         <input name="remark" maxLength={100} required />
       </label>
 
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
         <p style={{ color: 'var(--success)', fontSize: 13, margin: 0 }}>
-          ✅ Đã tạo {state.templateId ?? ''} — chờ Tuya duyệt (≤2 ngày làm việc)
+          ✅ Created {state.templateId ?? ''} — awaiting Tuya review (≤2 business days)
         </p>
       ) : null}
 
       <button className="primary" type="submit" disabled={pending}>
-        {pending ? 'Đang tạo…' : 'Tạo template'}
+        {pending ? 'Creating…' : 'Create template'}
       </button>
     </form>
   );

@@ -32,7 +32,7 @@ export default function DashboardScreen({ state, navigate, devId }: Props) {
           {/* Header: back + title */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 36, marginBottom: 28 }}>
             <Pressable onPress={() => navigate('device-list')} hitSlop={12}>
-              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 14, letterSpacing: 0.5 }}>← Thiết bị</Text>
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 14, letterSpacing: 0.5 }}>← Devices</Text>
             </Pressable>
             <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 13, letterSpacing: 3 }}>DASHBOARD</Text>
             <View style={{ width: 52 }} />
@@ -58,7 +58,7 @@ export default function DashboardScreen({ state, navigate, devId }: Props) {
               {/* ── Nghi thức (ritual) — gộp vào device detail theo IA mới ── */}
               <View style={{ marginTop: 20 }}>
                 <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 3, marginBottom: 12 }}>
-                  NGHI THỨC
+                  RITUAL
                 </Text>
                 <Pressable
                   onPress={() => navigate('session')}
@@ -77,7 +77,7 @@ export default function DashboardScreen({ state, navigate, devId }: Props) {
                     onPress={() => navigate('progress')}
                     style={{ flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 14, alignItems: 'center' }}
                   >
-                    <Text style={{ fontFamily: F.body, color: C.white, fontSize: 14 }}>Tiến trình</Text>
+                    <Text style={{ fontFamily: F.body, color: C.white, fontSize: 14 }}>Progress</Text>
                   </Pressable>
                 </View>
               </View>
@@ -94,7 +94,7 @@ export default function DashboardScreen({ state, navigate, devId }: Props) {
                 Pair your Walrus
               </Text>
               <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 1, textAlign: 'center', marginBottom: 20 }}>
-                Chưa có thiết bị nào được kết nối.
+                No device connected yet.
               </Text>
               <Pressable
                 onPress={() => navigate('pairing')}

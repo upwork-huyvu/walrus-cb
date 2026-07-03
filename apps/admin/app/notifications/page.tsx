@@ -18,7 +18,7 @@ export default async function NotificationsPage() {
     const data = await apiGet<TemplateList>('/notifications/templates');
     templates = Array.isArray(data) ? data : data.list ?? [];
   } catch (e) {
-    loadError = e instanceof Error ? e.message : 'Không tải được template';
+    loadError = e instanceof Error ? e.message : 'Failed to load templates';
   }
 
   // Danh sách user Tuya làm nguồn multi-select (lỗi thì bỏ qua — vẫn nhập UID thủ công được).
@@ -37,17 +37,17 @@ export default async function NotificationsPage() {
     <main>
       <div className="bar">
         <div>
-          <h1 className="page-title">Gửi thông báo</h1>
+          <h1 className="page-title">Send notifications</h1>
           <p className="page-sub">
-            Tuya Cloud App Push · chọn template đã duyệt → chọn người nhận (nhiều user / tất cả) → gửi
+            Tuya Cloud App Push · pick an approved template → choose recipients (multiple users / all) → send
           </p>
         </div>
-        <Link href="/notifications/templates">Quản lý template →</Link>
+        <Link href="/notifications/templates">Manage templates →</Link>
       </div>
 
       {loadError ? (
         <p className="error">
-          Lỗi tải template: {loadError}. Kiểm tra backend đang chạy + đã subscribe &amp; tạo template.
+          Failed to load templates: {loadError}. Check that the backend is running and you have subscribed &amp; created templates.
         </p>
       ) : null}
 

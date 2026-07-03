@@ -4,11 +4,11 @@ import { describeTuyaError, extractCode, extractDomain } from './tuyaError';
 const fakeClassifier = {
   describe: (code: string | number, _domain?: string) => {
     const map: Record<string, string> = {
-      '-60': '[sdk:-60] Mất kết nối realtime (MQTT) — thử lại.',
-      '-10001': '[sdk:-10001] Thiết bị offline/không kết nối.',
-      '-1400': '[sdk:-1400] DP không hỗ trợ hoặc sai kiểu/giá trị.',
+      '-60': '[sdk:-60] Realtime (MQTT) connection lost — try again.',
+      '-10001': '[sdk:-10001] Device is offline/not connected.',
+      '-1400': '[sdk:-1400] DP not supported or invalid type/value.',
     };
-    return map[String(code)] ?? `[sdk:${code}] Lỗi không xác định.`;
+    return map[String(code)] ?? `[sdk:${code}] Unknown error.`;
   },
   classify: (code: string | number) => ({ retryable: String(code) === '-60' }),
 };
@@ -35,7 +35,7 @@ describe('tuyaError.describeTuyaError', () => {
   it('có classifier + code → message đã bỏ tiền tố + cờ retryable', () => {
     const r = describeTuyaError({ code: '-60', domain: 'sdk' }, { classifier: fakeClassifier });
     expect(r.code).toBe('-60');
-    expect(r.message).toBe('Mất kết nối realtime (MQTT) — thử lại.'); // bỏ "[sdk:-60] "
+    expect(r.message).toBe('Realtime (MQTT) connection lost — try again.'); // bỏ "[sdk:-60] "
     expect(r.retryable).toBe(true);
   });
 
@@ -47,6 +47,6 @@ describe('tuyaError.describeTuyaError', () => {
 
   it('không có classifier (dev/native vắng) → message thô / fallback', () => {
     expect(describeTuyaError(new Error('raw native msg'), { classifier: null }).message).toBe('raw native msg');
-    expect(describeTuyaError({}, { classifier: null }).message).toBe('Có lỗi khi liên lạc với thiết bị. Vui lòng thử lại.');
+    expect(describeTuyaError({}, { classifier: null }).message).toBe('Unable to reach the device. Please try again.');
   });
 });

@@ -12,11 +12,11 @@ function load(nativeTuya: any | null) {
 describe('pairingStepLabel — nhãn confirm kiểu SmartLife', () => {
   const p = load(null);
   it.each([
-    ['device_find', 'Đang tìm thiết bị…'],
-    ['ble_connect', 'Đang kết nối thiết bị…'],
-    ['device_bind_success', 'Kết nối thành công'],
-    ['initializing', 'Đang khởi tạo…'],
-    ['something_unknown', 'Đang ghép nối…'],
+    ['device_find', 'Searching for device…'],
+    ['ble_connect', 'Connecting to device…'],
+    ['device_bind_success', 'Connected'],
+    ['initializing', 'Initializing…'],
+    ['something_unknown', 'Pairing…'],
   ])('%s → %s', (step, label) => {
     expect(p.pairingStepLabel(step)).toBe(label);
   });

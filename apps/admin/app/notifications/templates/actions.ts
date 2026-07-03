@@ -22,10 +22,10 @@ export async function createTemplateAction(
   const remark = String(formData.get('remark') ?? '').trim();
 
   if (!name || !title || !content || !remark) {
-    return { error: 'Điền đủ name / title / content / remark.' };
+    return { error: 'Fill in name / title / content / remark.' };
   }
   if (type !== 0 && type !== 1) {
-    return { error: 'Loại template phải là 0 (operations) hoặc 1 (system).' };
+    return { error: 'Template type must be 0 (operations) or 1 (system).' };
   }
 
   const res = await apiFetch('/notifications/templates', {
@@ -36,7 +36,7 @@ export async function createTemplateAction(
     redirect('/login');
   }
   if (!res.ok) {
-    return { error: `Tạo template thất bại: ${res.status}` };
+    return { error: `Failed to create template: ${res.status}` };
   }
   const data = (await res.json()) as { template_id?: string };
   revalidatePath('/notifications/templates');

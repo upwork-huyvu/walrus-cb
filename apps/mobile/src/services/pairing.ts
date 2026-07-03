@@ -148,15 +148,15 @@ export async function renameDevice(devId: string, name: string): Promise<void> {
 // Map các "step" kỹ thuật từ onPairingProgress → nhãn tiếng Việt kiểu SmartLife (searching→found→…).
 export function pairingStepLabel(step: string): string {
   const s = step.toLowerCase();
-  if (s.includes('start')) return 'Đang bắt đầu…';
-  if (s.includes('scan') || s.includes('find')) return 'Đang tìm thiết bị…';
-  if (s.includes('found') || s.includes('discover')) return 'Đã tìm thấy thiết bị';
-  if (s.includes('ble') || s.includes('connect')) return 'Đang kết nối thiết bị…';
+  if (s.includes('start')) return 'Starting…';
+  if (s.includes('scan') || s.includes('find')) return 'Searching for device…';
+  if (s.includes('found') || s.includes('discover')) return 'Device found';
+  if (s.includes('ble') || s.includes('connect')) return 'Connecting to device…';
   if (s.includes('register') || s.includes('active') || s.includes('bind') && !s.includes('success'))
-    return 'Đang đăng ký lên cloud…';
-  if (s.includes('init')) return 'Đang khởi tạo…';
-  if (s.includes('bind_success') || s.includes('success')) return 'Kết nối thành công';
-  return 'Đang ghép nối…';
+    return 'Registering with the cloud…';
+  if (s.includes('init')) return 'Initializing…';
+  if (s.includes('bind_success') || s.includes('success')) return 'Connected';
+  return 'Pairing…';
 }
 
 // --- Error mô tả (dùng TuyaErrors của lib nếu có) ---

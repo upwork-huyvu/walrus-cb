@@ -17,12 +17,12 @@ export async function login(
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
   if (!email || !password) {
-    return { error: 'Điền đủ email và mật khẩu.' };
+    return { error: 'Enter both email and password.' };
   }
 
   const apiBase = process.env.API_BASE_URL;
   if (!apiBase) {
-    return { error: 'Thiếu cấu hình API_BASE_URL trên server.' };
+    return { error: 'Missing API_BASE_URL config on the server.' };
   }
 
   const res = await fetch(`${apiBase}/admin/auth/login`, {
@@ -33,7 +33,7 @@ export async function login(
   });
   if (!res.ok) {
     return {
-      error: 'Sai email hoặc mật khẩu, hoặc tài khoản không có quyền admin.',
+      error: 'Incorrect email or password, or the account lacks admin access.',
     };
   }
   const data = (await res.json()) as LoginResponse;

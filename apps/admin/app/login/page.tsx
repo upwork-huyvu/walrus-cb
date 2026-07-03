@@ -20,13 +20,13 @@ export default function LoginPage() {
             <small>Admin</small>
           </div>
         </div>
-        <h1 style={{ margin: 0, fontSize: 24 }}>Đăng nhập</h1>
+        <h1 style={{ margin: 0, fontSize: 24 }}>Sign in</h1>
         <label>
           Email
           <input name="email" type="email" autoComplete="username" required />
         </label>
         <label>
-          Mật khẩu
+          Password
           <input
             name="password"
             type="password"
@@ -36,7 +36,7 @@ export default function LoginPage() {
         </label>
         {state.error ? <p className="error">{state.error}</p> : null}
         <button className="primary" type="submit" disabled={pending}>
-          {pending ? 'Đang đăng nhập…' : 'Đăng nhập'}
+          {pending ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </main>

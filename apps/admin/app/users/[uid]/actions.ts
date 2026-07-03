@@ -11,7 +11,7 @@ export async function deleteUser(uid: string): Promise<void> {
     redirect('/login');
   }
   if (!res.ok) {
-    throw new Error(`Xoá user thất bại: ${res.status}`);
+    throw new Error(`Failed to delete user: ${res.status}`);
   }
   revalidatePath('/users');
   redirect('/users');

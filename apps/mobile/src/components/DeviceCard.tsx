@@ -57,7 +57,7 @@ export default function DeviceCard({ state }: { state: AppState }) {
             onPress={state.retry}
             style={{ borderWidth: 1, borderColor: C.ochre, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 24 }}
           >
-            <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 13, letterSpacing: 0.5 }}>Thử lại</Text>
+            <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 13, letterSpacing: 0.5 }}>Try again</Text>
           </Pressable>
         </View>
       ) : (
@@ -89,7 +89,7 @@ export default function DeviceCard({ state }: { state: AppState }) {
               <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 6 }}>TARGET</Text>
               <Text style={{ fontFamily: F.headline, color: C.ochre, fontSize: 26 }}>{formatTemp(target, range)}</Text>
               {state.pendingTarget != null && (
-                <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 9, marginTop: 2 }}>đang gửi…</Text>
+                <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 9, marginTop: 2 }}>sending…</Text>
               )}
             </Pressable>
 
@@ -135,7 +135,7 @@ export default function DeviceCard({ state }: { state: AppState }) {
               textAlign: 'center',
             }}
           >
-            {offline ? 'THIẾT BỊ OFFLINE' : 'ECO MODE ACTIVE'}
+            {offline ? 'DEVICE OFFLINE' : 'ECO MODE ACTIVE'}
           </Text>
         </View>
       )}

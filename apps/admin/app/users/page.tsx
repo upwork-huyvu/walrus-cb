@@ -35,9 +35,9 @@ export default async function UsersPage({
   return (
     <main>
       <div style={{ marginBottom: 16 }}>
-        <h1 className="page-title">Người dùng Tuya</h1>
+        <h1 className="page-title">Tuya users</h1>
         <p className="page-sub">
-          Nguồn: Tuya Cloud (end-user đăng ký qua app) · ghép business data từ Supabase
+          Source: Tuya Cloud (end users registered via the app) · merged with business data from Supabase
         </p>
       </div>
 
@@ -47,8 +47,8 @@ export default async function UsersPage({
             <th>UID</th>
             <th>Username</th>
             <th>Email</th>
-            <th>Quốc gia</th>
-            <th>Thiết bị (DB)</th>
+            <th>Country</th>
+            <th>Devices (DB)</th>
             <th></th>
           </tr>
         </thead>
@@ -56,7 +56,7 @@ export default async function UsersPage({
           {data.list.length === 0 ? (
             <tr>
               <td colSpan={6} className="muted">
-                Chưa có user Tuya — kiểm tra backend đang chạy + đã set TUYA_APP_SCHEMA / Tuya Cloud creds.
+                No Tuya users yet — check that the backend is running and TUYA_APP_SCHEMA / Tuya Cloud creds are set.
               </td>
             </tr>
           ) : (
@@ -68,7 +68,7 @@ export default async function UsersPage({
                 <td>{u.country_code ?? '—'}</td>
                 <td>{u.business?.deviceCount ?? 0}</td>
                 <td>
-                  <Link href={`/users/${u.uid}`}>Chi tiết</Link>
+                  <Link href={`/users/${u.uid}`}>Details</Link>
                 </td>
               </tr>
             ))
@@ -78,17 +78,17 @@ export default async function UsersPage({
 
       <div className="pager">
         {page > 1 ? (
-          <Link href={`/users?page=${page - 1}`}>← Trước</Link>
+          <Link href={`/users?page=${page - 1}`}>← Prev</Link>
         ) : (
-          <span className="muted">← Trước</span>
+          <span className="muted">← Prev</span>
         )}
-        <span className="muted">Trang {page}</span>
+        <span className="muted">Page {page}</span>
         {data.has_more ? (
-          <Link href={`/users?page=${page + 1}`}>Sau →</Link>
+          <Link href={`/users?page=${page + 1}`}>Next →</Link>
         ) : (
-          <span className="muted">Sau →</span>
+          <span className="muted">Next →</span>
         )}
-        <span className="muted">· Tổng {data.total}</span>
+        <span className="muted">· Total {data.total}</span>
       </div>
     </main>
   );

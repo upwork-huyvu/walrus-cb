@@ -28,8 +28,8 @@ export default async function UserDetailPage({
   return (
     <main>
       <div className="bar">
-        <h1 style={{ margin: 0, fontSize: 22 }}>Chi tiết user Tuya</h1>
-        <Link href="/users">← Danh sách</Link>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Tuya user details</h1>
+        <Link href="/users">← Back to list</Link>
       </div>
 
       <dl className="detail">
@@ -43,9 +43,9 @@ export default async function UserDetailPage({
         <dd>{u.email ?? '—'}</dd>
         <dt>Mobile</dt>
         <dd>{u.mobile ?? '—'}</dd>
-        <dt>Quốc gia</dt>
+        <dt>Country</dt>
         <dd>{u.country_code ?? '—'}</dd>
-        <dt>Thiết bị (business data)</dt>
+        <dt>Devices (business data)</dt>
         <dd>
           {devices.length === 0
             ? '—'

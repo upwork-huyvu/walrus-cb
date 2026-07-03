@@ -15,7 +15,7 @@ export async function deleteAdmin(id: string): Promise<{ error?: string }> {
   }
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { message?: string } | null;
-    return { error: body?.message ?? `Gỡ admin thất bại (${res.status})` };
+    return { error: body?.message ?? `Failed to remove admin (${res.status})` };
   }
   revalidatePath('/admins');
   return {};

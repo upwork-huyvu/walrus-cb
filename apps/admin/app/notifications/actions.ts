@@ -23,7 +23,7 @@ export async function sendPushAction(
   const templateId = String(formData.get('templateId') ?? '').trim();
   const all = String(formData.get('mode') ?? 'select') === 'all';
   if (!templateId) {
-    return { error: 'Thiếu template.' };
+    return { error: 'Template is required.' };
   }
 
   let uids: string[] = [];
@@ -35,7 +35,7 @@ export async function sendPushAction(
       uids = [];
     }
     if (uids.length === 0) {
-      return { error: 'Chọn ít nhất 1 người nhận (hoặc chọn "Gửi tất cả").' };
+      return { error: 'Select at least one recipient (or choose "Send to all").' };
     }
   }
 
@@ -60,7 +60,7 @@ export async function sendPushAction(
   }
   if (!res.ok) {
     const b = (await res.json().catch(() => null)) as { message?: string } | null;
-    return { error: b?.message ?? `Gửi thất bại: ${res.status}` };
+    return { error: b?.message ?? `Send failed: ${res.status}` };
   }
   const data = (await res.json()) as {
     total?: number;
