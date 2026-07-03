@@ -30,6 +30,7 @@ export const envSchema = z.object({
   TUYA_ACCESS_SECRET: z.string().min(1).optional(), // = secret, SERVER-ONLY
   TUYA_APP_SCHEMA: z.string().min(1).optional(), // channel của App SDK (cho list users)
   TUYA_APP_BIZ_TYPE: z.coerce.number().int().optional(), // biz_type định danh app (App Push Notification); lấy từ Cloud Platform sau khi subscribe
+  TUYA_APP_TEMPLATE_ID: z.string().min(1).optional(), // template app-push đã duyệt (biến ${title}/${content}) — cho gửi free-form
 
   // --- Cron nội bộ (Vercel Cron gọi endpoint retry delete_jobs) ---
   CRON_SECRET: z.string().min(1).optional(), // SERVER-ONLY

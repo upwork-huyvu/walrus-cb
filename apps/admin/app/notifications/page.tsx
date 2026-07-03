@@ -25,7 +25,7 @@ export default async function NotificationsPage() {
         <div>
           <h1 className="page-title">Send notifications</h1>
           <p className="page-sub">
-            Enter a title + description → choose recipients (multiple users / all) → send via FCM (no template needed)
+            Enter a title + description → choose recipients (multiple users / all) → send via Tuya App Push
           </p>
         </div>
       </div>

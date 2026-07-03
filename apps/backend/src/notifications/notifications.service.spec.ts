@@ -53,11 +53,10 @@ describe('NotificationsService (Tuya Cloud App Push)', () => {
 
       await service.sendPush({ uids: ['u2'], templateId: 'PUSH_2' });
 
-      expect(tuyaRequest).toHaveBeenCalledWith(
-        expect.objectContaining({
-          body: expect.objectContaining({ template_param: '{}' }),
-        }),
-      );
+      const calls = tuyaRequest.mock.calls as Array<
+        [{ body: { template_param: string } }]
+      >;
+      expect(calls[0][0].body.template_param).toBe('{}');
     });
 
     it('nhiều uid → loop per-uid + tổng hợp thành công', async () => {
@@ -107,6 +106,56 @@ describe('NotificationsService (Tuya Cloud App Push)', () => {
       expect(usersList).toHaveBeenCalledTimes(2);
       expect(tuyaRequest).toHaveBeenCalledTimes(3);
       expect(res).toMatchObject({ total: 3, success: 3 });
+    });
+  });
+
+  describe('sendAppPush (free-form → template ${title}/${content})', () => {
+    beforeEach(() => {
+      configRequire.mockImplementation((key: string) =>
+        key === 'TUYA_APP_TEMPLATE_ID' ? 'PUSH_CFG' : 10,
+      );
+    });
+
+    it('map title/body vào template_param + dùng template_id từ env', async () => {
+      tuyaRequest.mockResolvedValue({ send_status: true });
+
+      const res = await service.sendAppPush({
+        uids: ['u1'],
+        title: 'Nhắc dọn',
+        body: 'Đã đến lúc vệ sinh bồn.',
+      });
+
+      expect(res).toMatchObject({ total: 1, success: 1, failed: 0 });
+      expect(tuyaRequest).toHaveBeenCalledWith({
+        method: 'POST',
+        path: '/v1.0/iot-03/messages/app-notifications/actions/push',
+        body: {
+          uid: 'u1',
+          biz_type: 10,
+          template_id: 'PUSH_CFG',
+          template_param: JSON.stringify({
+            title: 'Nhắc dọn',
+            content: 'Đã đến lúc vệ sinh bồn.',
+          }),
+        },
+      });
+    });
+
+    it('all=true → enumerate rồi gửi từng uid', async () => {
+      usersList.mockResolvedValueOnce({
+        list: [{ uid: 'p1' }, { uid: 'p2' }],
+        has_more: false,
+      });
+      tuyaRequest.mockResolvedValue({ send_status: true });
+
+      const res = await service.sendAppPush({
+        all: true,
+        title: 'T',
+        body: 'B',
+      });
+
+      expect(tuyaRequest).toHaveBeenCalledTimes(2);
+      expect(res).toMatchObject({ total: 2, success: 2 });
     });
   });
 

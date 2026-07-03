@@ -4,6 +4,7 @@ import { TuyaCloudService } from '../tuya/tuya-cloud.service';
 import { UsersService } from '../users/users.service';
 import type { CreateTemplateDto } from './dto/create-template.dto';
 import type { SendPushDto } from './dto/send-push.dto';
+import type { SendAppPushDto } from './dto/send-app-push.dto';
 import type {
   PushBatchResult,
   PushResultItem,
@@ -78,6 +79,20 @@ export class NotificationsService {
       failed: uids.length - success,
       results,
     };
+  }
+
+  /**
+   * Gửi thông báo FREE-FORM (tên + mô tả) qua Tuya App Push, dùng template đã duyệt
+   * (TUYA_APP_TEMPLATE_ID) với biến `${title}`/`${content}`. Tái dùng sendPush (per-uid loop).
+   */
+  async sendAppPush(dto: SendAppPushDto): Promise<PushBatchResult> {
+    const templateId = this.config.require('TUYA_APP_TEMPLATE_ID');
+    return this.sendPush({
+      templateId,
+      params: { title: dto.title, content: dto.body },
+      uids: dto.uids,
+      all: dto.all,
+    });
   }
 
   /** Enumerate toàn bộ uid user Tuya (phân trang) cho "gửi tất cả". */

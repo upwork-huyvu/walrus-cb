@@ -12,8 +12,8 @@ export type SendPushState = {
 };
 
 /**
- * Server Action: send a free-form FCM notification (no template) via backend `/push/send`.
- * title + body (description) + data (deep link on tap) + recipients (uids JSON / all).
+ * Server Action: send a free-form notification via Tuya App Push (backend `/notifications/send`).
+ * title + body (description) map to the approved template's ${title}/${content}. Recipients: uids / all.
  * Backend sends per-uid → returns {total, success, failed}.
  */
 export async function sendPushAction(
@@ -41,19 +41,11 @@ export async function sendPushAction(
     }
   }
 
-  // Optional deep-link data on tap.
-  const data: Record<string, string> = {};
-  const screen = String(formData.get('screen') ?? '').trim();
-  const devId = String(formData.get('devId') ?? '').trim();
-  if (screen) data.screen = screen;
-  if (devId) data.devId = devId;
-
   const payload: Record<string, unknown> = { title, body };
-  if (Object.keys(data).length > 0) payload.data = data;
   if (all) payload.all = true;
   else payload.uids = uids;
 
-  const res = await apiFetch('/push/send', {
+  const res = await apiFetch('/notifications/send', {
     method: 'POST',
     body: JSON.stringify(payload),
   });

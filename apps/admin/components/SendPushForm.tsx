@@ -8,15 +8,14 @@ export type Recipient = { uid: string; label: string };
 const initialState: SendPushState = {};
 
 /**
- * Free-form FCM notification form (no template): title + body + config
- * (recipients + tap-routing data). Recipients: pick from list / manual UIDs / send to all.
+ * Free-form notification form: title + description + recipients. Sends via Tuya App Push —
+ * title/description map to the approved template's ${title}/${content}. No template picker.
  */
 export default function SendPushForm({ recipients }: { recipients: Recipient[] }) {
   const [state, formAction, pending] = useActionState(sendPushAction, initialState);
   const [mode, setMode] = useState<'select' | 'all'>('select');
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [manual, setManual] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const manualUids = useMemo(
     () =>
@@ -50,14 +49,14 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="uids" value={JSON.stringify(effectiveUids)} />
 
-      {/* Free-form content */}
+      {/* Free-form content (mapped to template ${title}/${content}) */}
       <label>
         Title
-        <input name="title" required maxLength={100} placeholder="e.g. Time to clean your tub" />
+        <input name="title" required maxLength={40} placeholder="e.g. Time to clean your tub" />
       </label>
       <label>
         Description (body)
-        <textarea name="body" required rows={3} maxLength={500} placeholder="Notification text shown to the user…" />
+        <textarea name="body" required rows={3} maxLength={100} placeholder="Notification text shown to the user…" />
       </label>
 
       {/* Recipients */}
@@ -75,7 +74,7 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
 
         {mode === 'all' ? (
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            ⚠️ Sends to <strong>ALL</strong> users with a registered notification token (FCM). The backend sends one by one.
+            ⚠️ Sends to <strong>ALL</strong> Tuya users — the backend walks the full list and sends one by one.
           </p>
         ) : (
           <>
@@ -110,28 +109,6 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
           </>
         )}
       </div>
-
-      {/* Advanced config: deep-link on tap */}
-      <button
-        type="button"
-        className="ghost"
-        onClick={() => setShowAdvanced((s) => !s)}
-        style={{ alignSelf: 'flex-start', fontSize: 13 }}
-      >
-        {showAdvanced ? '▾' : '▸'} Advanced config (deep link on open)
-      </button>
-      {showAdvanced ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <label>
-            Open screen
-            <input name="screen" placeholder="e.g. device-detail (leave empty to just open the app)" />
-          </label>
-          <label>
-            devId (if opening a device screen)
-            <input name="devId" placeholder="device id" />
-          </label>
-        </div>
-      ) : null}
 
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
