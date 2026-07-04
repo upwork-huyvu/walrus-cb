@@ -40,7 +40,7 @@ import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
 import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
-import { ensureDefaultHome } from './src/services/home';
+import { ensureDefaultHome, type HomeDevice } from './src/services/home';
 import { getIntroSeen } from './src/state/introFlag';
 import {
   onForegroundMessage,
@@ -71,6 +71,7 @@ export default function App() {
   const [homeId, setHomeId] = useState<number | undefined>(undefined);
   const [homeName, setHomeName] = useState('');
   const [activeDevId, setActiveDevId] = useState('');
+  const [lastPairedDevice, setLastPairedDevice] = useState<HomeDevice | undefined>(undefined);
   const [gateError, setGateError] = useState('');
   const [gateNonce, setGateNonce] = useState(0);
   const [isDark, setIsDark] = useState(true);
@@ -172,12 +173,25 @@ export default function App() {
     if (typeof params.homeId === 'number') setHomeId(params.homeId);
     if (typeof params.homeName === 'string') setHomeName(params.homeName);
     if (typeof params.devId === 'string') setActiveDevId(params.devId);
+    if (
+      params.pairedDevice &&
+      typeof params.pairedDevice === 'object' &&
+      'devId' in params.pairedDevice &&
+      typeof params.pairedDevice.devId === 'string'
+    ) {
+      setLastPairedDevice(params.pairedDevice as HomeDevice);
+    }
     setScreen(to);
   };
 
   // Đăng xuất dùng chung (Me → Cấu hình thông tin, và HomeScreen cũ).
   const handleSignOut = () => {
     void auth.signOut();
+    setScreen('auth');
+  };
+
+  const handleDeleteAccount = async () => {
+    await auth.deleteAccount();
     setScreen('auth');
   };
 
@@ -242,7 +256,13 @@ export default function App() {
       break;
     case 'device-list':
       currentScreen = (
-        <DeviceListScreen navigate={navigate} state={state} homeId={homeId} homeName={homeName} />
+        <DeviceListScreen
+          navigate={navigate}
+          state={state}
+          homeId={homeId}
+          homeName={homeName}
+          pairedDevice={lastPairedDevice}
+        />
       );
       break;
     case 'me':
@@ -265,7 +285,17 @@ export default function App() {
       break;
     case 'profile':
       currentScreen = (
-        <ProfileScreen navigate={navigate} state={state} user={auth.user} onSignOut={handleSignOut} />
+        <ProfileScreen
+          navigate={navigate}
+          state={state}
+          user={auth.user}
+          onRefreshUser={auth.refreshUser}
+          onUpdateProfile={auth.updateProfile}
+          onSendIdentityCode={auth.sendIdentityCode}
+          onUpdateIdentity={auth.updateIdentity}
+          onDeleteAccount={handleDeleteAccount}
+          onSignOut={handleSignOut}
+        />
       );
       break;
     case 'change-password':

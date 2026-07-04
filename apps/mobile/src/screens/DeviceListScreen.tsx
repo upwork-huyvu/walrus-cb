@@ -14,17 +14,31 @@ import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getHomeDeviceList, type HomeDevice } from '../services/home';
 
-type Props = { navigate: Navigate; state: AppState; homeId?: number; homeName?: string };
+type Props = {
+  navigate: Navigate;
+  state: AppState;
+  homeId?: number;
+  homeName?: string;
+  pairedDevice?: HomeDevice;
+};
 
 // TAB Thiết bị (landing sau login) — bám layout Tuya SmartLife:
 // trên-trái = chọn nhà (⌂ tên nhà ▾ → Quản lý nhà) · trên-phải = ＋ thêm thiết bị;
 // thân = danh sách thiết bị / empty-state "Thêm thiết bị đầu tiên". Remount → tự refetch.
-export default function DeviceListScreen({ navigate, state, homeId, homeName }: Props) {
+export default function DeviceListScreen({ navigate, state, homeId, homeName, pairedDevice }: Props) {
   const C = useTheme();
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState('');
+
+  const mergePairedDevice = useCallback(
+    (list: HomeDevice[]) => {
+      if (!pairedDevice?.devId) return list;
+      return [pairedDevice, ...list.filter((device) => device.devId !== pairedDevice.devId)];
+    },
+    [pairedDevice],
+  );
 
   const load = useCallback(
     async (isRefresh = false) => {
@@ -33,21 +47,22 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName }: 
       setErr('');
       // Chưa có homeId (điều hướng bất thường) → không gọi native với id=0; hiện empty-state.
       if (homeId == null) {
-        setDevices([]);
+        setDevices(mergePairedDevice([]));
         setLoading(false);
         setRefreshing(false);
         return;
       }
       try {
-        setDevices(await getHomeDeviceList(homeId));
+        setDevices(mergePairedDevice(await getHomeDeviceList(homeId)));
       } catch (e: any) {
+        setDevices(mergePairedDevice([]));
         setErr(e?.message ?? 'Could not load devices');
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [homeId],
+    [homeId, mergePairedDevice],
   );
 
   useEffect(() => {

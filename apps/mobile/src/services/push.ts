@@ -1,5 +1,7 @@
-// Adapter FCM push cho app — Rev 2 (Option A): Tuya = SENDER. App chỉ lấy FCM token rồi đăng ký
-// với TUYA (`registerDevice(token,'fcm')` — bridge TuyaMessage); Tuya đẩy banner qua cert FCM/APNs
+import { Platform } from 'react-native';
+
+// Adapter push cho app — Rev 2 (Option A): Tuya = SENDER. Android đăng ký FCM token với Tuya,
+// iOS đăng ký APNs token với Tuya; Tuya đẩy banner qua cert FCM/APNs
 // đã up console + tự lưu Message Center per-user. KHÔNG còn gọi backend /push/tokens.
 // require-guard @react-native-firebase/messaging + @notifee/react-native (import tĩnh chạm native
 // lúc import → crash khi Metro chưa build native). Native vắng → no-op. Cùng pattern services/tuya.ts.
@@ -61,14 +63,37 @@ export async function getFcmToken(): Promise<string | null> {
   }
 }
 
+type TuyaPushProvider = 'fcm' | 'apns';
+type TuyaPushToken = { token: string; provider: TuyaPushProvider };
+
+async function getTuyaPushToken(): Promise<TuyaPushToken | null> {
+  if (!pushAvailable) return null;
+  try {
+    const messaging = messagingLib();
+    if (Platform.OS === 'ios') {
+      if (typeof messaging.registerDeviceForRemoteMessages === 'function') {
+        await messaging.registerDeviceForRemoteMessages();
+      }
+      const apnsToken =
+        typeof messaging.getAPNSToken === 'function' ? await messaging.getAPNSToken() : null;
+      return apnsToken ? { token: apnsToken, provider: 'apns' } : null;
+    }
+    const token = await getFcmToken();
+    return token ? { token, provider: 'fcm' } : null;
+  } catch (e) {
+    devWarn('getTuyaPushToken', e);
+    return null;
+  }
+}
+
 /** Đăng ký token với Tuya cloud (map với user Tuya ĐANG LOGIN — SDK tự biết, không cần uid). */
-async function registerWithTuya(token: string): Promise<void> {
+async function registerWithTuya(token: string, provider: TuyaPushProvider): Promise<void> {
   if (tuyaLib?.Tuya?.registerDevice == null) return; // bridge/native vắng → no-op
-  await tuyaLib.Tuya.registerDevice(token, 'fcm');
+  await tuyaLib.Tuya.registerDevice(token, provider);
 }
 
 /**
- * Đăng ký push cho phiên đăng nhập: xin quyền → lấy FCM token → registerDevice với Tuya.
+ * Đăng ký push cho phiên đăng nhập: xin quyền → lấy token native → registerDevice với Tuya.
  * Gọi SAU khi login Tuya thành công (Tuya map token với user hiện tại). No-op an toàn khi thiếu native.
  */
 export async function syncPushToken(): Promise<void> {
@@ -76,9 +101,9 @@ export async function syncPushToken(): Promise<void> {
   try {
     const granted = await requestPushPermission();
     if (!granted) return;
-    const token = await getFcmToken();
-    if (!token) return;
-    await registerWithTuya(token);
+    const pushToken = await getTuyaPushToken();
+    if (!pushToken) return;
+    await registerWithTuya(pushToken.token, pushToken.provider);
   } catch (e) {
     devWarn('syncPushToken', e);
   }
@@ -87,9 +112,10 @@ export async function syncPushToken(): Promise<void> {
 /** Lắng nghe token đổi (onTokenRefresh) → đăng ký lại với Tuya. Trả hàm huỷ. */
 export function listenTokenRefresh(): () => void {
   if (!pushAvailable) return () => {};
+  if (Platform.OS === 'ios') return () => {};
   try {
     return messagingLib().onTokenRefresh((token: string) => {
-      registerWithTuya(token).catch((e) => devWarn('onTokenRefresh', e));
+      registerWithTuya(token, 'fcm').catch((e) => devWarn('onTokenRefresh', e));
     });
   } catch (e) {
     devWarn('listenTokenRefresh', e);
@@ -98,12 +124,15 @@ export function listenTokenRefresh(): () => void {
 }
 
 /**
- * Gỡ push khi logout: xoá FCM token local (token cũ thành invalid → Tuya gửi sẽ fail và tự loại).
- * Bridge `unregisterDevice` phía Tuya đang là stub → deleteToken là đủ cho M1.
+ * Gỡ push khi logout: Android xoá FCM token local; iOS clear APNs token trong Tuya SDK.
  */
 export async function removePushToken(): Promise<void> {
   if (!pushAvailable) return;
   try {
+    if (Platform.OS === 'ios') {
+      await tuyaLib?.Tuya?.unregisterDevice?.();
+      return;
+    }
     await messagingLib().deleteToken();
   } catch (e) {
     devWarn('removePushToken', e);

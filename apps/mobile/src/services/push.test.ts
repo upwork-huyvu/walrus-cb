@@ -1,20 +1,31 @@
 export {}; // module scope
 
-// Rev 2 (Option A): token đăng ký với TUYA (registerDevice(token,'fcm')) — không còn backend /push/tokens.
+// Rev 2 (Option A): token đăng ký với TUYA — Android FCM, iOS APNs; không còn backend /push/tokens.
 type LoadOpts = {
   available?: boolean;
+  platform?: 'android' | 'ios';
   requestPermission?: jest.Mock;
   getToken?: jest.Mock;
+  getAPNSToken?: jest.Mock;
+  registerDeviceForRemoteMessages?: jest.Mock;
   registerDevice?: jest.Mock;
+  unregisterDevice?: jest.Mock;
   deleteToken?: jest.Mock;
 };
 
 function load(opts: LoadOpts = {}) {
   jest.resetModules();
+  jest.doMock('react-native', () => ({
+    Platform: { OS: opts.platform ?? 'android' },
+  }));
   const deleteToken = opts.deleteToken ?? jest.fn().mockResolvedValue(undefined);
+  const registerDeviceForRemoteMessages =
+    opts.registerDeviceForRemoteMessages ?? jest.fn().mockResolvedValue(undefined);
   const messagingFn = jest.fn(() => ({
     requestPermission: opts.requestPermission ?? jest.fn().mockResolvedValue(1),
     getToken: opts.getToken ?? jest.fn().mockResolvedValue('fcm-tok'),
+    getAPNSToken: opts.getAPNSToken ?? jest.fn().mockResolvedValue('apns-tok'),
+    registerDeviceForRemoteMessages,
     onTokenRefresh: jest.fn(() => () => {}),
     deleteToken,
   }));
@@ -25,12 +36,13 @@ function load(opts: LoadOpts = {}) {
     default: { requestPermission: jest.fn().mockResolvedValue({}), createChannel: jest.fn(), displayNotification: jest.fn() },
   }));
   const registerDevice = opts.registerDevice ?? jest.fn().mockResolvedValue(undefined);
+  const unregisterDevice = opts.unregisterDevice ?? jest.fn().mockResolvedValue(undefined);
   jest.doMock('@jimmy-vu/react-native-turbo-tuya', () => ({
-    Tuya: { registerDevice },
+    Tuya: { registerDevice, unregisterDevice },
   }));
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
   const mod = require('./push');
-  return { push: mod, registerDevice, deleteToken };
+  return { push: mod, registerDevice, unregisterDevice, deleteToken, registerDeviceForRemoteMessages };
 }
 
 describe('routeFromData (thuần)', () => {
@@ -67,10 +79,23 @@ describe('syncPushToken (→ Tuya registerDevice)', () => {
     expect(registerDevice).not.toHaveBeenCalled();
   });
 
-  it('đủ quyền + có token → registerDevice(token, "fcm") với Tuya', async () => {
+  it('Android đủ quyền + có token → registerDevice(token, "fcm") với Tuya', async () => {
     const { push, registerDevice } = load();
     await push.syncPushToken();
     expect(registerDevice).toHaveBeenCalledWith('fcm-tok', 'fcm');
+  });
+
+  it('iOS đủ quyền + có APNs token → registerDevice(token, "apns") với Tuya', async () => {
+    const { push, registerDevice, registerDeviceForRemoteMessages } = load({ platform: 'ios' });
+    await push.syncPushToken();
+    expect(registerDeviceForRemoteMessages).toHaveBeenCalled();
+    expect(registerDevice).toHaveBeenCalledWith('apns-tok', 'apns');
+  });
+
+  it('iOS chưa có APNs token → không đăng ký Tuya', async () => {
+    const { push, registerDevice } = load({ platform: 'ios', getAPNSToken: jest.fn().mockResolvedValue(null) });
+    await push.syncPushToken();
+    expect(registerDevice).not.toHaveBeenCalled();
   });
 
   it('registerDevice lỗi → nuốt (không throw)', async () => {
@@ -80,10 +105,17 @@ describe('syncPushToken (→ Tuya registerDevice)', () => {
 });
 
 describe('removePushToken (logout)', () => {
-  it('xoá FCM token local (không còn gọi backend)', async () => {
+  it('Android xoá FCM token local (không còn gọi backend)', async () => {
     const { push, deleteToken } = load();
     await push.removePushToken();
     expect(deleteToken).toHaveBeenCalled();
+  });
+
+  it('iOS clear APNs token trong Tuya SDK', async () => {
+    const { push, unregisterDevice, deleteToken } = load({ platform: 'ios' });
+    await push.removePushToken();
+    expect(unregisterDevice).toHaveBeenCalled();
+    expect(deleteToken).not.toHaveBeenCalled();
   });
 
   it('native vắng → no-op', async () => {

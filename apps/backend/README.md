@@ -76,4 +76,5 @@ npm run lint
 - `api/index.ts` = serverless entry; `vercel.json` rewrite mọi route về `/api`.
 - ⚠️ **Cron in-process (`@nestjs/schedule`) KHÔNG chạy trên serverless.** `delete_jobs`
   retry (C2) sẽ dùng **Vercel Cron** hoặc worker riêng.
+- Vercel Hobby chỉ cho cron tối đa hằng ngày, nên `vercel.json` dùng `0 0 * * *`.
 - Set env trên Vercel Project Settings (không commit secret).

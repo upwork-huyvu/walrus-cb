@@ -2111,6 +2111,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNWifi (4.13.6):
+    - React-Core
   - ThingAnnotationFoundation (0.6.1):
     - ThingMachRegister
   - ThingAPMService (0.5.0)
@@ -2526,6 +2528,7 @@ DEPENDENCIES:
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
   - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNSVG (from `../node_modules/react-native-svg`)
+  - RNWifi (from `../node_modules/react-native-wifi-reborn`)
   - ThingSmartCryption (from `./ios_core_sdk`)
   - "TurboTuya (from `../node_modules/@jimmy-vu/react-native-turbo-tuya`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
@@ -2772,6 +2775,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@notifee/react-native"
   RNSVG:
     :path: "../node_modules/react-native-svg"
+  RNWifi:
+    :path: "../node_modules/react-native-wifi-reborn"
   ThingSmartCryption:
     :path: "./ios_core_sdk"
   TurboTuya:
@@ -2881,6 +2886,7 @@ SPEC CHECKSUMS:
   RNGoogleSignin: 0d72ae233fe10522497424748acf00fcc1ed2ee7
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNSVG: 0e52210d4d43165e7e2cf9c890a9848b27e513ac
+  RNWifi: 6669d0fe0f82592d64383d0d4ac1ff888d15f8bc
   ThingAnnotationFoundation: 6d65fed69cfffe1247c06e48e5d4fe005cea075d
   ThingAPMService: 6ed408a268fb2b6ec192a0b5f1306441ff3f1e1b
   ThingBlockKit: f5838a79821f5c5f6c7ddb290c0a0a1509090ffd

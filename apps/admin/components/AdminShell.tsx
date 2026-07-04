@@ -10,13 +10,11 @@ const NAV = [
   { href: '/users', label: 'Tuya users', ico: '❄' },
   { href: '/admins', label: 'Admins', ico: '⚜' },
   { href: '/notifications', label: 'Send notifications', ico: '✉' },
-  { href: '/notifications/templates', label: 'Template', ico: '▤' },
 ];
 
 function activeHref(path: string): string {
   if (path.startsWith('/users')) return '/users';
   if (path.startsWith('/admins')) return '/admins';
-  if (path.startsWith('/notifications/templates')) return '/notifications/templates';
   if (path.startsWith('/notifications')) return '/notifications';
   return '';
 }

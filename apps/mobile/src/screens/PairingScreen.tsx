@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   SafeAreaView,
   ScrollView,
   Text,
@@ -7,6 +8,9 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
@@ -19,6 +23,7 @@ import {
   pairBleWifi,
   startBleScan,
   stopBleScan,
+  stopBleWifi,
   stopWifi,
   onPairingProgress,
   onBleScan,
@@ -29,12 +34,19 @@ import {
   type BleScanItem,
   type Subscription,
 } from '../services/pairing';
-import { getSavedWifi, saveWifi } from '../services/wifiStore';
+import { getSavedWifiList, saveWifi, type SavedWifi } from '../services/wifiStore';
+import {
+  describeWifiScanError,
+  getCurrentWifiSsid,
+  scanWifiNetworks,
+  wifiScanAvailable,
+  type ScannedWifi,
+} from '../services/wifiScanner';
 
 // Luồng theo design 5 màn: intro (confirm cùng Wi-Fi) → searching (radar) → found (Ready to pair)
 // → connecting (checklist 3 bước) → paired (✓ + đặt tên + Go to home). Error riêng.
 // Design không có nhập Wi-Fi/đặt tên nhưng Tuya bắt buộc → giữ, style theo design (label CAPS).
-type Step = 'intro' | 'searching' | 'found' | 'connecting' | 'paired' | 'error';
+type Step = 'intro' | 'prepare' | 'searching' | 'found' | 'connecting' | 'paired' | 'error';
 type WifiMode = 'EZ' | 'AP';
 type Props = { navigate: Navigate; state: AppState; homeId?: number };
 
@@ -47,8 +59,8 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
     ),
   ]);
 }
-const PAIR_TIMEOUT_MS = 130_000;
-const SCAN_TIMEOUT_MS = 60_000;
+const PAIR_TIMEOUT_MS = 120_000;
+const SCAN_TIMEOUT_MS = 120_000;
 
 // 3 bước hiển thị ở màn Connecting (design): map tiến trình pairing thật vào checklist.
 const CONNECT_STEPS = ['Authenticating', 'Syncing settings', 'Finalizing'];
@@ -60,7 +72,13 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const [step, setStep] = useState<Step>('intro');
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [savedWifis, setSavedWifis] = useState<SavedWifi[]>([]);
+  const [scannedWifis, setScannedWifis] = useState<ScannedWifi[]>([]);
+  const [scanningWifi, setScanningWifi] = useState(false);
+  const [wifiScanError, setWifiScanError] = useState('');
   const [wifiMode, setWifiMode] = useState<WifiMode>('EZ'); // EZ mặc định; AP = fallback khi EZ fail
+  const [activePairMode, setActivePairMode] = useState('');
   const [found, setFound] = useState<BleScanItem | null>(null);
   const [connectIdx, setConnectIdx] = useState(0); // bước active trong CONNECT_STEPS
   const [progressStep, setProgressStep] = useState('');
@@ -69,16 +87,34 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const [deviceName, setDeviceName] = useState('');
   const [saving, setSaving] = useState(false);
   const subs = useRef<Subscription[]>([]);
+  const scrollRef = useRef<ScrollView>(null);
+  const radarWave1 = useRef(new Animated.Value(0)).current;
+  const radarWave2 = useRef(new Animated.Value(0)).current;
+  const radarWave3 = useRef(new Animated.Value(0)).current;
+  const connectPulse = useRef(new Animated.Value(0)).current;
+  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const opRef = useRef(0);
+  const foundRef = useRef<BleScanItem | null>(null);
   const stepRef = useRef<Step>('intro');
   stepRef.current = step;
+  foundRef.current = found;
 
-  // Prefill Wi-Fi đã nhớ (local) — chỉ khi user chưa gõ gì.
+  // Prefill Wi-Fi đang kết nối; fallback sang Wi-Fi đã nhớ (local) — chỉ khi user chưa gõ gì.
   useEffect(() => {
     void (async () => {
-      const saved = await getSavedWifi();
-      if (!saved) return;
-      setSsid((cur) => cur || saved.ssid);
-      setPassword((cur) => cur || saved.password);
+      const [current, saved] = await Promise.all([getCurrentWifiSsid(), getSavedWifiList()]);
+      setSavedWifis(saved);
+      if (current) {
+        setSsid((cur) => cur || current);
+        const match = saved.find((item) => item.ssid === current);
+        if (match) setPassword((cur) => cur || match.password);
+        return;
+      }
+      const [first] = saved;
+      if (first) {
+        setSsid((cur) => cur || first.ssid);
+        setPassword((cur) => cur || first.password);
+      }
     })();
   }, []);
 
@@ -99,11 +135,68 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       }),
     ];
     return () => {
+      if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
       subs.current.forEach((s) => s.remove());
       stopWifi();
+      if (foundRef.current?.uuid) stopBleWifi(foundRef.current.uuid);
       stopBleScan();
     };
   }, []);
+
+  useEffect(() => {
+    if (step !== 'searching' && step !== 'connecting') return undefined;
+    radarWave1.setValue(0);
+    radarWave2.setValue(0);
+    radarWave3.setValue(0);
+    connectPulse.setValue(0);
+
+    const wave = (value: Animated.Value, delayMs: number) =>
+      Animated.sequence([
+        Animated.delay(delayMs),
+        Animated.timing(value, {
+          toValue: 1,
+          duration: 1700,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(value, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+        Animated.delay(Math.max(0, 2300 - delayMs - 1700)),
+      ]);
+    const waveLoop = Animated.loop(
+      Animated.parallel([
+        wave(radarWave1, 0),
+        wave(radarWave2, 560),
+        wave(radarWave3, 1120),
+      ]),
+    );
+    const connectLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(connectPulse, {
+          toValue: 1,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(connectPulse, {
+          toValue: 0,
+          duration: 900,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    if (step === 'searching') waveLoop.start();
+    if (step === 'connecting') connectLoop.start();
+    return () => {
+      waveLoop.stop();
+      connectLoop.stop();
+    };
+  }, [connectPulse, radarWave1, radarWave2, radarWave3, step]);
 
   const finishSuccess = (dev: PairedDevice) => {
     setResult(dev);
@@ -114,15 +207,50 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     setErrMsg(describeError(e));
     setStep('error');
   };
+  const persistWifi = async () => {
+    const clean = ssid.trim();
+    if (!clean) return;
+    await saveWifi(clean, password);
+    setSavedWifis(await getSavedWifiList());
+  };
 
-  // "Search for device" (design) = BLE scan; timeout 60s không thấy gì → error + Search again.
-  const startSearch = () => {
-    void saveWifi(ssid.trim(), password); // nhớ Wi-Fi cho lần sau (local)
+  const clearScanTimer = () => {
+    if (!scanTimerRef.current) return;
+    clearTimeout(scanTimerRef.current);
+    scanTimerRef.current = null;
+  };
+
+  const cancelPairing = () => {
+    opRef.current += 1;
+    clearScanTimer();
+    stopBleScan();
+    stopWifi();
+    if (foundRef.current?.uuid) stopBleWifi(foundRef.current.uuid);
+    setProgressStep('');
+    setConnectIdx(0);
+    setActivePairMode('');
+    setStep('intro');
+  };
+
+  const prepareWifiPairing = () => {
+    void persistWifi();
     setFound(null);
+    setActivePairMode(`Wi-Fi ${wifiMode}`);
+    setStep('prepare');
+  };
+
+  // "Search for device" (design) = BLE scan; timeout 120s không thấy gì → error + Search again.
+  const startSearch = () => {
+    const op = ++opRef.current;
+    clearScanTimer();
+    void persistWifi(); // nhớ Wi-Fi cho lần sau (local)
+    setFound(null);
+    setActivePairMode('Bluetooth + Wi-Fi');
     setStep('searching');
     startBleScan(Math.floor(SCAN_TIMEOUT_MS / 1000));
-    setTimeout(() => {
-      if (stepRef.current === 'searching') {
+    scanTimerRef.current = setTimeout(() => {
+      scanTimerRef.current = null;
+      if (opRef.current === op && stepRef.current === 'searching') {
         stopBleScan();
         finishError(new Error('No Walrus devices found — check the device power and Wi-Fi, then try again.'));
       }
@@ -132,28 +260,37 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   // "Connect to this device" → pair BLE + gửi Wi-Fi credentials.
   const connectFound = async () => {
     if (!found) return;
+    const op = ++opRef.current;
+    clearScanTimer();
+    setActivePairMode('Bluetooth + Wi-Fi');
     setConnectIdx(0);
     setProgressStep('connecting');
     setStep('connecting');
     try {
       const hid = await resolveHomeId();
-      finishSuccess(await withTimeout(pairBleWifi(hid, found.uuid, ssid, password), PAIR_TIMEOUT_MS));
+      const dev = await withTimeout(pairBleWifi(hid, found.uuid, ssid, password), PAIR_TIMEOUT_MS);
+      if (opRef.current === op) finishSuccess(dev);
     } catch (e) {
-      finishError(e);
+      if (opRef.current === op) finishError(e);
     }
   };
 
-  // Fallback: pair thẳng qua Wi-Fi (EZ/AP) — không cần search BLE.
+  // Flow chính: pair thẳng qua Wi-Fi (EZ/AP) sau khi user xác nhận thiết bị đã ở đúng pairing mode.
   const runWifi = async () => {
-    void saveWifi(ssid.trim(), password); // nhớ Wi-Fi cho lần sau (local)
+    const op = ++opRef.current;
+    clearScanTimer();
+    void persistWifi(); // nhớ Wi-Fi cho lần sau (local)
+    setFound(null);
+    setActivePairMode(`Wi-Fi ${wifiMode}`);
     setConnectIdx(0);
     setProgressStep(`starting (${wifiMode})`);
     setStep('connecting');
     try {
       const hid = await resolveHomeId();
-      finishSuccess(await withTimeout(pairWifi(hid, wifiMode, ssid, password), PAIR_TIMEOUT_MS));
+      const dev = await withTimeout(pairWifi(hid, wifiMode, ssid, password), PAIR_TIMEOUT_MS);
+      if (opRef.current === op) finishSuccess(dev);
     } catch (e) {
-      finishError(e);
+      if (opRef.current === op) finishError(e);
     }
   };
 
@@ -164,8 +301,9 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       return;
     }
     setSaving(true);
+    const name = deviceName.trim();
+    const displayName = name || result.name || 'Walrus Ice Bath';
     try {
-      const name = deviceName.trim();
       if (name && name !== result.name) await renameDevice(result.devId, name);
     } catch (e) {
       // Đặt tên lỗi không chặn hoàn tất — thiết bị đã pair; đổi tên lại ở detail sau (audit L-2).
@@ -176,7 +314,14 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     }
     await state.connectDevice(result.devId);
     setSaving(false);
-    navigate('device-list', { homeId });
+    navigate('device-list', {
+      homeId,
+      pairedDevice: {
+        ...result,
+        name: displayName,
+        isOnline: true,
+      },
+    });
   };
 
   // ---------- pieces theo design ----------
@@ -213,36 +358,315 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     </View>
   );
 
-  // Vòng tròn lớn giữa màn (searching/connecting/paired).
-  const bigCircle = (inner: ReactNode, ringColor: string) => (
-    <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+  const chooseWifi = (wifi: SavedWifi) => {
+    setSsid(wifi.ssid);
+    setPassword(wifi.password);
+  };
+
+  const chooseScannedWifi = (wifi: ScannedWifi) => {
+    setSsid(wifi.ssid);
+    const saved = savedWifis.find((item) => item.ssid === wifi.ssid);
+    setPassword(saved?.password ?? '');
+  };
+
+  const runWifiScan = async () => {
+    if (!wifiScanAvailable || scanningWifi) return;
+    setScanningWifi(true);
+    setWifiScanError('');
+    try {
+      setScannedWifis(await scanWifiNetworks());
+    } catch (e) {
+      setWifiScanError(describeWifiScanError(e));
+    } finally {
+      setScanningWifi(false);
+    }
+  };
+
+  const signalLabel = (level: number) => {
+    if (level >= -55) return 'Strong';
+    if (level >= -70) return 'Good';
+    return 'Weak';
+  };
+
+  const scrollToWifiInput = (y: number) => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y, animated: true });
+    }, 120);
+  };
+
+  const wifiCard = () => {
+    const hasSsid = ssid.trim().length > 0;
+    return (
       <View
         style={{
-          width: 200,
-          height: 200,
-          borderRadius: 100,
           borderWidth: 1,
           borderColor: C.border,
-          alignItems: 'center',
-          justifyContent: 'center',
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 24,
         }}
       >
-        <View
+        <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 2, marginBottom: 12 }}>
+          WI-FI NETWORK
+        </Text>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12 }}>
+          <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, flex: 1 }}>
+            {wifiScanAvailable
+              ? 'Scan nearby networks, then enter the password.'
+              : 'Use the connected Wi-Fi if detected, or enter the network name.'}
+          </Text>
+          {wifiScanAvailable ? (
+            <Pressable
+              onPress={runWifiScan}
+              disabled={scanningWifi}
+              style={{
+                borderWidth: 1,
+                borderColor: C.ochre,
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                opacity: scanningWifi ? 0.55 : 1,
+              }}
+            >
+              <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>
+                {scanningWifi ? 'Scanning...' : 'Scan'}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {wifiScanError ? (
+          <Text style={{ fontFamily: F.body, color: '#E5484D', fontSize: 12, lineHeight: 18, marginBottom: 12 }}>
+            {wifiScanError}
+          </Text>
+        ) : null}
+
+        {wifiScanAvailable && scannedWifis.length === 0 ? (
+          <View style={{ marginBottom: 18 }}>
+            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginBottom: 10 }}>
+              Nearby networks
+            </Text>
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: C.border,
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 13,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              {scanningWifi ? <ActivityIndicator size="small" color={C.ochre} /> : null}
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, flex: 1 }}>
+                {scanningWifi ? 'Scanning nearby networks...' : 'Tap Scan to show nearby networks.'}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {scannedWifis.length > 0 ? (
+          <View style={{ marginBottom: 18 }}>
+            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginBottom: 10 }}>
+              Nearby networks
+            </Text>
+            <View style={{ gap: 8 }}>
+              {scannedWifis.slice(0, 8).map((wifi) => {
+                const selected = wifi.ssid === ssid.trim();
+                const saved = savedWifis.some((item) => item.ssid === wifi.ssid);
+                return (
+                  <Pressable
+                    key={`${wifi.ssid}-${wifi.bssid}`}
+                    onPress={() => chooseScannedWifi(wifi)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: selected ? C.ochre : C.border,
+                      borderRadius: 12,
+                      paddingHorizontal: 12,
+                      paddingVertical: 11,
+                      backgroundColor: selected ? 'rgba(196,135,58,0.1)' : 'transparent',
+                      gap: 10,
+                    }}
+                  >
+                    <Text style={{ fontFamily: F.body, color: selected ? C.ochre : C.white, fontSize: 13, flex: 1 }}>
+                      {wifi.ssid}
+                    </Text>
+                    {saved ? (
+                      <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11 }}>saved</Text>
+                    ) : null}
+                    <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11 }}>
+                      {signalLabel(wifi.level)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        {savedWifis.length > 0 ? (
+          <View style={{ marginBottom: 18 }}>
+            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginBottom: 10 }}>
+              Choose a saved network
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {savedWifis.map((wifi) => {
+                const selected = wifi.ssid === ssid.trim();
+                return (
+                  <Pressable
+                    key={wifi.ssid}
+                    onPress={() => chooseWifi(wifi)}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: selected ? C.ochre : C.border,
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 9,
+                      backgroundColor: selected ? 'rgba(196,135,58,0.1)' : 'transparent',
+                    }}
+                  >
+                    <Text style={{ fontFamily: F.body, color: selected ? C.ochre : C.white, fontSize: 12 }}>
+                      {wifi.ssid}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        <View style={{ marginBottom: 18 }}>
+          <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginBottom: 8 }}>
+            Network name
+          </Text>
+          <TextInput
+            value={ssid}
+            onChangeText={setSsid}
+            onFocus={() => scrollToWifiInput(280)}
+            placeholder="2.4GHz Wi-Fi name"
+            placeholderTextColor={C.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            selectTextOnFocus={false}
+            style={{
+              fontFamily: F.body,
+              color: C.white,
+              fontSize: 16,
+              padding: 0,
+              paddingBottom: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: hasSsid ? C.ochre : C.border,
+            }}
+          />
+        </View>
+
+        <View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12 }}>Password</Text>
+            <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+              <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>
+                {showPassword ? 'Hide' : 'Show'}
+              </Text>
+            </Pressable>
+          </View>
+          <TextInput
+            value={password}
+            onChangeText={setPassword}
+            onFocus={() => scrollToWifiInput(360)}
+            placeholder="Wi-Fi password"
+            placeholderTextColor={C.muted}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{
+              fontFamily: F.body,
+              color: C.white,
+              fontSize: 16,
+              padding: 0,
+              paddingBottom: 10,
+              borderBottomWidth: 1,
+              borderBottomColor: C.border,
+            }}
+          />
+        </View>
+
+        <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, lineHeight: 17, marginTop: 14 }}>
+          Walrus pairs over a 2.4GHz network. Saved Wi-Fi stays only on this phone.
+        </Text>
+      </View>
+    );
+  };
+
+  const pairingOrb = (mode: 'searching' | 'connecting') => {
+    const waveStyle = (value: Animated.Value) => ({
+      opacity: value.interpolate({
+        inputRange: [0, 0.18, 0.72, 1],
+        outputRange: [0, 0.42, 0.14, 0],
+      }),
+      transform: [
+        {
+          scale: value.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.62, 1.85],
+          }),
+        },
+      ],
+    });
+    const centerScale = radarWave1.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 1.04],
+    });
+    const breatheScale = connectPulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.96, 1.05],
+    });
+    const isSearching = mode === 'searching';
+    return (
+      <View style={{ width: 230, height: 230, alignItems: 'center', justifyContent: 'center' }}>
+        {isSearching
+          ? [radarWave1, radarWave2, radarWave3].map((waveValue, index) => (
+              <Animated.View
+                key={index}
+                style={[
+                  {
+                    position: 'absolute',
+                    width: 126,
+                    height: 126,
+                    borderRadius: 63,
+                    borderWidth: 1.4,
+                    borderColor: C.ochre,
+                  },
+                  waveStyle(waveValue),
+                ]}
+              />
+            ))
+          : null}
+        <Animated.View
           style={{
             width: 88,
             height: 88,
             borderRadius: 44,
             borderWidth: 1.5,
-            borderColor: ringColor,
+            borderColor: C.ochre,
+            backgroundColor: 'rgba(196,135,58,0.08)',
             alignItems: 'center',
             justifyContent: 'center',
+            transform: [{ scale: isSearching ? centerScale : breatheScale }],
           }}
         >
-          {inner}
-        </View>
+          {isSearching ? (
+            <Text style={{ fontSize: 32 }}>📡</Text>
+          ) : (
+            <ActivityIndicator color={C.ochre} />
+          )}
+        </Animated.View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const infoRow = (label: string, value: string, accent = false) => (
     <View
@@ -265,9 +689,14 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <SafeAreaView style={{ flex: 1 }}>
         {/* Back về Device List (chỉ ở màn tĩnh — đang search/connect thì không thoát ngang) */}
-        {(step === 'intro' || step === 'found' || step === 'error') && (
+        {(step === 'intro' || step === 'prepare' || step === 'found' || step === 'error') && (
           <Pressable
             onPress={() => navigate('device-list', { homeId })}
             hitSlop={12}
@@ -278,7 +707,14 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
         )}
 
         <ScrollView
-          contentContainerStyle={{ padding: 28, flexGrow: 1, justifyContent: step === 'intro' || step === 'found' || step === 'error' ? 'flex-start' : 'center' }}
+          ref={scrollRef}
+          contentContainerStyle={{
+            padding: 28,
+            paddingBottom: Platform.OS === 'ios' ? 160 : 120,
+            flexGrow: 1,
+            justifyContent: step === 'intro' || step === 'prepare' || step === 'found' || step === 'error' ? 'flex-start' : 'center',
+          }}
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
         >
           {step === 'intro' && (
@@ -311,28 +747,56 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                     Same Wi-Fi required
                   </Text>
                   <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, lineHeight: 18 }}>
-                    Make sure your phone and Walrus are on the same network before searching.
+                    Put Walrus in pairing mode, then send your 2.4GHz Wi-Fi credentials.
                   </Text>
                 </View>
               </View>
 
-              {/* Tuya cần Wi-Fi credentials để thiết bị join mạng — design không có, giữ + style design */}
-              {field('WI-FI NAME (2.4GHZ)', ssid, setSsid, 'HomeNetwork')}
-              {field('WI-FI PASSWORD', password, setPassword, 'Your Wi-Fi password', true)}
+              {/* Tuya cần Wi-Fi credentials để thiết bị join mạng. Cho chọn mạng đã lưu hoặc nhập mới. */}
+              {wifiCard()}
+
+              <View style={{ marginBottom: 18 }}>
+                <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 2, marginBottom: 10 }}>
+                  PAIRING MODE
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {(['EZ', 'AP'] as WifiMode[]).map((mode) => {
+                    const selected = wifiMode === mode;
+                    return (
+                      <Pressable
+                        key={mode}
+                        onPress={() => setWifiMode(mode)}
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: selected ? C.ochre : C.border,
+                          borderRadius: 14,
+                          padding: 14,
+                          backgroundColor: selected ? 'rgba(196,135,58,0.1)' : 'transparent',
+                        }}
+                      >
+                        <Text style={{ fontFamily: F.body, color: selected ? C.ochre : C.white, fontSize: 14, marginBottom: 5 }}>
+                          {mode}
+                        </Text>
+                        <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, lineHeight: 16 }}>
+                          {mode === 'EZ' ? 'Fast blink setup' : 'Hotspot setup'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
               <View style={{ height: 6 }} />
-              <PrimaryButton label="Search for device" onPress={startSearch} disabled={ssid.trim().length === 0} />
+              <PrimaryButton label={`Continue with ${wifiMode} mode`} onPress={prepareWifiPairing} disabled={ssid.trim().length === 0} />
               <View style={{ height: 6 }} />
 
-              {/* Fallback Wi-Fi EZ/AP (giữ tính năng cũ, thu gọn) */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, marginTop: 10 }}>
-                <Pressable onPress={runWifi} hitSlop={8} disabled={ssid.trim().length === 0}>
+              {/* BLE combo vẫn giữ như một option phụ khi thiết bị hỗ trợ BLE provisioning. */}
+              <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
+                <Pressable onPress={startSearch} hitSlop={8} disabled={ssid.trim().length === 0}>
                   <Text style={{ fontFamily: F.body, color: ssid.trim() ? C.ochre : C.muted, fontSize: 13 }}>
-                    Pair via Wi-Fi ({wifiMode})
+                    Search via Bluetooth instead
                   </Text>
-                </Pressable>
-                <Pressable onPress={() => setWifiMode((m) => (m === 'EZ' ? 'AP' : 'EZ'))} hitSlop={8}>
-                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13 }}>⇄</Text>
                 </Pressable>
               </View>
 
@@ -344,15 +808,86 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
             </>
           )}
 
+          {step === 'prepare' && (
+            <>
+              <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 11, letterSpacing: 3, marginTop: 10, marginBottom: 12 }}>
+                {wifiMode} MODE
+              </Text>
+              <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 30, lineHeight: 38, marginBottom: 12 }}>
+                Put Walrus into{'\n'}pairing mode.
+              </Text>
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, lineHeight: 21, marginBottom: 24 }}>
+                {wifiMode === 'EZ'
+                  ? 'Use EZ when the Wi-Fi indicator is blinking quickly. The app will send your network credentials through the router.'
+                  : 'Use AP when Walrus exposes its own hotspot. Connect this phone to the Walrus hotspot, then return here to start pairing.'}
+              </Text>
+
+              <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 18, marginBottom: 22 }}>
+                <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 2, marginBottom: 14 }}>
+                  BEFORE PAIRING
+                </Text>
+                {(wifiMode === 'EZ'
+                  ? [
+                      'Reset Walrus until the Wi-Fi indicator blinks quickly.',
+                      'Keep this phone connected to the selected 2.4GHz Wi-Fi.',
+                      'Stay near the device until pairing completes.',
+                    ]
+                  : [
+                      'Reset Walrus until the Wi-Fi indicator blinks slowly.',
+                      'Open phone Wi-Fi settings and connect to the Walrus hotspot.',
+                      'Return to this screen and start pairing.',
+                    ]
+                ).map((item, index) => (
+                  <View key={item} style={{ flexDirection: 'row', gap: 12, marginBottom: index === 2 ? 0 : 14 }}>
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: C.ochre,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 11 }}>{index + 1}</Text>
+                    </View>
+                    <Text style={{ fontFamily: F.body, color: C.white, fontSize: 13, lineHeight: 20, flex: 1 }}>
+                      {item}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24 }}>
+                {infoRow('Pairing mode', `Wi-Fi ${wifiMode}`, true)}
+                {infoRow('Network', ssid || '—')}
+                {infoRow('Timeout', '120 seconds')}
+              </View>
+
+              <PrimaryButton label="Start pairing" onPress={runWifi} disabled={ssid.trim().length === 0} />
+              <View style={{ height: 10 }} />
+              <GhostButton label="Back to Wi-Fi details" onPress={() => setStep('intro')} />
+            </>
+          )}
+
           {step === 'searching' && (
             <View style={{ alignItems: 'center' }}>
-              {bigCircle(<Text style={{ fontSize: 30 }}>📡</Text>, C.ochre)}
+              {pairingOrb('searching')}
               <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 26, marginTop: 32 }}>
-                Searching…
+                Searching for Walrus…
               </Text>
               <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 10 }}>
-                Looking for Walrus devices{'\n'}on your network
+                Keep the device powered on and near this phone.{'\n'}Tuya BLE scan is running now.
               </Text>
+              <View style={{ alignSelf: 'stretch', marginTop: 30, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
+                {infoRow('Pairing mode', 'Bluetooth + Wi-Fi', true)}
+                {infoRow('Network', ssid || '—')}
+                {infoRow('Timeout', '120 seconds')}
+              </View>
+              <View style={{ alignSelf: 'stretch', marginTop: 20 }}>
+                <GhostButton label="Cancel" onPress={cancelPairing} />
+              </View>
             </View>
           )}
 
@@ -390,19 +925,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
 
           {step === 'connecting' && (
             <View style={{ alignItems: 'center' }}>
-              <View
-                style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: 44,
-                  borderWidth: 1.5,
-                  borderColor: C.ochre,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <ActivityIndicator color={C.ochre} />
-              </View>
+              {pairingOrb('connecting')}
               <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 26, marginTop: 24 }}>
                 Connecting…
               </Text>
@@ -410,8 +933,14 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 {(found?.name || result?.name || 'Walrus Ice Bath') + ''}
               </Text>
 
+              <View style={{ alignSelf: 'stretch', marginTop: 26, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
+                {infoRow('Pairing mode', activePairMode || `Wi-Fi ${wifiMode}`, true)}
+                {infoRow('Network', ssid || '—')}
+                {infoRow('Timeout', '120 seconds')}
+              </View>
+
               {/* Checklist 3 bước (design màn 4) — nhích theo tiến trình pairing thật */}
-              <View style={{ alignSelf: 'stretch', marginTop: 36, paddingHorizontal: 12 }}>
+              <View style={{ alignSelf: 'stretch', marginTop: 30, paddingHorizontal: 12 }}>
                 {CONNECT_STEPS.map((label, i) => {
                   const done_ = i < connectIdx;
                   const active = i === connectIdx;
@@ -445,6 +974,9 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
               <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, marginTop: 28, textAlign: 'center' }}>
                 {pairingStepLabel(progressStep)} · this can take up to 2 minutes
               </Text>
+              <View style={{ alignSelf: 'stretch', marginTop: 22 }}>
+                <GhostButton label="Cancel" onPress={cancelPairing} />
+              </View>
             </View>
           )}
 
@@ -499,7 +1031,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
             </>
           )}
         </ScrollView>
-      </SafeAreaView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
