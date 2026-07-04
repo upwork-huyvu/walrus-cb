@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AppConfigService } from '../config/app-config.service';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
+import { TuyaAppInfoService } from '../tuya/app-info.service';
 import { UsersService } from '../users/users.service';
 import type { CreateTemplateDto } from './dto/create-template.dto';
 import type { SendPushDto } from './dto/send-push.dto';
@@ -31,6 +32,7 @@ export class NotificationsService {
     private readonly tuya: TuyaCloudService,
     private readonly config: AppConfigService,
     private readonly users: UsersService,
+    private readonly appInfo: TuyaAppInfoService,
   ) {}
 
   /**
@@ -38,7 +40,8 @@ export class NotificationsService {
    * loop tuần tự per-uid + tổng hợp kết quả (không có endpoint batch).
    */
   async sendPush(dto: SendPushDto): Promise<PushBatchResult> {
-    const bizType = this.config.require('TUYA_APP_BIZ_TYPE');
+    // Rev 2: biz_type resolve runtime qua Get App Details (env chỉ còn là override) — xem app-info.service.
+    const bizType = await this.appInfo.getBizType();
     // template_param PHẢI là chuỗi JSON đã escape (không phải object).
     const templateParam = JSON.stringify(dto.params ?? {});
     const uids = dto.all ? await this.allUserUids() : (dto.uids ?? []);
@@ -106,11 +109,20 @@ export class NotificationsService {
     return uids;
   }
 
-  /** Danh sách template (xem id + trạng thái duyệt). */
-  async listTemplates(): Promise<TuyaTemplateList> {
+  /** Danh sách template (id + trạng thái duyệt). Tuya default page_size=10 → mặc định 50, mới nhất trước. */
+  async listTemplates(query?: {
+    page_no?: number;
+    page_size?: number;
+    sort?: number; // 0 asc / 1 desc theo creation time
+  }): Promise<TuyaTemplateList> {
     return this.tuya.request<TuyaTemplateList>({
       method: 'GET',
       path: TEMPLATES_PATH,
+      query: {
+        page_no: query?.page_no ?? 1,
+        page_size: query?.page_size ?? 50,
+        sort: query?.sort ?? 1,
+      },
     });
   }
 

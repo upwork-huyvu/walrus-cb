@@ -4,7 +4,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
 import { DeleteJobsService } from './delete-jobs.service';
 import type { ListUsersQueryDto } from './dto/list-users.query';
-import type { TuyaUserInfo, TuyaUserListResult } from './tuya-user.types';
+import type {
+  TuyaUserDevice,
+  TuyaUserInfo,
+  TuyaUserListResult,
+} from './tuya-user.types';
 
 export type DeletionResult = {
   uid: string;
@@ -38,11 +42,16 @@ export class UsersService {
     });
 
     const list = result.list ?? [];
-    const counts = await this.deviceCounts(list.map((u) => u.uid));
+    const uids = list.map((u) => u.uid);
+    const [counts, infos] = await Promise.all([
+      this.deviceCounts(uids),
+      this.enrichInfos(uids),
+    ]);
 
     return {
       list: list.map((u) => ({
         ...u,
+        ...(infos.get(u.uid) ?? {}),
         business: { deviceCount: counts.get(u.uid) ?? 0 },
       })),
       total: result.total ?? list.length,
@@ -50,6 +59,33 @@ export class UsersService {
       page_no: query.page_no,
       page_size: query.page_size,
     };
+  }
+
+  /**
+   * nick_name/avatar chỉ có ở endpoint detail (/users/{uid}/infos) — list của Tuya không trả.
+   * Gọi song song per-uid (tối đa page_size request); user nào lỗi thì bỏ qua, không chặn list.
+   */
+  private async enrichInfos(
+    uids: string[],
+  ): Promise<Map<string, Pick<TuyaUserInfo, 'nick_name' | 'avatar'>>> {
+    const map = new Map<string, Pick<TuyaUserInfo, 'nick_name' | 'avatar'>>();
+    const settled = await Promise.allSettled(
+      uids.map((uid) =>
+        this.tuya.request<TuyaUserInfo>({
+          method: 'GET',
+          path: `/v1.0/users/${uid}/infos`,
+        }),
+      ),
+    );
+    settled.forEach((s, i) => {
+      if (s.status === 'fulfilled' && s.value) {
+        map.set(uids[i], {
+          nick_name: s.value.nick_name,
+          avatar: s.value.avatar,
+        });
+      }
+    });
+    return map;
   }
 
   /** Chi tiết user (Tuya) + business data (device mappings). */
@@ -62,6 +98,24 @@ export class UsersService {
       ? await this.prisma.deviceMapping.findMany({ where: { tuyaUid: uid } })
       : [];
     return { ...info, business: { deviceMappings } };
+  }
+
+  /**
+   * Thiết bị Tuya của user (GET /v1.0/users/{uid}/devices — result là mảng trực tiếp).
+   * Lược bỏ `local_key` (secret của thiết bị — không bao giờ đưa về admin FE).
+   */
+  async getUserDevices(uid: string): Promise<TuyaUserDevice[]> {
+    const devices = await this.tuya.request<
+      (TuyaUserDevice & { local_key?: string })[]
+    >({
+      method: 'GET',
+      path: `/v1.0/users/${uid}/devices`,
+    });
+    return (devices ?? []).map((d) => {
+      const { local_key, ...rest } = d;
+      void local_key;
+      return rest;
+    });
   }
 
   /** Xoá user: Tuya pre-delete + xoá business data; ghi delete_jobs (retry nếu lỗi). */

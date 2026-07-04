@@ -90,6 +90,8 @@ Khác với App SDK ở trên — đây là **Cloud OpenAPI** (backend gọi, ta
 | List templates (`GET .../msg-templates/app-notifications`) | ✅ https://developer.tuya.com/en/docs/cloud/d42a2cefb7?id=Kaio7tuala794 |
 | Subscription & Template (subscribe product + duyệt ≤2 ngày, biz_type) | ✅ https://developer.tuya.com/en/docs/iot/app-push-notification?id=Kaiuyyn5po2kw |
 | Configure Placeholders (`${var}` / `${dp**}`) | ✅ https://developer.tuya.com/en/docs/iot/message-push-Placeholder?id=Kby77w6kmpfdt |
+| **Duyệt template** (status 0/1/2, verify_reason; lý do & chiến thuật) → note [tuya-push-template-approval.md](../../../docs/research/tuya-push-template-approval.md) | ✅ (các trang trên, fetch lại 2026-07-04) |
+| Configure Push Notification — alarm THIẾT BỊ trên console (auto-approve nếu dùng template Tuya gợi ý, ~1 ngày; KHÁC App Push API) | ✅ https://developer.tuya.com/en/docs/iot/alarm?id=K93ixsmlff32o |
 
 ## How to find a deep page you don't have
 `WebSearch` with `allowed_domains: ["developer.tuya.com"]`, e.g.

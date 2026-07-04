@@ -1,11 +1,12 @@
-// Adapter FCM push cho app. require-guard @react-native-firebase/messaging + @notifee/react-native
-// (import tĩnh sẽ chạm native module lúc import → crash khi Metro chưa build native). Native vắng → no-op,
-// để UI/dev chạy được. Cùng pattern services/tuya.ts.
-import { Platform } from 'react-native';
-import { registerPushToken, unregisterPushToken, type Platform as ApiPlatform } from './api';
+// Adapter FCM push cho app — Rev 2 (Option A): Tuya = SENDER. App chỉ lấy FCM token rồi đăng ký
+// với TUYA (`registerDevice(token,'fcm')` — bridge TuyaMessage); Tuya đẩy banner qua cert FCM/APNs
+// đã up console + tự lưu Message Center per-user. KHÔNG còn gọi backend /push/tokens.
+// require-guard @react-native-firebase/messaging + @notifee/react-native (import tĩnh chạm native
+// lúc import → crash khi Metro chưa build native). Native vắng → no-op. Cùng pattern services/tuya.ts.
 
 let messagingLib: any = null;
 let notifeeLib: any = null;
+let tuyaLib: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
   messagingLib = require('@react-native-firebase/messaging').default;
@@ -18,11 +19,15 @@ try {
 } catch {
   notifeeLib = null;
 }
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+  tuyaLib = require('@jimmy-vu/react-native-turbo-tuya');
+} catch {
+  tuyaLib = null;
+}
 
 /** true khi native FCM có mặt (đã build native). Dev/Metro chưa build → false → no-op. */
 export const pushAvailable: boolean = messagingLib != null;
-
-const platform: ApiPlatform = Platform.OS === 'ios' ? 'ios' : 'android';
 
 function devWarn(where: string, e: unknown): void {
   if (typeof __DEV__ !== 'undefined' && __DEV__) {
@@ -56,29 +61,35 @@ export async function getFcmToken(): Promise<string | null> {
   }
 }
 
+/** Đăng ký token với Tuya cloud (map với user Tuya ĐANG LOGIN — SDK tự biết, không cần uid). */
+async function registerWithTuya(token: string): Promise<void> {
+  if (tuyaLib?.Tuya?.registerDevice == null) return; // bridge/native vắng → no-op
+  await tuyaLib.Tuya.registerDevice(token, 'fcm');
+}
+
 /**
- * Đăng ký token cho user lúc login: xin quyền → lấy token → POST backend map với tuyaUid.
- * No-op an toàn khi native vắng / chưa cấp quyền / uid rỗng.
+ * Đăng ký push cho phiên đăng nhập: xin quyền → lấy FCM token → registerDevice với Tuya.
+ * Gọi SAU khi login Tuya thành công (Tuya map token với user hiện tại). No-op an toàn khi thiếu native.
  */
-export async function syncPushToken(tuyaUid: string): Promise<void> {
-  if (!pushAvailable || !tuyaUid) return;
+export async function syncPushToken(): Promise<void> {
+  if (!pushAvailable) return;
   try {
     const granted = await requestPushPermission();
     if (!granted) return;
     const token = await getFcmToken();
     if (!token) return;
-    await registerPushToken(tuyaUid, token, platform);
+    await registerWithTuya(token);
   } catch (e) {
     devWarn('syncPushToken', e);
   }
 }
 
-/** Lắng nghe token đổi (onTokenRefresh) → cập nhật backend. Trả hàm huỷ. */
-export function listenTokenRefresh(tuyaUid: string): () => void {
-  if (!pushAvailable || !tuyaUid) return () => {};
+/** Lắng nghe token đổi (onTokenRefresh) → đăng ký lại với Tuya. Trả hàm huỷ. */
+export function listenTokenRefresh(): () => void {
+  if (!pushAvailable) return () => {};
   try {
     return messagingLib().onTokenRefresh((token: string) => {
-      registerPushToken(tuyaUid, token, platform).catch((e) => devWarn('onTokenRefresh', e));
+      registerWithTuya(token).catch((e) => devWarn('onTokenRefresh', e));
     });
   } catch (e) {
     devWarn('listenTokenRefresh', e);
@@ -86,29 +97,47 @@ export function listenTokenRefresh(tuyaUid: string): () => void {
   }
 }
 
-/** Gỡ token khi logout: xoá khỏi backend + xoá token FCM local (best-effort). */
+/**
+ * Gỡ push khi logout: xoá FCM token local (token cũ thành invalid → Tuya gửi sẽ fail và tự loại).
+ * Bridge `unregisterDevice` phía Tuya đang là stub → deleteToken là đủ cho M1.
+ */
 export async function removePushToken(): Promise<void> {
   if (!pushAvailable) return;
   try {
-    const token = await getFcmToken();
-    if (token) await unregisterPushToken(token);
     await messagingLib().deleteToken();
   } catch (e) {
     devWarn('removePushToken', e);
   }
 }
 
-// ---- Hiển thị + điều hướng khi tap (B7) ----
+// ---- Hiển thị + điều hướng khi tap ----
 const ANDROID_CHANNEL_ID = 'default';
+
+/**
+ * Tạo notification channel SỚM lúc app boot (Android 8+ bắt buộc channel tồn tại — nếu chỉ tạo
+ * lúc foreground-display thì noti đến khi app đang KILL có thể rơi vào channel không tồn tại).
+ * Khớp meta-data default_notification_channel_id trong AndroidManifest.
+ */
+export async function ensureNotificationChannel(): Promise<void> {
+  if (!notifeeLib) return;
+  try {
+    await notifeeLib.createChannel({ id: ANDROID_CHANNEL_ID, name: 'Default' });
+  } catch (e) {
+    devWarn('ensureNotificationChannel', e);
+  }
+}
 type RemoteMessage = {
   notification?: { title?: string; body?: string };
   data?: Record<string, string>;
 };
 
-/** Điều hướng suy ra từ data của noti (thuần → test được). data.screen (+ devId) do server đặt. */
+/**
+ * Điều hướng khi tap noti (thuần → test được). Tuya App Push KHÔNG cho custom data
+ * → mặc định mở tab Notifications; vẫn tôn trọng data.screen nếu có (tương lai/nguồn khác).
+ */
 export type NotificationRoute = { screen: string; params?: Record<string, unknown> };
-export function routeFromData(data?: Record<string, string>): NotificationRoute | null {
-  if (!data || !data.screen) return null;
+export function routeFromData(data?: Record<string, string>): NotificationRoute {
+  if (!data || !data.screen) return { screen: 'notifications' };
   const params: Record<string, unknown> = {};
   if (data.devId) params.devId = data.devId;
   if (data.homeId) params.homeId = Number(data.homeId);
@@ -119,7 +148,7 @@ export function routeFromData(data?: Record<string, string>): NotificationRoute 
 export async function displayNotification(msg: RemoteMessage): Promise<void> {
   if (!notifeeLib) return;
   try {
-    await notifeeLib.createChannel({ id: ANDROID_CHANNEL_ID, name: 'Mặc định' });
+    await notifeeLib.createChannel({ id: ANDROID_CHANNEL_ID, name: 'Default' });
     await notifeeLib.displayNotification({
       title: msg.notification?.title ?? '',
       body: msg.notification?.body ?? '',
@@ -142,13 +171,12 @@ export function onForegroundMessage(): () => void {
   }
 }
 
-/** Tap noti khi app đang BACKGROUND → gọi cb với route. Trả hàm huỷ. */
+/** Tap noti khi app đang BACKGROUND → gọi cb với route (mặc định tab Notifications). Trả hàm huỷ. */
 export function onNotificationTap(cb: (route: NotificationRoute) => void): () => void {
   if (!pushAvailable) return () => {};
   try {
     return messagingLib().onNotificationOpenedApp((msg: RemoteMessage) => {
-      const route = routeFromData(msg?.data);
-      if (route) cb(route);
+      cb(routeFromData(msg?.data));
     });
   } catch (e) {
     devWarn('onNotificationTap', e);

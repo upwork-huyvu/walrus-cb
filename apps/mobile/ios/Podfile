@@ -1,3 +1,7 @@
+# Tuya/Thing SDK specs (ThingSmartHomeKit không có trên trunk) + CDN mặc định
+source 'https://github.com/tuya/tuya-pod-specs.git'
+source 'https://cdn.cocoapods.org/'
+
 # Resolve react_native_pods.rb with node to allow for hoisting
 require Pod::Executable.execute_command('node', ['-p',
   'require.resolve(
@@ -16,6 +20,15 @@ end
 
 target 'CoolBathMobile' do
   config = use_native_modules!
+
+  # Tuya Security SDK (bắt buộc — bản iOS của security-algorithm.aar; tải từ console, bung từ
+  # docs/sdk/iOS_SDK/ios_core_sdk.tar.gz). Thiếu → ThingSmartHomeKit không resolve/init fail.
+  pod 'ThingSmartCryption', :path => './ios_core_sdk'
+
+  # Firebase (RNFB) + static libraries: các Swift pod (AppCheckCore/FirebaseCoreInternal) cần
+  # modular headers từ các dep ObjC này — thiếu là pod install fail.
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],

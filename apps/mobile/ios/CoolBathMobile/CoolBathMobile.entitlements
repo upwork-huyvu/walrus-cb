@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Sign in with Apple (m1-mobile-apple-login). Gắn vào target qua Xcode capability
-	     hoặc CODE_SIGN_ENTITLEMENTS trong pbxproj. Xem apps/mobile/APPLE_SIGNIN_SETUP.md. -->
+	<key>aps-environment</key>
+	<string>development</string>
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>

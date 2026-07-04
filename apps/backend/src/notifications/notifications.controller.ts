@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminAuthGuard } from '../admin-auth/admin-auth.guard';
 import { CreateTemplateDto } from './dto/create-template.dto';
+import { ListTemplatesQueryDto } from './dto/list-templates.dto';
 import { SendPushDto } from './dto/send-push.dto';
 import { SendAppPushDto } from './dto/send-app-push.dto';
 import { NotificationsService } from './notifications.service';
@@ -25,10 +26,10 @@ export class NotificationsController {
     return this.notifications.sendPush(dto);
   }
 
-  /** Danh sách template. */
+  /** Danh sách template (phân trang — Tuya default 10/trang, ta mặc định 50, mới nhất trước). */
   @Get('templates')
-  listTemplates() {
-    return this.notifications.listTemplates();
+  listTemplates(@Query() query: ListTemplatesQueryDto) {
+    return this.notifications.listTemplates(query);
   }
 
   /** Chi tiết 1 template (trạng thái duyệt). */

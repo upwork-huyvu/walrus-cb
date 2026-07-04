@@ -82,4 +82,73 @@ describe('UsersService.deleteUser (orchestration)', () => {
     expect(tuyaRequest).toHaveBeenCalledTimes(2);
     expect(markDone).toHaveBeenCalledTimes(2);
   });
+
+  describe('listUsers (enrich nick_name/avatar)', () => {
+    it('ghép nick_name/avatar từ endpoint detail; user lỗi thì giữ nguyên field list', async () => {
+      const configRich = {
+        get: jest.fn().mockReturnValue(undefined), // không DATABASE_URL → bỏ qua deviceCounts
+        require: jest.fn().mockReturnValue('schema1'),
+      } as unknown as AppConfigService;
+      const svc = new UsersService(tuya, prisma, jobs, configRich);
+
+      tuyaRequest.mockImplementation((req: { path: string }) => {
+        if (req.path === '/v2.0/apps/schema1/users') {
+          return Promise.resolve({
+            list: [
+              { uid: 'u1', username: 'a@b.c' },
+              { uid: 'u2', username: 'x@y.z' },
+            ],
+            total: 2,
+            has_more: false,
+          });
+        }
+        if (req.path === '/v1.0/users/u1/infos') {
+          return Promise.resolve({
+            uid: 'u1',
+            nick_name: 'Huy',
+            avatar: 'https://img/x.png',
+          });
+        }
+        return Promise.reject(new Error('detail down'));
+      });
+
+      const res = await svc.listUsers({ page_no: 1, page_size: 20 });
+
+      expect(res.list[0].nick_name).toBe('Huy');
+      expect(res.list[0].avatar).toBe('https://img/x.png');
+      expect(res.list[1].nick_name).toBeUndefined(); // lỗi detail không chặn list
+      expect(res.total).toBe(2);
+    });
+  });
+
+  describe('getUserDevices', () => {
+    it('gọi đúng path và lược bỏ local_key (secret)', async () => {
+      tuyaRequest.mockResolvedValue([
+        {
+          id: 'd1',
+          name: 'Ice Bath',
+          online: true,
+          local_key: 'SECRET',
+          status: [{ code: 'temp_current', value: 5 }],
+        },
+      ]);
+
+      const res = await service.getUserDevices('u1');
+
+      expect(tuyaRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          method: 'GET',
+          path: '/v1.0/users/u1/devices',
+        }),
+      );
+      expect(res).toHaveLength(1);
+      expect(res[0].id).toBe('d1');
+      expect(res[0]).not.toHaveProperty('local_key');
+    });
+
+    it('Tuya trả null/undefined → mảng rỗng', async () => {
+      tuyaRequest.mockResolvedValue(undefined);
+      await expect(service.getUserDevices('u1')).resolves.toEqual([]);
+    });
+  });
 });

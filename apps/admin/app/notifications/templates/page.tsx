@@ -9,7 +9,8 @@ type Template = {
   name?: string;
   title?: string;
   type?: number;
-  status?: string | number;
+  status?: number; // 0 pending review · 1 approved · 2 rejected (doc 9dc9d8c906)
+  verify_reason?: string;
 };
 type TemplateList = { list?: Template[]; total?: number } | Template[];
 
@@ -17,6 +18,25 @@ const TYPE_LABEL: Record<number, string> = {
   0: 'operations',
   1: 'system',
 };
+
+// Trạng thái duyệt của Tuya: chỉ template approved (1) gửi được.
+const STATUS_BADGE: Record<number, { label: string; color: string }> = {
+  0: { label: 'Pending review', color: '#b8860b' },
+  1: { label: 'Approved', color: '#2e7d32' },
+  2: { label: 'Rejected', color: '#c62828' },
+};
+
+function StatusBadge({ status, reason }: { status?: number; reason?: string }) {
+  if (status === undefined) return <>—</>;
+  const badge = STATUS_BADGE[status];
+  if (!badge) return <>{status}</>;
+  return (
+    <span title={status === 2 && reason ? reason : undefined} style={{ color: badge.color }}>
+      {badge.label}
+      {status === 2 && reason ? ` · ${reason}` : ''}
+    </span>
+  );
+}
 
 export default async function TemplatesPage() {
   let templates: Template[] = [];
@@ -69,7 +89,9 @@ export default async function TemplatesPage() {
                       ? '—'
                       : `${t.type} · ${TYPE_LABEL[t.type] ?? '?'}`}
                   </td>
-                  <td>{t.status ?? '—'}</td>
+                  <td>
+                    <StatusBadge status={t.status} reason={t.verify_reason} />
+                  </td>
                 </tr>
               ))
             )}

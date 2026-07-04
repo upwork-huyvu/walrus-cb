@@ -29,7 +29,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <div className="sidebar-head">
           <span className="mark">❄</span>
           <div className="wordmark">
-            Cool Bath
+            Walrus
             <small>Admin</small>
           </div>
         </div>

@@ -27,6 +27,13 @@
   blocker build (vốn thuộc `m1-admin-web` — nếu họ làm khác thì hợp nhất sau). B6: trang `notifications/templates`
   (list trạng thái duyệt + form tạo template). Sau đó **mọi import `@/...` của admin đều resolve** (grep xác nhận).
 
+- **2026-07-03 — Rev 2, OPTION A (user chốt):** bỏ kênh **FCM trực tiếp** (backend firebase-admin +
+  PushToken + /push-tokens) → thuần **Tuya App Push**: Tuya = sender đẩy banner qua cert FCM/APNs đã up
+  console; app đăng ký token với Tuya (`registerDevice(token,'fcm')`). Lý do: 1 đường gửi, bớt secret/DB;
+  đổi lại mất deep-link data khi tap + mọi tin qua template duyệt. **biz_type bỏ env** — lookup runtime
+  `GET /v1.0/apps/{schema}` → `app_biz_type ?? appBizType` (doc field/example lệch casing) + cache;
+  env `TUYA_APP_BIZ_TYPE` giữ làm override. Template status enum chốt: 0 đang duyệt/1 pass/2 fail (+verify_reason).
+
 ## Bản đồ file/module
 > Những file/module quan trọng của feature này nằm đâu, làm gì.
 
@@ -72,7 +79,8 @@
 - Plan: [plan.md](plan.md)
 - Progress: [progress.md](progress.md)
 - Research liên quan: [docs/research/tuya-cloud-app-push.md](../../docs/research/tuya-cloud-app-push.md) ·
-  [docs/research/tuya-home-sdk-push-notifications.md](../../docs/research/tuya-home-sdk-push-notifications.md)
+  [docs/research/tuya-home-sdk-push-notifications.md](../../docs/research/tuya-home-sdk-push-notifications.md) ·
+  [docs/research/tuya-push-template-approval.md](../../docs/research/tuya-push-template-approval.md) (04/07 — vì sao template phải chờ duyệt, status 0/1/2, chiến thuật nộp sớm)
 - Báo cáo audit liên quan: [docs/audit/2026-06-30-m1-admin-push.md](../../docs/audit/2026-06-30-m1-admin-push.md)
   (0🔴 0🟠 3🟡 6🔵) · [docs/audit/2026-06-29-admin.md](../../docs/audit/2026-06-29-admin.md)
   - **Follow-up từ audit (feed /fix-plan khi xử lý):** M-1 timeout `TuyaCloudService` · M-3 `apiGet` 401→`/login` ·

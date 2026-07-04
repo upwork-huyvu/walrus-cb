@@ -26,7 +26,7 @@ export function useAuth(): Auth {
         const u = await getCurrentUser();
         setUser(u);
         setStatus('authed');
-        if (u?.uid) void syncPushToken(u.uid); // đăng ký FCM token cho phiên đã đăng nhập sẵn
+        if (u?.uid) void syncPushToken(); // đăng ký FCM token với Tuya cho phiên đã đăng nhập sẵn
         return;
       }
     } catch {
@@ -39,7 +39,7 @@ export function useAuth(): Auth {
   const onAuthed = useCallback((u: AuthUser) => {
     setUser(u);
     setStatus('authed');
-    void syncPushToken(u.uid); // đăng ký FCM token ngay sau login
+    void syncPushToken(); // đăng ký FCM token với Tuya ngay sau login
   }, []);
 
   // Phiên hết hạn (session chết phía SDK) — không gọi logout, chỉ clear state.
@@ -49,7 +49,7 @@ export function useAuth(): Auth {
   }, []);
 
   const signOut = useCallback(async () => {
-    await removePushToken(); // gỡ FCM token khỏi backend TRƯỚC khi huỷ phiên (còn token để xoá)
+    await removePushToken(); // xoá FCM token local (token cũ invalid → Tuya tự loại)
     await authLogout();
     // Clear cả state Google Sign-In, nếu không lần signIn() sau sẽ tự trả account đã cache
     // (không hiện picker → không đổi được tài khoản). Best-effort, đã nuốt lỗi bên trong.

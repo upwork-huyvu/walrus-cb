@@ -25,6 +25,11 @@ export class UsersController {
     return this.users.getUser(uid);
   }
 
+  @Get(':uid/devices')
+  devices(@Param('uid') uid: string) {
+    return this.users.getUserDevices(uid);
+  }
+
   @Delete(':uid')
   remove(@Param('uid') uid: string) {
     return this.users.deleteUser(uid);

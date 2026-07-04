@@ -1,4 +1,5 @@
 import { AppConfigService } from '../config/app-config.service';
+import { TuyaAppInfoService } from '../tuya/app-info.service';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
 import { UsersService } from '../users/users.service';
 import { NotificationsService } from './notifications.service';
@@ -7,21 +8,23 @@ describe('NotificationsService (Tuya Cloud App Push)', () => {
   const tuyaRequest = jest.fn();
   const configRequire = jest.fn();
   const usersList = jest.fn();
+  const getBizType = jest.fn();
 
   const tuya = { request: tuyaRequest } as unknown as TuyaCloudService;
   const config = { require: configRequire } as unknown as AppConfigService;
   const users = { listUsers: usersList } as unknown as UsersService;
+  const appInfo = { getBizType } as unknown as TuyaAppInfoService;
 
   let service: NotificationsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    configRequire.mockReturnValue(10); // TUYA_APP_BIZ_TYPE
-    service = new NotificationsService(tuya, config, users);
+    getBizType.mockResolvedValue(10); // Rev 2: biz_type resolve runtime qua TuyaAppInfoService
+    service = new NotificationsService(tuya, config, users, appInfo);
   });
 
   describe('sendPush', () => {
-    it('1 uid → gọi đúng path + body, biz_type từ config, template_param là chuỗi JSON', async () => {
+    it('1 uid → gọi đúng path + body, biz_type từ AppInfoService, template_param là chuỗi JSON', async () => {
       tuyaRequest.mockResolvedValue({ send_status: true });
 
       const res = await service.sendPush({
@@ -111,9 +114,7 @@ describe('NotificationsService (Tuya Cloud App Push)', () => {
 
   describe('sendAppPush (free-form → template ${title}/${content})', () => {
     beforeEach(() => {
-      configRequire.mockImplementation((key: string) =>
-        key === 'TUYA_APP_TEMPLATE_ID' ? 'PUSH_CFG' : 10,
-      );
+      configRequire.mockReturnValue('PUSH_CFG'); // TUYA_APP_TEMPLATE_ID
     });
 
     it('map title/body vào template_param + dùng template_id từ env', async () => {
@@ -160,12 +161,13 @@ describe('NotificationsService (Tuya Cloud App Push)', () => {
   });
 
   describe('templates', () => {
-    it('listTemplates → GET đúng path', async () => {
+    it('listTemplates → GET đúng path + phân trang mặc định (50, mới nhất trước)', async () => {
       tuyaRequest.mockResolvedValue({ list: [] });
       await service.listTemplates();
       expect(tuyaRequest).toHaveBeenCalledWith({
         method: 'GET',
         path: '/v1.0/iot-03/msg-templates/app-notifications',
+        query: { page_no: 1, page_size: 50, sort: 1 },
       });
     });
 

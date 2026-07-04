@@ -27,6 +27,9 @@ export type TuyaCreateTemplateResult = {
   template_id: string;
 };
 
+/** Trạng thái duyệt template (doc 9dc9d8c906): 0 = đang duyệt · 1 = pass · 2 = fail. */
+export type TuyaTemplateStatus = 0 | 1 | 2;
+
 /** 1 template thông báo (chi tiết/danh sách). */
 export type TuyaTemplate = {
   template_id: string;
@@ -34,14 +37,17 @@ export type TuyaTemplate = {
   title?: string;
   content?: string;
   type?: number;
-  /** Trạng thái duyệt — enum chính xác cần verify khi có data thật. */
-  status?: string | number;
+  status?: TuyaTemplateStatus;
+  /** Chỉ có ở endpoint detail khi status=2 (bị từ chối). */
+  verify_code?: number;
+  verify_reason?: string;
   [key: string]: unknown;
 };
 
-/** Danh sách template: GET /v1.0/iot-03/msg-templates/app-notifications */
+/** Danh sách template: GET /v1.0/iot-03/msg-templates/app-notifications (phân trang). */
 export type TuyaTemplateList = {
   list?: TuyaTemplate[];
   total?: number;
+  has_more?: boolean;
   [key: string]: unknown;
 };

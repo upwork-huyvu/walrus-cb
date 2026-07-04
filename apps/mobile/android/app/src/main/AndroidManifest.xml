@@ -1,6 +1,9 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Push notification banner (Android 13+ runtime permission — xin qua Notifee lúc login) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Tuya pairing: Wi-Fi EZ/AP cần network/wifi state + location; BLE scan/pair cần bluetooth + location -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -26,6 +29,12 @@
       android:supportsRtl="true">
       <meta-data android:name="THING_SMART_APPKEY" android:value="${THING_SMART_APPKEY}" />
       <meta-data android:name="THING_SMART_SECRET" android:value="${THING_SMART_SECRET}" />
+      <!-- FCM: noti đến khi app background/kill rơi vào channel này (khớp ensureNotificationChannel).
+           tools:replace vì manifest của @react-native-firebase/messaging cũng khai meta-data này. -->
+      <meta-data
+        android:name="com.google.firebase.messaging.default_notification_channel_id"
+        android:value="default"
+        tools:replace="android:value" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

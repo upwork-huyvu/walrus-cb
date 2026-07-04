@@ -42,7 +42,13 @@ import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
 import { ensureDefaultHome } from './src/services/home';
 import { getIntroSeen } from './src/state/introFlag';
-import { onForegroundMessage, onNotificationTap, getInitialRoute } from './src/services/push';
+import {
+  onForegroundMessage,
+  onNotificationTap,
+  getInitialRoute,
+  listenTokenRefresh,
+  ensureNotificationChannel,
+} from './src/services/push';
 
 // Màn nào nằm trong bottom tab (Device/Reminder/Shop/Help/Account). Màn immersive không tab.
 const TABBED: Partial<Record<ScreenName, TabKey>> = {
@@ -94,9 +100,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Push FCM: show notification in FOREGROUND (Notifee) + deep-link on tap (background/quit).
+  // Push FCM: channel sớm (Android 8+) + show noti FOREGROUND (Notifee) + tap-routing
+  // (background/quit) + re-register với Tuya khi FCM token đổi.
   useEffect(() => {
+    void ensureNotificationChannel();
     const unsubForeground = onForegroundMessage();
+    const unsubRefresh = listenTokenRefresh();
     const unsubTap = onNotificationTap((route) =>
       navigate(route.screen as ScreenName, route.params as Record<string, unknown>),
     );
@@ -106,6 +115,7 @@ export default function App() {
     });
     return () => {
       unsubForeground();
+      unsubRefresh();
       unsubTap();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

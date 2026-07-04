@@ -16,7 +16,7 @@ const sans = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Cool Bath — Admin',
+  title: 'Walrus — Admin',
   description: 'Ice bath user administration',
 };
 

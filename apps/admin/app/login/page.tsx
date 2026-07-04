@@ -16,7 +16,7 @@ export default function LoginPage() {
             ❄
           </span>
           <div className="wordmark">
-            Cool Bath
+            Walrus
             <small>Admin</small>
           </div>
         </div>
