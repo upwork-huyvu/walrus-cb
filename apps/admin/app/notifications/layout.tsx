@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import AdminShell from '@/components/AdminShell';
+import AdminShellServer from '@/components/AdminShellServer';
 
 // Shell admin cho khu /notifications/* (dùng chung AdminShell với /users).
 export default function NotificationsLayout({
@@ -7,5 +7,5 @@ export default function NotificationsLayout({
 }: {
   children: ReactNode;
 }) {
-  return <AdminShell>{children}</AdminShell>;
+  return <AdminShellServer>{children}</AdminShellServer>;
 }

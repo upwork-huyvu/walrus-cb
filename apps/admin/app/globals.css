@@ -1,4 +1,4 @@
-/* ===== Gilded Noir — royal gold/black admin theme =====
+/* ===== Gilded Noir - royal gold/black admin theme =====
    Vàng (#D4AF37) dùng như trang sức (~5-15% UI): active nav, 1 nút chính, số/nhãn quan trọng,
    focus ring, link, sort/selected. Cấu trúc giữ neutral. Serif chỉ cho tiêu đề; sans cho data. */
 :root {
@@ -246,7 +246,7 @@ button:disabled {
 }
 button.primary {
   background: var(--gold);
-  color: #0b0b0c; /* chữ ĐEN trên vàng — không bao giờ trắng */
+  color: #0b0b0c; /* chữ ĐEN trên vàng - không bao giờ trắng */
   border-color: var(--gold);
   font-weight: 600;
 }

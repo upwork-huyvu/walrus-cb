@@ -63,7 +63,7 @@ export default async function UsersPage({
           {data.list.length === 0 ? (
             <tr>
               <td colSpan={6} className="muted">
-                No Tuya users yet — check that the backend is running and TUYA_APP_SCHEMA / Tuya Cloud creds are set.
+                No Tuya users yet - check that the backend is running and TUYA_APP_SCHEMA / Tuya Cloud creds are set.
               </td>
             </tr>
           ) : (
@@ -93,10 +93,10 @@ export default async function UsersPage({
                       </div>
                     </div>
                   </td>
-                  <td>{contact ?? <span className="muted">—</span>}</td>
+                  <td>{contact ?? <span className="muted">-</span>}</td>
                   <td title={u.country_code ? `+${u.country_code}` : undefined}>
                     {countryLabel(u.country_code) ?? (
-                      <span className="muted">—</span>
+                      <span className="muted">-</span>
                     )}
                   </td>
                   <td>{fmtEpoch(u.create_time)}</td>

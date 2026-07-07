@@ -43,8 +43,8 @@ export default function CreateTemplateForm() {
       <label>
         Type
         <select name="type" defaultValue="0">
-          <option value="0">0 — operations message</option>
-          <option value="1">1 — system message</option>
+          <option value="0">0 - operations message</option>
+          <option value="1">1 - system message</option>
         </select>
       </label>
       <label>
@@ -55,7 +55,7 @@ export default function CreateTemplateForm() {
       {state.error ? <p className="error">{state.error}</p> : null}
       {state.ok ? (
         <p style={{ color: 'var(--success)', fontSize: 13, margin: 0 }}>
-          ✅ Created {state.templateId ?? ''} — awaiting Tuya review (≤2 business days)
+          ✅ Created {state.templateId ?? ''} - awaiting Tuya review (≤2 business days)
         </p>
       ) : null}
 

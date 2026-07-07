@@ -44,7 +44,7 @@ function tempUnit(u?: number): string | null {
 }
 
 function Dash() {
-  return <span className="muted">—</span>;
+  return <span className="muted">-</span>;
 }
 
 /** Tóm tắt vài DP đầu cho cột status: `code=value · ...` */
@@ -134,7 +134,7 @@ export default async function UserDetailPage({
       </h2>
       {devices === null ? (
         <p className="error">
-          Couldn&apos;t load devices from Tuya — check that the Device
+          Couldn&apos;t load devices from Tuya - check that the Device
           Management API is authorized for this cloud project.
         </p>
       ) : devices.length === 0 ? (

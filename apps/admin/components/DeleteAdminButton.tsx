@@ -29,7 +29,7 @@ export default function DeleteAdminButton({
         onClick={() => {
           if (
             window.confirm(
-              `Revoke admin access for ${email}? (the account is kept — only access is removed)`,
+              `Revoke admin access for ${email}? (the account is kept - only access is removed)`,
             )
           ) {
             setError('');

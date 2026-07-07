@@ -10,17 +10,30 @@ const NAV = [
   { href: '/users', label: 'Tuya users', ico: '❄' },
   { href: '/admins', label: 'Admins', ico: '⚜' },
   { href: '/notifications', label: 'Send notifications', ico: '✉' },
+  { href: '/notifications/templates', label: 'Templates', ico: '▤' },
 ];
 
 function activeHref(path: string): string {
   if (path.startsWith('/users')) return '/users';
   if (path.startsWith('/admins')) return '/admins';
+  // Templates trước /notifications (prefix con) để highlight đúng mục.
+  if (path.startsWith('/notifications/templates')) return '/notifications/templates';
   if (path.startsWith('/notifications')) return '/notifications';
   return '';
 }
 
-export default function AdminShell({ children }: { children: ReactNode }) {
+export default function AdminShell({
+  children,
+  hideTemplates = false,
+}: {
+  children: ReactNode;
+  hideTemplates?: boolean;
+}) {
   const active = activeHref(usePathname());
+  // provider=fcm → ẩn hẳn mục Templates (Tuya-only) khỏi UI.
+  const nav = hideTemplates
+    ? NAV.filter((n) => n.href !== '/notifications/templates')
+    : NAV;
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -33,7 +46,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         </div>
         <nav className="sidebar-nav">
           <div className="nav-group">Manage</div>
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <Link
               key={n.href}
               href={n.href}

@@ -22,6 +22,8 @@ export async function sendPushAction(
 ): Promise<SendPushState> {
   const title = String(formData.get('title') ?? '').trim();
   const body = String(formData.get('body') ?? '').trim();
+  const imageUrl = String(formData.get('imageUrl') ?? '').trim();
+  const screen = String(formData.get('screen') ?? '').trim();
   const all = String(formData.get('mode') ?? 'select') === 'all';
 
   if (!title || !body) {
@@ -44,6 +46,8 @@ export async function sendPushAction(
   const payload: Record<string, unknown> = { title, body };
   if (all) payload.all = true;
   else payload.uids = uids;
+  if (imageUrl) payload.imageUrl = imageUrl; // (FCM) ảnh; Tuya bỏ qua
+  if (screen) payload.screen = screen; // (FCM) deeplink → data.screen
 
   const res = await apiFetch('/notifications/send', {
     method: 'POST',

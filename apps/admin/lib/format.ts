@@ -1,4 +1,4 @@
-// Helper hiển thị chung cho trang quản trị (user Tuya trả field thưa — ưu tiên cái nào có).
+// Helper hiển thị chung cho trang quản trị (user Tuya trả field thưa - ưu tiên cái nào có).
 
 type NamedUser = {
   nick_name?: string;
@@ -76,11 +76,11 @@ export function countryLabel(code?: string): string | null {
 }
 
 /**
- * Epoch Tuya → chuỗi ngày (giờ VN). Tuya lúc trả giây (10 chữ số), lúc mili-giây —
+ * Epoch Tuya → chuỗi ngày (giờ VN). Tuya lúc trả giây (10 chữ số), lúc mili-giây -
  * phân biệt theo độ lớn.
  */
 export function fmtEpoch(t?: number, withTime = false): string {
-  if (!t) return '—';
+  if (!t) return '-';
   const ms = t > 1e12 ? t : t * 1000;
   const opts: Intl.DateTimeFormatOptions = {
     day: '2-digit',

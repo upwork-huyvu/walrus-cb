@@ -26,10 +26,10 @@ cp .env.example .env.local   # set API_BASE_URL trỏ tới NestJS
 npm run dev                  # http://localhost:3001 (đổi PORT nếu trùng backend 3000)
 ```
 > Backend (`apps/backend`) phải chạy + đã **seed 1 admin** (xem README backend) thì mới đăng nhập được.
-> Mặc định Next chạy cổng 3000 — trùng backend → chạy `PORT=3001 npm run dev` (hoặc đổi cổng backend).
+> Mặc định Next chạy cổng 3000 - trùng backend → chạy `PORT=3001 npm run dev` (hoặc đổi cổng backend).
 
 ## Env (xem `.env.example`)
-- `API_BASE_URL` — base URL backend NestJS (local `http://localhost:3000` hoặc URL Vercel). Server-only.
+- `API_BASE_URL` - base URL backend NestJS (local `http://localhost:3000` hoặc URL Vercel). Server-only.
 - Không cần khoá Supabase ở frontend (đăng nhập đi qua proxy NestJS).
 
 ## Build / lint
@@ -39,6 +39,6 @@ npm run build
 npm run lint
 ```
 
-## Deploy Vercel (KHÔNG tự deploy — cần xác nhận)
+## Deploy Vercel (KHÔNG tự deploy - cần xác nhận)
 - Project root = `apps/admin`. Set env `API_BASE_URL` ở Vercel Project Settings.
 - Cookie `admin_token` đặt `secure` ở production.

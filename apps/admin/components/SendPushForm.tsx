@@ -2,33 +2,48 @@
 
 import { useActionState, useMemo, useState } from 'react';
 import { sendPushAction, type SendPushState } from '@/app/notifications/actions';
+import { initialOf } from '@/lib/format';
 
-export type Recipient = { uid: string; label: string };
+export type Recipient = {
+  uid: string;
+  email?: string;
+  username?: string; // username / nick_name (fallback khi không có email)
+  avatar?: string;
+};
 
 const initialState: SendPushState = {};
 
 /**
- * Free-form notification form: title + description + recipients. Sends via Tuya App Push —
- * title/description map to the approved template's ${title}/${content}. No template picker.
+ * Gửi thông báo free-form. Người nhận chọn từ BẢNG user (avatar + email/username + Tuya ID) có search.
+ * provider=fcm → thêm Image URL + Deeplink (format chuẩn FCM). Router backend chọn Tuya | FCM theo ENV.
  */
-export default function SendPushForm({ recipients }: { recipients: Recipient[] }) {
+export default function SendPushForm({
+  recipients,
+  provider,
+}: {
+  recipients: Recipient[];
+  provider?: string;
+}) {
+  const isFcm = provider === 'fcm';
   const [state, formAction, pending] = useActionState(sendPushAction, initialState);
   const [mode, setMode] = useState<'select' | 'all'>('select');
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [manual, setManual] = useState('');
+  const [query, setQuery] = useState('');
 
-  const manualUids = useMemo(
-    () =>
-      manual
-        .split(/[\s,]+/)
-        .map((s) => s.trim())
-        .filter(Boolean),
-    [manual],
-  );
-  const effectiveUids = useMemo(
-    () => Array.from(new Set([...checked, ...manualUids])),
-    [checked, manualUids],
-  );
+  const nameOf = (r: Recipient) => r.email || r.username || r.uid;
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return recipients;
+    return recipients.filter(
+      (r) =>
+        r.uid.toLowerCase().includes(q) ||
+        (r.email ?? '').toLowerCase().includes(q) ||
+        (r.username ?? '').toLowerCase().includes(q),
+    );
+  }, [recipients, query]);
+
+  const effectiveUids = useMemo(() => Array.from(checked), [checked]);
 
   const toggle = (uid: string) =>
     setChecked((prev) => {
@@ -37,29 +52,59 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
       else n.add(uid);
       return n;
     });
-  const allInList = recipients.length > 0 && recipients.every((r) => checked.has(r.uid));
-  const toggleAllInList = () =>
-    setChecked(() => (allInList ? new Set() : new Set(recipients.map((r) => r.uid))));
+
+  const allFilteredChecked = filtered.length > 0 && filtered.every((r) => checked.has(r.uid));
+  const toggleAllFiltered = () =>
+    setChecked((prev) => {
+      const n = new Set(prev);
+      if (allFilteredChecked) filtered.forEach((r) => n.delete(r.uid));
+      else filtered.forEach((r) => n.add(r.uid));
+      return n;
+    });
 
   const canSend = mode === 'all' || effectiveUids.length > 0;
   const rowLabel = { flexDirection: 'row' as const, gap: 8, alignItems: 'center' };
 
   return (
-    <form action={formAction} className="card" style={{ width: '100%', maxWidth: 560 }}>
+    <form action={formAction} className="card" style={{ width: '100%' }}>
       <input type="hidden" name="mode" value={mode} />
       <input type="hidden" name="uids" value={JSON.stringify(effectiveUids)} />
 
-      {/* Free-form content (mapped to template ${title}/${content}) */}
+      {/* Nội dung free-form. TUYA: map vào template ${title}/${content} (giới hạn ngắn).
+          FCM: title/body + ảnh + deeplink (format chuẩn FCM). */}
       <label>
         Title
-        <input name="title" required maxLength={40} placeholder="e.g. Time to clean your tub" />
+        <input name="title" required maxLength={isFcm ? 100 : 40} placeholder="e.g. Time to clean your tub" />
       </label>
       <label>
         Description (body)
-        <textarea name="body" required rows={3} maxLength={100} placeholder="Notification text shown to the user…" />
+        <textarea name="body" required rows={3} maxLength={isFcm ? 500 : 100} placeholder="Notification text shown to the user…" />
       </label>
 
-      {/* Recipients */}
+      {isFcm ? (
+        <>
+          <label>
+            Image URL (optional)
+            <input name="imageUrl" type="url" maxLength={2048} placeholder="https://…/banner.png" />
+          </label>
+          <label>
+            Deeplink - screen to open on tap (optional)
+            <select name="screen" defaultValue="">
+              <option value="">Default (Notifications)</option>
+              <option value="notifications">Notifications</option>
+              <option value="device-detail">Device detail</option>
+              <option value="progress">Tracking / Progress</option>
+              <option value="shop">Shop</option>
+            </select>
+          </label>
+          <p className="muted" style={{ fontSize: 12, margin: 0 }}>
+            FCM: title + body là text thuần (không HTML); dùng <strong>image</strong> cho ảnh lớn và{' '}
+            <strong>deeplink</strong> để mở màn khi tap. Nội dung HTML/rich hiển thị trong app qua data payload.
+          </p>
+        </>
+      ) : null}
+
+      {/* Người nhận */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', gap: 18 }}>
           <label style={rowLabel}>
@@ -74,37 +119,79 @@ export default function SendPushForm({ recipients }: { recipients: Recipient[] }
 
         {mode === 'all' ? (
           <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-            ⚠️ Sends to <strong>ALL</strong> Tuya users — the backend walks the full list and sends one by one.
+            ⚠️ Sends to <strong>ALL</strong>{' '}
+            {isFcm ? 'users with a registered device (FCM token)' : 'Tuya users'} - one by one.
           </p>
         ) : (
           <>
-            {recipients.length > 0 ? (
-              <div
-                className="panel"
-                style={{ maxHeight: 200, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 6 }}
-              >
-                <label style={{ ...rowLabel, color: 'var(--gold)' }}>
-                  <input type="checkbox" checked={allInList} onChange={toggleAllInList} />
-                  Select all in list ({recipients.length})
-                </label>
-                {recipients.map((r) => (
-                  <label key={r.uid} style={rowLabel}>
-                    <input type="checkbox" checked={checked.has(r.uid)} onChange={() => toggle(r.uid)} />
-                    {r.label}
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p className="muted" style={{ fontSize: 13, margin: 0 }}>
-                No users in the list — enter UIDs manually below.
-              </p>
-            )}
-            <label>
-              Enter UIDs manually (comma / newline separated)
-              <textarea value={manual} onChange={(e) => setManual(e.target.value)} rows={2} placeholder="ay15..., ay16..." />
-            </label>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by email, username or Tuya ID…"
+            />
+            <div className="panel" style={{ maxHeight: 380, overflow: 'auto', padding: 0 }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: 44 }}>
+                      <input
+                        type="checkbox"
+                        checked={allFilteredChecked}
+                        onChange={toggleAllFiltered}
+                        aria-label="Select all shown"
+                      />
+                    </th>
+                    <th>User</th>
+                    <th>Tuya ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="muted">
+                        {recipients.length === 0
+                          ? 'No users found - check the backend / Tuya Cloud creds.'
+                          : `No users match “${query}”.`}
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((r) => {
+                      const name = nameOf(r);
+                      const sub = r.email && r.username && r.email !== r.username ? r.username : null;
+                      return (
+                        <tr key={r.uid} onClick={() => toggle(r.uid)} style={{ cursor: 'pointer' }}>
+                          <td>
+                            <input type="checkbox" checked={checked.has(r.uid)} readOnly />
+                          </td>
+                          <td>
+                            <div className="user-cell">
+                              <span className="avatar">
+                                {r.avatar ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={r.avatar} alt="" />
+                                ) : (
+                                  initialOf(name)
+                                )}
+                              </span>
+                              <div>
+                                <div className="cell-main">{name}</div>
+                                {sub ? <div className="cell-sub">{sub}</div> : null}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="cell-sub" title={r.uid}>
+                            {r.uid}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
             <p className="muted" style={{ fontSize: 12, margin: 0 }}>
-              Selected: <strong>{effectiveUids.length}</strong> recipients
+              Selected: <strong>{checked.size}</strong> · Showing {filtered.length} of {recipients.length}
             </p>
           </>
         )}
