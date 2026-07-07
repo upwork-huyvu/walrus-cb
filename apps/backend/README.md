@@ -4,7 +4,7 @@ Backend trung gian: NestJS REST API (Vercel) + Supabase (Postgres qua Prisma) +
 client gọi **Tuya Cloud OpenAPI**. Phục vụ web admin (list/xem/xoá user) ở các
 feature sau (C2/C3/D).
 
-> Feature hiện tại: `m1-backend-scaffold` (C1) — scaffold + TuyaModule (ký + token).
+> Feature hiện tại: `m1-backend-scaffold` (C1) - scaffold + TuyaModule (ký + token).
 > User endpoints + delete_jobs cron = C2; admin auth = C3.
 
 ## Cấu trúc
@@ -31,7 +31,7 @@ DB; gọi Tuya khi chưa có Access ID/Secret sẽ báo lỗi rõ ràng. Điền
 ## Biến môi trường (xem `.env.example`)
 - `DATABASE_URL` (pooled pgbouncer `:6543`), `DIRECT_URL` (direct `:5432` cho migrate),
   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (**server-only**).
-- `TUYA_OPENAPI_ENDPOINT` (mặc định Western Europe `openapi-weaz.tuyaeu.com` — **phải khớp
+- `TUYA_OPENAPI_ENDPOINT` (mặc định Western Europe `openapi-weaz.tuyaeu.com` - **phải khớp
   Data Center của Cloud Project**), `TUYA_ACCESS_ID` (client_id), `TUYA_ACCESS_SECRET`
   (**server-only**). Đây là credentials **Cloud Project**, KHÁC AppKey/AppSecret App SDK mobile.
 - Ở `NODE_ENV=production`, thiếu `DATABASE_URL`/`TUYA_ACCESS_ID`/`TUYA_ACCESS_SECRET` → boot fail (fail-fast).
@@ -54,7 +54,7 @@ Admin tách biệt hoàn toàn end-user (end-user do Tuya quản lý). Admin = *
 - `POST /admin/auth/login` `{email,password}` → proxy Supabase password grant, trả session (chỉ khi là admin).
 - `GET /admin/me` (Bearer) → thông tin admin hiện tại.
 - `GET|DELETE /users/*` được bọc `AdminAuthGuard` (verify token qua `GET /auth/v1/user` + allowlist).
-- `GET /internal/cron/*` KHÔNG dùng admin guard — vẫn `Authorization: Bearer ${CRON_SECRET}` (Vercel Cron).
+- `GET /internal/cron/*` KHÔNG dùng admin guard - vẫn `Authorization: Bearer ${CRON_SECRET}` (Vercel Cron).
 
 **Seed admin đầu tiên:**
 1. Tạo user trên Supabase Auth (Dashboard hoặc `POST /auth/v1/signup`).
@@ -72,7 +72,7 @@ npm run build    # nest build
 npm run lint
 ```
 
-## Deploy Vercel (KHÔNG tự deploy — cần xác nhận)
+## Deploy Vercel (KHÔNG tự deploy - cần xác nhận)
 - `api/index.ts` = serverless entry; `vercel.json` rewrite mọi route về `/api`.
 - ⚠️ **Cron in-process (`@nestjs/schedule`) KHÔNG chạy trên serverless.** `delete_jobs`
   retry (C2) sẽ dùng **Vercel Cron** hoặc worker riêng.

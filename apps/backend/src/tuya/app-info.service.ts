@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AppConfigService } from '../config/app-config.service';
 import { TuyaCloudService } from './tuya-cloud.service';
 
-// Get App Details: GET /v1.0/apps/{schema} → biz_type của app (Rev 2 — bỏ cấu hình env thủ công).
+// Get App Details: GET /v1.0/apps/{schema} → biz_type của app (Rev 2 - bỏ cấu hình env thủ công).
 // ⚠️ Doc lệch casing: bảng field ghi `app_biz_type`, example lại `appBizType` → parse CẢ HAI.
 // https://developer.tuya.com/en/docs/cloud/0ebeab240f?id=Kawfawol4q13d
 type TuyaAppDetails = {
@@ -12,7 +12,7 @@ type TuyaAppDetails = {
   appBizType?: number;
 };
 
-/** Tra biz_type của app lúc runtime (memoize — biz_type bất biến per app). Env = override khẩn cấp. */
+/** Tra biz_type của app lúc runtime (memoize - biz_type bất biến per app). Env = override khẩn cấp. */
 @Injectable()
 export class TuyaAppInfoService {
   private readonly logger = new Logger(TuyaAppInfoService.name);
@@ -45,7 +45,7 @@ export class TuyaAppInfoService {
     const bizType = res.app_biz_type ?? res.appBizType;
     if (bizType == null) {
       throw new Error(
-        `Get App Details (schema=${schema}) không trả app_biz_type/appBizType — kiểm tra API product "App Management" đã authorize vào project chưa.`,
+        `Get App Details (schema=${schema}) không trả app_biz_type/appBizType - kiểm tra API product "App Management" đã authorize vào project chưa.`,
       );
     }
     this.logger.log(`biz_type của app ${schema} = ${bizType} (resolve runtime, đã cache)`);

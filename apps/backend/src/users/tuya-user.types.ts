@@ -8,7 +8,7 @@ export type TuyaUserListItem = {
   country_code?: string;
   create_time?: number;
   update_time?: number;
-  // 2 field dưới KHÔNG có trong response list của Tuya — service enrich từ endpoint detail.
+  // 2 field dưới KHÔNG có trong response list của Tuya - service enrich từ endpoint detail.
   nick_name?: string;
   avatar?: string;
 };
@@ -37,7 +37,7 @@ export type TuyaUserDeviceStatus = { code: string; value: unknown };
 
 /**
  * Thiết bị của user: GET /v1.0/users/{uid}/devices (result = mảng device trực tiếp).
- * `local_key` là secret — service lược bỏ trước khi trả về FE, KHÔNG khai báo ở đây.
+ * `local_key` là secret - service lược bỏ trước khi trả về FE, KHÔNG khai báo ở đây.
  */
 export type TuyaUserDevice = {
   id: string;

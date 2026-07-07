@@ -84,7 +84,7 @@ export class AdminAuthService {
   }
 
   /**
-   * Gỡ 1 admin khỏi allowlist (revoke quyền admin). KHÔNG xoá tài khoản Supabase Auth —
+   * Gỡ 1 admin khỏi allowlist (revoke quyền admin). KHÔNG xoá tài khoản Supabase Auth -
    * chỉ mất quyền admin. Chặn tự xoá chính mình để không tự khoá.
    */
   async deleteAdmin(id: string, currentEmail: string) {

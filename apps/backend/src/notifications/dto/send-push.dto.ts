@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 
 /**
- * Body cho POST /notifications/push — admin gửi thông báo.
+ * Body cho POST /notifications/push - admin gửi thông báo.
  * Chọn người nhận: `uids` (danh sách ≥1) HOẶC `all=true` (tất cả user Tuya, backend enumerate).
  * Tuya Cloud push nhận 1 uid/lần → backend loop per-uid (không có batch/broadcast).
  */
@@ -31,7 +31,7 @@ export class SendPushDto {
   @IsOptional()
   all?: boolean;
 
-  /** Danh sách Tuya uid người nhận — bắt buộc ≥1 khi `all` !== true. */
+  /** Danh sách Tuya uid người nhận - bắt buộc ≥1 khi `all` !== true. */
   @ValidateIf((o: SendPushDto) => o.all !== true)
   @IsArray()
   @ArrayNotEmpty()

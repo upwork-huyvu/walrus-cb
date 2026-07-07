@@ -1,6 +1,6 @@
-// Vercel serverless entrypoint — bọc Nest app trên Express (cache giữa các invocation).
+// Vercel serverless entrypoint - bọc Nest app trên Express (cache giữa các invocation).
 // LƯU Ý: build bởi @vercel/node (không qua `nest build`). Deploy là hành động riêng
-// (KHÔNG tự deploy). Cron in-process (@nestjs/schedule) KHÔNG chạy trên serverless —
+// (KHÔNG tự deploy). Cron in-process (@nestjs/schedule) KHÔNG chạy trên serverless -
 // delete_jobs ở C2 sẽ dùng Vercel Cron / worker.
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';

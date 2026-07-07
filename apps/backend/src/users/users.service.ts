@@ -62,7 +62,7 @@ export class UsersService {
   }
 
   /**
-   * nick_name/avatar chỉ có ở endpoint detail (/users/{uid}/infos) — list của Tuya không trả.
+   * nick_name/avatar chỉ có ở endpoint detail (/users/{uid}/infos) - list của Tuya không trả.
    * Gọi song song per-uid (tối đa page_size request); user nào lỗi thì bỏ qua, không chặn list.
    */
   private async enrichInfos(
@@ -101,8 +101,8 @@ export class UsersService {
   }
 
   /**
-   * Thiết bị Tuya của user (GET /v1.0/users/{uid}/devices — result là mảng trực tiếp).
-   * Lược bỏ `local_key` (secret của thiết bị — không bao giờ đưa về admin FE).
+   * Thiết bị Tuya của user (GET /v1.0/users/{uid}/devices - result là mảng trực tiếp).
+   * Lược bỏ `local_key` (secret của thiết bị - không bao giờ đưa về admin FE).
    */
   async getUserDevices(uid: string): Promise<TuyaUserDevice[]> {
     const devices = await this.tuya.request<

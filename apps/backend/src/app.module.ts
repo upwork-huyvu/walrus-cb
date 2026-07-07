@@ -6,6 +6,8 @@ import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { PushModule } from './push/push.module';
+import { RemindersModule } from './reminders/reminders.module';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     HealthModule, // GET /health
     UsersModule, // list/detail/xoá user + delete_jobs cron (bọc AdminAuthGuard)
     NotificationsModule, // gửi push + quản lý template qua Tuya Cloud App Push (bọc AdminAuthGuard)
+    PushModule, // FCM provider: đăng ký token (api-key) + gửi FCM (dùng khi NOTIFICATION_PROVIDER=fcm)
+    RemindersModule, // nhắc bảo trì theo thiết bị (mobile: api-key+uid+ownership guard)
   ],
 })
 export class AppModule {}

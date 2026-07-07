@@ -1,7 +1,7 @@
 import { IsIn, IsInt, IsString, Length } from 'class-validator';
 
 /**
- * Body cho POST /notifications/templates — tạo template (submit để Tuya duyệt).
+ * Body cho POST /notifications/templates - tạo template (submit để Tuya duyệt).
  * Giới hạn độ dài theo Tuya: name≤30, title≤40, content≤100, remark≤100.
  */
 export class CreateTemplateDto {

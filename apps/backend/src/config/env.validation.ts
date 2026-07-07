@@ -29,13 +29,16 @@ export const envSchema = z.object({
   TUYA_ACCESS_ID: z.string().min(1).optional(), // = client_id
   TUYA_ACCESS_SECRET: z.string().min(1).optional(), // = secret, SERVER-ONLY
   TUYA_APP_SCHEMA: z.string().min(1).optional(), // channel của App SDK (cho list users)
-  TUYA_APP_BIZ_TYPE: z.coerce.number().int().optional(), // OVERRIDE tuỳ chọn — mặc định resolve runtime qua GET /v1.0/apps/{schema} (TuyaAppInfoService)
-  TUYA_APP_TEMPLATE_ID: z.string().min(1).optional(), // template app-push đã duyệt (biến ${title}/${content}) — cho gửi free-form
+  TUYA_APP_BIZ_TYPE: z.coerce.number().int().optional(), // OVERRIDE tuỳ chọn - mặc định resolve runtime qua GET /v1.0/apps/{schema} (TuyaAppInfoService)
+  TUYA_APP_TEMPLATE_ID: z.string().min(1).optional(), // template app-push đã duyệt (biến ${title}/${content}) - cho gửi free-form
 
   // --- Cron nội bộ (Vercel Cron gọi endpoint retry delete_jobs) ---
   CRON_SECRET: z.string().min(1).optional(), // SERVER-ONLY
 
-  // --- Firebase Cloud Messaging (M3 push) — service account SERVER-ONLY ---
+  // --- Provider gửi thông báo: 'tuya' (Tuya App Push, cần template duyệt) | 'fcm' (Firebase, không cần) ---
+  NOTIFICATION_PROVIDER: z.enum(['tuya', 'fcm']).default('tuya'),
+
+  // --- Firebase Cloud Messaging (M3 push) - service account SERVER-ONLY ---
   FCM_PROJECT_ID: z.string().min(1).optional(),
   FCM_CLIENT_EMAIL: z.string().min(1).optional(),
   FCM_PRIVATE_KEY: z.string().min(1).optional(), // SERVER-ONLY (\n escaped trong env → un-escape lúc init)

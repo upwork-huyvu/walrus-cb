@@ -10,19 +10,19 @@ import {
 } from 'class-validator';
 
 /**
- * Body cho POST /notifications/send — gửi thông báo FREE-FORM qua Tuya App Push.
- * title/body được map vào biến `${title}`/`${content}` của template đã duyệt (TUYA_APP_TEMPLATE_ID).
- * Giới hạn Tuya: title ≤ 40, content ≤ 100 ký tự.
+ * Body cho POST /notifications/send - gửi thông báo FREE-FORM. Router chọn Tuya App Push | FCM theo ENV.
+ * TUYA: title/body map vào `${title}`/`${content}` của template (Tuya Cloud giới hạn ~40/~100 ký tự).
+ * FCM: title/body + imageUrl (ảnh) + screen (deeplink → data.screen). imageUrl/screen bị bỏ qua khi provider=tuya.
  */
 export class SendAppPushDto {
   @IsString()
   @MinLength(1)
-  @MaxLength(40)
+  @MaxLength(100)
   title!: string;
 
   @IsString()
   @MinLength(1)
-  @MaxLength(100)
+  @MaxLength(500)
   body!: string;
 
   /** Gửi tới TẤT CẢ user Tuya (bỏ qua `uids`). */
@@ -30,10 +30,22 @@ export class SendAppPushDto {
   @IsOptional()
   all?: boolean;
 
-  /** Danh sách Tuya uid người nhận — bắt buộc ≥1 khi `all` !== true. */
+  /** Danh sách Tuya uid người nhận - bắt buộc ≥1 khi `all` !== true. */
   @ValidateIf((o: SendAppPushDto) => o.all !== true)
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
   uids?: string[];
+
+  /** (FCM) URL ảnh hiển thị trong notification. Tuya template bỏ qua. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  imageUrl?: string;
+
+  /** (FCM) Deeplink - tên màn app mở khi tap (→ data.screen). Tuya template bỏ qua. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  screen?: string;
 }

@@ -1,4 +1,4 @@
-// Prisma schema — Postgres (Supabase). Business data sống ở Supabase.
+// Prisma schema - Postgres (Supabase). Business data sống ở Supabase.
 // Runtime dùng DATABASE_URL (pooled, pgbouncer :6543?pgbouncer=true);
 // migrate dùng DIRECT_URL (:5432). Mở rộng model ở C2 (user-mgmt) / C3 (admin-auth).
 
@@ -12,7 +12,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/// Tài khoản admin (auth qua Supabase Auth ở C3) — map tối thiểu.
+/// Tài khoản admin (auth qua Supabase Auth ở C3) - map tối thiểu.
 model AdminUser {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -21,7 +21,7 @@ model AdminUser {
   @@map("admin_users")
 }
 
-/// Liên kết user (Tuya uid) ↔ thiết bị — placeholder cho user-mgmt / device mapping.
+/// Liên kết user (Tuya uid) ↔ thiết bị - placeholder cho user-mgmt / device mapping.
 model DeviceMapping {
   id        String   @id @default(uuid())
   tuyaUid   String
@@ -33,7 +33,7 @@ model DeviceMapping {
   @@map("device_mappings")
 }
 
-/// Hàng đợi xoá (dùng ở C2: Tuya pre-delete + xoá business data) — định nghĩa sớm để ổn định schema.
+/// Hàng đợi xoá (dùng ở C2: Tuya pre-delete + xoá business data) - định nghĩa sớm để ổn định schema.
 model DeleteJob {
   id          String   @id @default(uuid())
   tuyaUid     String
@@ -44,5 +44,53 @@ model DeleteJob {
   updatedAt   DateTime @updatedAt
 
   @@map("delete_jobs")
+}
+
+/// FCM token của thiết bị ↔ Tuya uid (dùng khi NOTIFICATION_PROVIDER=fcm). token @unique → upsert idempotent.
+/// Hồi sinh sau khi bị drop ở REV 2 (migration recreate_push_tokens).
+model PushToken {
+  id        String   @id @default(uuid())
+  tuyaUid   String
+  token     String   @unique
+  platform  String // 'android' | 'ios'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tuyaUid])
+  @@map("push_tokens")
+}
+
+/// Nhắc bảo trì theo THIẾT BỊ (filter 90 ngày). deviceId @unique → mỗi thiết bị đúng 1 reminder.
+/// countdown suy từ lastReplacedAt + intervalDays; lastNotifiedStage chống spam push (m1-device-reminders).
+model DeviceReminder {
+  id                String   @id @default(uuid())
+  tuyaUid           String
+  deviceId          String   @unique
+  type              String   @default("filter")
+  intervalDays      Int      @default(90)
+  lastReplacedAt    DateTime @default(now())
+  enabled           Boolean  @default(true)
+  lastNotifiedStage String? // 'warn' | 'soon' | 'overdue' - mốc push gần nhất đã gửi
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([tuyaUid])
+  @@map("device_reminders")
+}
+
+/// Lịch sử thông báo backend GỬI đi (admin free-form + cron reminder), 1 dòng / recipient uid.
+/// Nguồn "FCM history" cho app: provider=fcm không vào Tuya Message Center nên app đọc bảng này rồi
+/// gộp với Tuya center (m1-notification-history). provider=tuya vẫn hiện qua Tuya center (không đọc bảng này).
+model NotificationLog {
+  id       String   @id @default(uuid())
+  tuyaUid  String
+  title    String
+  body     String
+  provider String // 'tuya' | 'fcm'
+  data     Json? // payload tap-routing (screen/devId…) nếu có
+  sentAt   DateTime @default(now())
+
+  @@index([tuyaUid, sentAt])
+  @@map("notification_logs")
 }
 

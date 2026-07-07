@@ -40,7 +40,7 @@ export class NotificationsService {
    * loop tuần tự per-uid + tổng hợp kết quả (không có endpoint batch).
    */
   async sendPush(dto: SendPushDto): Promise<PushBatchResult> {
-    // Rev 2: biz_type resolve runtime qua Get App Details (env chỉ còn là override) — xem app-info.service.
+    // Rev 2: biz_type resolve runtime qua Get App Details (env chỉ còn là override) - xem app-info.service.
     const bizType = await this.appInfo.getBizType();
     // template_param PHẢI là chuỗi JSON đã escape (không phải object).
     const templateParam = JSON.stringify(dto.params ?? {});
