@@ -401,10 +401,15 @@ export default function App() {
     <ThemeToggleContext.Provider value={toggleTheme}>
       <ThemeContext.Provider value={theme}>
         <ErrorBoundary>
-          {activeTab && !(screen === 'session' && sessionActive) ? (
+          {activeTab ? (
+            // Màn có tab: LUÔN giữ cùng cấu trúc cây để screen không bị unmount/remount khi
+            // sessionActive đổi (trước đây lật giữa "bọc" và "trần" → remount → nháy + timer không chạy).
+            // Chỉ ẩn BottomTabBar (sibling) khi phiên tắm lạnh đang chạy → immersive.
             <View style={{ flex: 1, backgroundColor: theme.bg }}>
               <View style={{ flex: 1 }}>{currentScreen}</View>
-              <BottomTabBar active={activeTab} navigate={navigate} unread={unread} />
+              {!(screen === 'session' && sessionActive) && (
+                <BottomTabBar active={activeTab} navigate={navigate} unread={unread} />
+              )}
             </View>
           ) : (
             currentScreen
