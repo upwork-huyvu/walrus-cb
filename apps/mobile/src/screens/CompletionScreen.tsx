@@ -75,7 +75,7 @@ export default function CompletionScreen({ state, minutes, seconds, navigate }: 
 
           <PrimaryButton label="View progress" onPress={() => navigate('progress')} />
           <View style={{ height: 12 }} />
-          <GhostButton label="Back to home" onPress={() => navigate('home')} />
+          <GhostButton label="Back to device" onPress={() => navigate(state.deviceConnected ? 'device-detail' : 'device-list')} />
         </ScrollView>
       </SafeAreaView>
     </View>

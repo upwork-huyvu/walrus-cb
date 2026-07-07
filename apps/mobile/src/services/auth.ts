@@ -266,7 +266,7 @@ export async function logout(): Promise<void> {
   try {
     await lib.Tuya.logout();
   } catch {
-    /* nuốt — vẫn coi như đã đăng xuất ở UI */
+    /* nuốt - vẫn coi như đã đăng xuất ở UI */
   }
 }
 

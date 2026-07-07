@@ -13,62 +13,49 @@ import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getMessages, deleteMessages, type AppMessage } from '../services/messages';
+import { setLastReadNow } from '../services/notificationsRead';
 
-type Props = { navigate: Navigate; state: AppState };
+type Props = { navigate: Navigate; state: AppState; uid?: string; onRead?: () => void };
 
-const PAGE = 20;
-
-// Account → Notifications: thông báo THEO USER từ Tuya Message Center (admin backend push per-uid
-// → Tuya lưu vào message center của đúng user → app đọc getMessageList). Pull-refresh + load-more + xoá.
-export default function NotificationsScreen({ navigate, state }: Props) {
+// Account → Notifications: thông báo THEO USER, GỘP Tuya Message Center + FCM log (backend).
+// Mở màn → đánh dấu đã đọc (lastReadAt=now) → badge về 0. Pull-refresh + xoá (Tuya).
+export default function NotificationsScreen({ navigate, state, uid, onRead }: Props) {
   const C = useTheme();
   const [items, setItems] = useState<AppMessage[]>([]);
-  const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [err, setErr] = useState('');
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setErr('');
-    try {
-      const page = await getMessages(0, PAGE);
-      setItems(page.list);
-      setHasMore(page.hasMore);
-    } catch (e: any) {
-      setErr(e?.message ?? 'Could not load notifications');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (isRefresh = false) => {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setErr('');
+      try {
+        const page = await getMessages(uid ?? ''); // đọc lastReadAt CŨ → dấu chưa-đọc hiện đúng lần này
+        setItems(page.list);
+        await setLastReadNow(); // rồi mới đánh dấu đã đọc → badge về 0
+        onRead?.();
+      } catch (e: any) {
+        setErr(e?.message ?? 'Could not load notifications');
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [uid, onRead],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  const loadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    try {
-      const page = await getMessages(items.length, PAGE);
-      setItems((prev) => [...prev, ...page.list]);
-      setHasMore(page.hasMore);
-    } catch {
-      /* giữ list hiện tại — user kéo refresh để thử lại */
-    } finally {
-      setLoadingMore(false);
-    }
-  };
 
   const remove = async (id: string) => {
     // Optimistic: bỏ khỏi list ngay; lỗi → nạp lại từ server.
     const prev = items;
     setItems(prev.filter((m) => m.id !== id));
     try {
-      await deleteMessages([id]);
+      await deleteMessages([id], uid ?? '');
     } catch {
       setItems(prev);
     }
@@ -97,10 +84,6 @@ export default function NotificationsScreen({ navigate, state }: Props) {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={C.ochre} />
             }
-            onMomentumScrollEnd={(e) => {
-              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-              if (contentOffset.y + layoutMeasurement.height >= contentSize.height - 80) void loadMore();
-            }}
           >
             {err ? (
               <Text style={{ fontFamily: F.body, color: '#E5484D', fontSize: 13, marginBottom: 12 }}>{err}</Text>
@@ -160,8 +143,6 @@ export default function NotificationsScreen({ navigate, state }: Props) {
                 </View>
               ))
             )}
-
-            {loadingMore ? <ActivityIndicator color={C.ochre} style={{ marginVertical: 14 }} /> : null}
           </ScrollView>
         )}
       </SafeAreaView>

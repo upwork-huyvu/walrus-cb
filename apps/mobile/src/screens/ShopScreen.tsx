@@ -5,12 +5,12 @@ import type { AppState } from '../state/useAppState';
 
 type Props = { navigate: Navigate; state: AppState };
 
-// TAB Shop — design menu "Shop · Filters, accessories, parts". FAQ: mua tại walruswellness.com/shop;
+// TAB Shop - design menu "Shop · Filters, accessories, parts". FAQ: mua tại walruswellness.com/shop;
 // dùng filter chính hãng (third-party có thể hỏng bơm + mất bảo hành).
 const SHOP_URL = 'https://walruswellness.com/shop';
 
 const ITEMS = [
-  { title: 'Replacement filters', desc: 'Genuine Walrus filters — replace every 90 days.' },
+  { title: 'Replacement filters', desc: 'Genuine Walrus filters - replace every 90 days.' },
   { title: 'Cleaning tablets', desc: 'Walrus-approved tablets for the clean cycle.' },
   { title: 'Accessories & parts', desc: 'Covers, steps, plumbing spares and more.' },
 ];
@@ -19,7 +19,7 @@ export default function ShopScreen({ state }: Props) {
   const C = useTheme();
   const open = () => {
     void Linking.openURL(SHOP_URL).catch(() => {
-      /* không mở được browser — bỏ qua, user thử lại */
+      /* không mở được browser - bỏ qua, user thử lại */
     });
   };
 
@@ -66,7 +66,7 @@ export default function ShopScreen({ state }: Props) {
           ))}
 
           <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 10 }}>
-            Use genuine Walrus filters — third-party filters can damage the pump and void your
+            Use genuine Walrus filters - third-party filters can damage the pump and void your
             warranty.
           </Text>
         </ScrollView>

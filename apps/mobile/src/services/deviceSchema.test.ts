@@ -51,9 +51,9 @@ describe('deviceSchema.clampToRange', () => {
 });
 
 describe('deviceSchema.formatTemp', () => {
-  it('scale 0 → số nguyên + unit; null → —', () => {
+  it('scale 0 → số nguyên + unit; null → -', () => {
     expect(formatTemp(6, DEFAULT_TEMP_RANGE)).toBe('6°C');
-    expect(formatTemp(null, DEFAULT_TEMP_RANGE)).toBe('—');
+    expect(formatTemp(null, DEFAULT_TEMP_RANGE)).toBe('-');
   });
   it('scale 1 → chia 10, 1 chữ số thập phân', () => {
     const range = { min: -100, max: 600, step: 5, scale: 1, unit: '°C' };

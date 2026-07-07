@@ -1,6 +1,6 @@
 export {}; // module scope
 
-// Rev 2 (Option A): token đăng ký với TUYA — Android FCM, iOS APNs; không còn backend /push/tokens.
+// Rev 2 (Option A): token đăng ký với TUYA - Android FCM, iOS APNs; không còn backend /push/tokens.
 type LoadOpts = {
   available?: boolean;
   platform?: 'android' | 'ios';
@@ -11,6 +11,9 @@ type LoadOpts = {
   registerDevice?: jest.Mock;
   unregisterDevice?: jest.Mock;
   deleteToken?: jest.Mock;
+  apiKey?: string; // PUSH_API_KEY: '' (mặc định) → bỏ đăng ký backend
+  registerPushToken?: jest.Mock;
+  unregisterPushToken?: jest.Mock;
 };
 
 function load(opts: LoadOpts = {}) {
@@ -18,6 +21,14 @@ function load(opts: LoadOpts = {}) {
   jest.doMock('react-native', () => ({
     Platform: { OS: opts.platform ?? 'android' },
   }));
+  // Backend client + config (đăng ký FCM token). apiKey='' → push.ts bỏ qua backend.
+  const registerPushToken = opts.registerPushToken ?? jest.fn().mockResolvedValue(undefined);
+  const unregisterPushToken = opts.unregisterPushToken ?? jest.fn().mockResolvedValue(undefined);
+  jest.doMock('../config/api', () => ({
+    API_BASE_URL: 'http://backend.test',
+    PUSH_API_KEY: opts.apiKey ?? '',
+  }));
+  jest.doMock('./api', () => ({ registerPushToken, unregisterPushToken }));
   const deleteToken = opts.deleteToken ?? jest.fn().mockResolvedValue(undefined);
   const registerDeviceForRemoteMessages =
     opts.registerDeviceForRemoteMessages ?? jest.fn().mockResolvedValue(undefined);
@@ -42,7 +53,15 @@ function load(opts: LoadOpts = {}) {
   }));
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
   const mod = require('./push');
-  return { push: mod, registerDevice, unregisterDevice, deleteToken, registerDeviceForRemoteMessages };
+  return {
+    push: mod,
+    registerDevice,
+    unregisterDevice,
+    deleteToken,
+    registerDeviceForRemoteMessages,
+    registerPushToken,
+    unregisterPushToken,
+  };
 }
 
 describe('routeFromData (thuần)', () => {
@@ -104,6 +123,40 @@ describe('syncPushToken (→ Tuya registerDevice)', () => {
   });
 });
 
+describe('syncPushToken → đăng ký backend FCM (khi có PUSH_API_KEY + uid)', () => {
+  it('có apiKey + uid → registerPushToken(uid, fcm-token, platform) với backend', async () => {
+    const { push, registerPushToken } = load({ apiKey: 'k1' });
+    await push.syncPushToken('uid-1');
+    expect(registerPushToken).toHaveBeenCalledWith('uid-1', 'fcm-tok', 'android');
+  });
+
+  it('iOS: backend dùng FCM token (getToken), KHÔNG phải APNs thô', async () => {
+    const { push, registerPushToken } = load({ apiKey: 'k1', platform: 'ios' });
+    await push.syncPushToken('uid-1');
+    expect(registerPushToken).toHaveBeenCalledWith('uid-1', 'fcm-tok', 'ios');
+  });
+
+  it('KHÔNG có apiKey → bỏ qua backend (chỉ Tuya)', async () => {
+    const { push, registerPushToken, registerDevice } = load({ apiKey: '' });
+    await push.syncPushToken('uid-1');
+    expect(registerDevice).toHaveBeenCalled();
+    expect(registerPushToken).not.toHaveBeenCalled();
+  });
+
+  it('KHÔNG có uid → bỏ qua backend (dù có apiKey)', async () => {
+    const { push, registerPushToken } = load({ apiKey: 'k1' });
+    await push.syncPushToken();
+    expect(registerPushToken).not.toHaveBeenCalled();
+  });
+
+  it('backend lỗi → nuốt (không hỏng đường Tuya)', async () => {
+    const registerPushToken = jest.fn().mockRejectedValue(new Error('backend down'));
+    const { push, registerDevice } = load({ apiKey: 'k1', registerPushToken });
+    await expect(push.syncPushToken('uid-1')).resolves.toBeUndefined();
+    expect(registerDevice).toHaveBeenCalled(); // Tuya vẫn chạy
+  });
+});
+
 describe('removePushToken (logout)', () => {
   it('Android xoá FCM token local (không còn gọi backend)', async () => {
     const { push, deleteToken } = load();
@@ -123,5 +176,18 @@ describe('removePushToken (logout)', () => {
     const { push } = load({ available: false, deleteToken });
     await push.removePushToken();
     expect(deleteToken).not.toHaveBeenCalled();
+  });
+
+  it('có apiKey → gỡ token FCM khỏi backend (unregisterPushToken) trước khi deleteToken', async () => {
+    const { push, unregisterPushToken, deleteToken } = load({ apiKey: 'k1' });
+    await push.removePushToken();
+    expect(unregisterPushToken).toHaveBeenCalledWith('fcm-tok');
+    expect(deleteToken).toHaveBeenCalled();
+  });
+
+  it('KHÔNG có apiKey → không gọi backend', async () => {
+    const { push, unregisterPushToken } = load({ apiKey: '' });
+    await push.removePushToken();
+    expect(unregisterPushToken).not.toHaveBeenCalled();
   });
 });

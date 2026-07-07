@@ -25,7 +25,7 @@ type Props = {
 };
 
 // Account → Change password. Tuya App SDK chỉ hỗ trợ RESET qua OTP email (không có đổi bằng
-// password cũ khi đang login — verify spec NativeTuyaAuth). Google/Apple: provider quản lý password.
+// password cũ khi đang login - verify spec NativeTuyaAuth). Google/Apple: provider quản lý password.
 // Flow: SEND CODE (type 3 = reset) → code + new password → resetPassword → sign out để login lại.
 export default function ChangePasswordScreen({ navigate, state, user, onSignOut }: Props) {
   const C = useTheme();

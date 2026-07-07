@@ -1,10 +1,10 @@
-// Danh sách country code cho đăng ký/đăng nhập Tuya — lấy NGUYÊN bảng
+// Danh sách country code cho đăng ký/đăng nhập Tuya - lấy NGUYÊN bảng
 // "Western Europe Data Center" (app SDK post-2025-11-25 route các nước này về Western Europe):
 // https://developer.tuya.com/en/docs/iot/oem-app-data-center-distributed?id=Kafi0ku9l07qb#title-6
 // Lưu ý: DC của account do NGÀY TẠO appKey + bảng mapping này quyết (không đổi được từ client).
 export type Country = { code: string; name: string };
 
-export const DEFAULT_COUNTRY_CODE = '49'; // Germany — khớp account/dữ liệu hiện có
+export const DEFAULT_COUNTRY_CODE = '49'; // Germany - khớp account/dữ liệu hiện có
 
 export const COUNTRIES: Country[] = [
   { code: '7', name: 'Russia' },
@@ -179,7 +179,7 @@ export const COUNTRIES: Country[] = [
   { code: '4779', name: 'Svalbard and Jan Mayen' },
 ];
 
-/** Tên nước theo code — fallback chính code khi không có trong bảng. */
+/** Tên nước theo code - fallback chính code khi không có trong bảng. */
 export function countryName(code: string): string {
   return COUNTRIES.find((c) => c.code === code)?.name ?? code;
 }

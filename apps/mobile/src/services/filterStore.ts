@@ -1,4 +1,4 @@
-// Nhớ ngày thay filter gần nhất (LOCAL — AsyncStorage). FAQ: thay mỗi 90 ngày,
+// Nhớ ngày thay filter gần nhất (LOCAL - AsyncStorage). FAQ: thay mỗi 90 ngày,
 // app nhắc khi còn 7 ngày. Pattern try/catch như deviceStore: native vắng → no-op.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

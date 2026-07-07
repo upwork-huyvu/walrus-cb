@@ -51,7 +51,7 @@ export function useAuth(): Auth {
         const u = await getCurrentUser();
         setUser(u);
         setStatus('authed');
-        if (u?.uid) void syncPushToken(); // đăng ký FCM token với Tuya cho phiên đã đăng nhập sẵn
+        if (u?.uid) void syncPushToken(u.uid); // đăng ký FCM token (Tuya + backend) cho phiên đã đăng nhập sẵn
         return;
       }
     } catch {
@@ -64,7 +64,7 @@ export function useAuth(): Auth {
   const onAuthed = useCallback((u: AuthUser) => {
     setUser(u);
     setStatus('authed');
-    void syncPushToken(); // đăng ký FCM token với Tuya ngay sau login
+    void syncPushToken(u.uid); // đăng ký FCM token (Tuya + backend) ngay sau login
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -113,7 +113,7 @@ export function useAuth(): Auth {
     [],
   );
 
-  // Phiên hết hạn (session chết phía SDK) — không gọi logout, chỉ clear state.
+  // Phiên hết hạn (session chết phía SDK) - không gọi logout, chỉ clear state.
   const reset = useCallback(() => {
     setUser(null);
     setStatus('guest');

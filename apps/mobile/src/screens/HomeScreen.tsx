@@ -113,13 +113,6 @@ export default function HomeScreen({ state, navigate, userName, onSignOut }: Pro
 
           {/* ── Actions ── */}
           <PrimaryButton label="Into the cold" onPress={() => navigate('session')} />
-          <View style={{ height: 16 }} />
-          <Pressable
-            onPress={() => navigate('breathwork')}
-            style={{ borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 18, alignItems: 'center' }}
-          >
-            <Text style={{ color: C.white, fontSize: 15, fontFamily: F.body, letterSpacing: 0.5 }}>Breathwork</Text>
-          </Pressable>
 
           {/* ── Device summary (chi tiết điều khiển ở Dashboard) ── */}
           {state.deviceConnected ? (

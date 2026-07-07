@@ -6,7 +6,7 @@ import type { AppState } from '../state/useAppState';
 
 type Props = { navigate: Navigate; state: AppState };
 
-// TAB Help — FAQ theo design (câu hỏi accordion: mở = ochre + ⌄, đóng = trắng + ›; section CAPS).
+// TAB Help - FAQ theo design (câu hỏi accordion: mở = ochre + ⌄, đóng = trắng + ›; section CAPS).
 // Nội dung: copy client cung cấp (4 nhóm) + card "Still need help?" → email support.
 const SUPPORT_EMAIL = 'support@walruswellness.com';
 
@@ -27,7 +27,7 @@ const FAQ: Section[] = [
       },
       {
         q: 'How long should each session be?',
-        a: "Start with 1–2 minutes. Most experienced users aim for 3–5 minutes. Longer isn't necessarily better — consistent shorter sessions outperform occasional long ones.",
+        a: "Start with 1–2 minutes. Most experienced users aim for 3–5 minutes. Longer isn't necessarily better - consistent shorter sessions outperform occasional long ones.",
       },
       {
         q: 'Is cold water therapy safe for everyone?',
@@ -48,11 +48,11 @@ const FAQ: Section[] = [
       },
       {
         q: 'Why is my water cloudy?',
-        a: "Cloudy water usually indicates the filter needs replacing or it's time for a cleaning cycle. Run the clean cycle and monitor — if it persists after 24 hours, replace the filter.",
+        a: "Cloudy water usually indicates the filter needs replacing or it's time for a cleaning cycle. Run the clean cycle and monitor - if it persists after 24 hours, replace the filter.",
       },
       {
         q: 'Where can I buy replacement filters?',
-        a: 'Order directly from the Walrus Wellness shop at walruswellness.com/shop. Use genuine Walrus filters — third-party filters can damage the pump and void your warranty.',
+        a: 'Order directly from the Walrus Wellness shop at walruswellness.com/shop. Use genuine Walrus filters - third-party filters can damage the pump and void your warranty.',
       },
     ],
   },
@@ -60,16 +60,16 @@ const FAQ: Section[] = [
     title: 'DEVICE & CONNECTIVITY',
     items: [
       {
-        q: "My device won't connect — what do I do?",
+        q: "My device won't connect - what do I do?",
         a: 'Ensure your phone and the Walrus device are on the same Wi-Fi network (2.4GHz). Try restarting the device by holding the power button for 5 seconds. If problems persist, use "Reconnect" in the app.',
       },
       {
         q: 'Can I use the app without the device connected?',
-        a: 'Yes. The app works independently — you can track sessions, browse content, and manage settings without a live device connection.',
+        a: 'Yes. The app works independently - you can track sessions, browse content, and manage settings without a live device connection.',
       },
       {
         q: 'Does Walrus work on 5GHz Wi-Fi?',
-        a: 'No — the Walrus device uses 2.4GHz Wi-Fi only. If your router broadcasts both bands with the same SSID, you may need to separate them in your router settings.',
+        a: 'No - the Walrus device uses 2.4GHz Wi-Fi only. If your router broadcasts both bands with the same SSID, you may need to separate them in your router settings.',
       },
       {
         q: 'How do I update my device firmware?',
@@ -102,7 +102,7 @@ export default function HelpScreen({ state }: Props) {
 
   const emailSupport = () => {
     void Linking.openURL(`mailto:${SUPPORT_EMAIL}`).catch(() => {
-      /* không có mail app — bỏ qua */
+      /* không có mail app - bỏ qua */
     });
   };
 

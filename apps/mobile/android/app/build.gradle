@@ -1,7 +1,7 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
-apply plugin: "com.google.gms.google-services" // Firebase/FCM (google-services.json — gitignored, copy từ docs/fire-base)
+apply plugin: "com.google.gms.google-services" // Firebase/FCM (google-services.json - gitignored, copy từ docs/fire-base)
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -74,7 +74,7 @@ def enableProguardInReleaseBuilds = false
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 // ===== Secret project-local (KHÔNG commit) =====
-// Đọc apps/mobile/android/secrets.properties (gitignored) — copy từ secrets.properties.example.
+// Đọc apps/mobile/android/secrets.properties (gitignored) - copy từ secrets.properties.example.
 // Fallback: -P / ~/.gradle/gradle.properties (cho CI). secret(k) trả "" nếu không có.
 def secretsProps = new Properties()
 def secretsFile = rootProject.file("secrets.properties")
@@ -136,7 +136,7 @@ configurations.all {
 }
 
 dependencies {
-    // Tuya security file (security-algorithm-*.aar trong app/libs) — bắt buộc
+    // Tuya security file (security-algorithm-*.aar trong app/libs) - bắt buộc
     implementation fileTree(include: ['*.aar'], dir: 'libs')
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")

@@ -1,5 +1,5 @@
 // Base config cho scheme DEBUG.
-// Nối CocoaPods (bắt buộc — nếu không, mất build settings của Pods) + secrets.xcconfig (project-local).
+// Nối CocoaPods (bắt buộc - nếu không, mất build settings của Pods) + secrets.xcconfig (project-local).
 // Xcode: set file này làm "Based on Configuration File" cho target CoolBathMobile ở cấu hình Debug.
 #include "../Pods/Target Support Files/Pods-CoolBathMobile/Pods-CoolBathMobile.debug.xcconfig"
 // `#include?` = optional → thiếu secrets.xcconfig (CI/clone mới) vẫn build được (key rỗng → initSdk sẽ reject rõ ràng).

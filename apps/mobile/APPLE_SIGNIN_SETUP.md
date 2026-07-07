@@ -1,4 +1,4 @@
-# Sign in with Apple — setup checklist (mobile iOS)
+# Sign in with Apple - setup checklist (mobile iOS)
 
 > Để nút **"Continue with Apple"** đăng nhập được (qua Tuya `loginByAuth2WithType:@"ap"`).
 > Research: [docs/research/tuya-ios-third-party-login.md](../../docs/research/tuya-ios-third-party-login.md).
@@ -11,7 +11,7 @@
   `loginByAuth2WithType:@"ap" ...`, extraInfo = NSDictionary `{userIdentifier,email,nickname,snsNickname}`).
 - Apple chỉ trả **email + fullName LẦN ĐẦU** user authorize → code đã lấy ngay và nhét vào extraInfo.
 
-## 1) Xcode — bật capability "Sign in with Apple"  (dev, cần Mac)
+## 1) Xcode - bật capability "Sign in with Apple"  (dev, cần Mac)
 - File entitlement đã tạo sẵn: [ios/CoolBathMobile/CoolBathMobile.entitlements](ios/CoolBathMobile/CoolBathMobile.entitlements)
   (`com.apple.developer.applesignin = [Default]`).
 - Mở `ios/CoolBathMobile.xcodeproj` → target **CoolBathMobile** → **Signing & Capabilities** →
@@ -20,21 +20,21 @@
   vào cả build config Debug **và** Release trong pbxproj).
 - `pod install` trong `ios/` để autolink `RNAppleAuthentication`.
 
-## 2) Apple Developer portal  (client — cần Apple Developer Program trả phí)
+## 2) Apple Developer portal  (client - cần Apple Developer Program trả phí)
 - **Certificates, Identifiers & Profiles → Identifiers → App ID `com.walrus.wellness`** → bật
   **Sign in with Apple** (Enable as a primary App ID).
 - Tạo lại/để Xcode tự tạo **Provisioning Profile** có capability này.
-- (Chỉ cần nếu sau này làm Android/web Apple: tạo **Services ID** + Return URL — hiện KHÔNG cần.)
+- (Chỉ cần nếu sau này làm Android/web Apple: tạo **Services ID** + Return URL - hiện KHÔNG cần.)
 
 ## 3) Tuya Developer Platform
 - OEM App → Optional Setting → **Third-Party Login Support** → cấu hình Apple (App ID/Team ID/Key
   theo yêu cầu Tuya). Data Center = Central Europe (khớp Cloud Project).
 
-## 4) Verify (device — AC6, cần iPhone thật, iOS 13+)
+## 4) Verify (device - AC6, cần iPhone thật, iOS 13+)
 - [ ] Bấm "Continue with Apple" → hiện Apple sheet (Face ID / mật khẩu Apple ID).
 - [ ] Authorize → nhận `identityToken` → `thirdLogin('ap')` OK → vào **Home**.
 - [ ] Tuya account sau login là **Owner** của Home (pairing chạy).
-- [ ] Huỷ Apple sheet → KHÔNG hiện lỗi (im lặng — code nuốt `CANCELLED`).
+- [ ] Huỷ Apple sheet → KHÔNG hiện lỗi (im lặng - code nuốt `CANCELLED`).
 - [ ] Kill app → mở lại → vẫn Home (phiên persist).
 
 ## Ai làm gì

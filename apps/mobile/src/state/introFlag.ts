@@ -16,6 +16,6 @@ export async function setIntroSeen(): Promise<void> {
   try {
     await AsyncStorage.setItem(KEY, '1');
   } catch {
-    /* no-op — lần sau xem lại intro, không sao */
+    /* no-op - lần sau xem lại intro, không sao */
   }
 }

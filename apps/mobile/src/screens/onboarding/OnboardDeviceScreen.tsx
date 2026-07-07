@@ -5,7 +5,7 @@ import ProgressDots from '../../components/ProgressDots';
 import GhostButton from '../../components/GhostButton';
 import PrimaryButton from '../../components/PrimaryButton';
 
-// userName giữ trong props cho khớp gốc (chưa dùng tới — sẽ dùng khi cá nhân hoá).
+// userName giữ trong props cho khớp gốc (chưa dùng tới - sẽ dùng khi cá nhân hoá).
 type Props = { navigate: Navigate; userName?: string };
 
 export default function OnboardDeviceScreen({ navigate }: Props) {

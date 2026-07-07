@@ -98,16 +98,16 @@ export function parseTempRange(schemaJson: string): TempRange {
   }
 }
 
-/** Kẹp nhiệt độ (RAW) vào [min, max] của range (không snap theo step — +/- đã dùng step). */
+/** Kẹp nhiệt độ (RAW) vào [min, max] của range (không snap theo step - +/- đã dùng step). */
 export function clampToRange(temp: number, range: TempRange): number {
   if (temp < range.min) return range.min;
   if (temp > range.max) return range.max;
   return temp;
 }
 
-/** Định dạng nhiệt độ RAW → chuỗi hiển thị (chia 10^scale, đúng số thập phân) + đơn vị. null → '—'. */
+/** Định dạng nhiệt độ RAW → chuỗi hiển thị (chia 10^scale, đúng số thập phân) + đơn vị. null → '-'. */
 export function formatTemp(raw: number | null, range: TempRange): string {
-  if (raw == null) return '—';
+  if (raw == null) return '-';
   const v = raw / Math.pow(10, range.scale);
   return `${v.toFixed(range.scale > 0 ? range.scale : 0)}${range.unit}`;
 }

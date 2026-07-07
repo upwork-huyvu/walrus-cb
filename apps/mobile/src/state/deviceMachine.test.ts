@@ -14,7 +14,7 @@ const snap = (over: Partial<Snapshot> = {}): Snapshot => ({
   ...over,
 });
 
-describe('deviceMachine — kết nối / loading / error (AC2, AC3)', () => {
+describe('deviceMachine - kết nối / loading / error (AC2, AC3)', () => {
   it('connectStart → connecting + loading', () => {
     const s = deviceReducer(initialDeviceState, { type: 'connectStart' });
     expect(s.status).toBe('connecting');
@@ -41,6 +41,26 @@ describe('deviceMachine — kết nối / loading / error (AC2, AC3)', () => {
     expect(s.status).toBe('offline');
   });
 
+  it('connectOk: snapshot thiếu purify/freeze → FALSE, KHÔNG kế thừa state bồn trước (không rò state)', () => {
+    // Bồn A trước đó bật purify+freeze; mở bồn B mà snapshot không có 2 DP đó.
+    const prev = { ...initialDeviceState, purifyOn: true, freezeOn: true };
+    const s = deviceReducer(prev, {
+      type: 'connectOk',
+      snapshot: snap(), // snap() không set purifyOn/freezeOn → undefined
+    });
+    expect(s.purifyOn).toBe(false);
+    expect(s.freezeOn).toBe(false);
+  });
+
+  it('connectOk: snapshot CÓ purify/freeze → nạp đúng giá trị bồn hiện tại', () => {
+    const s = deviceReducer(initialDeviceState, {
+      type: 'connectOk',
+      snapshot: snap({ purifyOn: true, freezeOn: false }),
+    });
+    expect(s.purifyOn).toBe(true);
+    expect(s.freezeOn).toBe(false);
+  });
+
   it('connectError → error + giữ message', () => {
     const s = deviceReducer(
       { ...initialDeviceState, status: 'connecting', loading: true },
@@ -59,7 +79,7 @@ describe('deviceMachine — kết nối / loading / error (AC2, AC3)', () => {
   });
 });
 
-describe('deviceMachine — realtime dpPatch (AC5)', () => {
+describe('deviceMachine - realtime dpPatch (AC5)', () => {
   it('dpPatch cập nhật current/light + online từ event', () => {
     const s = deviceReducer(initialDeviceState, {
       type: 'dpPatch',
@@ -79,7 +99,7 @@ describe('deviceMachine — realtime dpPatch (AC5)', () => {
   });
 });
 
-describe('deviceMachine — optimistic reconcile target temp (AC4, AC5)', () => {
+describe('deviceMachine - optimistic reconcile target temp (AC4, AC5)', () => {
   it('setTargetOptimistic kẹp theo range + đặt pending + lưu prevTarget', () => {
     const s = deviceReducer({ ...initialDeviceState, targetTemp: 6 }, { type: 'setTargetOptimistic', temp: 999 });
     expect(s.targetTemp).toBe(DEFAULT_TEMP_RANGE.max); // 12 (kẹp)
@@ -112,7 +132,7 @@ describe('deviceMachine — optimistic reconcile target temp (AC4, AC5)', () => 
   });
 });
 
-describe('deviceMachine — dpPatch diff (audit M-3) + ackTimeout message (audit H-1)', () => {
+describe('deviceMachine - dpPatch diff (audit M-3) + ackTimeout message (audit H-1)', () => {
   it('dpPatch không đổi gì → trả CÙNG ref (bỏ re-render)', () => {
     const base = { ...initialDeviceState, currentTemp: 12, lightOn: false, status: 'online' as const };
     const same = deviceReducer(base, { type: 'dpPatch', patch: { currentTemp: 12, lightOn: false, isOnline: true } });
@@ -134,7 +154,7 @@ describe('deviceMachine — dpPatch diff (audit M-3) + ackTimeout message (audit
   });
 });
 
-describe('deviceMachine — disconnect', () => {
+describe('deviceMachine - disconnect', () => {
   it('disconnect → idle + xoá nhiệt độ', () => {
     const s = deviceReducer(initialDeviceState, { type: 'disconnect' });
     expect(s.status).toBe('idle');

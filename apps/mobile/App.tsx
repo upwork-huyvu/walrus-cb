@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, AppState as RNAppState, Image, Pressable, Text, View } from 'react-native';
 import {
   DARK_THEME,
   LIGHT_THEME,
@@ -11,7 +11,6 @@ import { LOGO_URI, LOGO_URI_LIGHT } from './src/lib/format';
 import type { Navigate, ScreenName } from './src/navigation';
 import SplashScreen from './src/screens/SplashScreen';
 import HomeScreen from './src/screens/HomeScreen';
-import BreathworkScreen from './src/screens/BreathworkScreen';
 import SessionScreen from './src/screens/SessionScreen';
 import CompletionScreen from './src/screens/CompletionScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
@@ -42,6 +41,7 @@ import { initSdk } from './src/services/tuya';
 import { configureGoogle } from './src/services/googleAuth';
 import { ensureDefaultHome, type HomeDevice } from './src/services/home';
 import { getIntroSeen } from './src/state/introFlag';
+import { getUnreadCount } from './src/services/messages';
 import {
   onForegroundMessage,
   onNotificationTap,
@@ -53,7 +53,10 @@ import {
 // Màn nào nằm trong bottom tab (Device/Reminder/Shop/Help/Account). Màn immersive không tab.
 const TABBED: Partial<Record<ScreenName, TabKey>> = {
   'device-list': 'device',
-  reminder: 'reminder',
+  progress: 'tracking',
+  // Ritual (into-the-cold) sống dưới tab Tracking → giữ bottom bar khi vào Session/Completion.
+  session: 'tracking',
+  completion: 'tracking',
   shop: 'shop',
   help: 'help',
   me: 'account',
@@ -65,12 +68,18 @@ const TABBED: Partial<Record<ScreenName, TabKey>> = {
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenName>('splash');
+  const screenRef = useRef(screen); // luôn = màn hiện tại; để closure cũ (effect notification mount-once) push back-stack đúng
+  screenRef.current = screen;
+  const [history, setHistory] = useState<ScreenName[]>([]); // back-stack cho goBack (chỉ navigate() đẩy vào; setScreen trực tiếp = transient/auth, KHÔNG đẩy)
+  const [sessionActive, setSessionActive] = useState(false); // phiên tắm lạnh đang chạy? → ẩn bottom bar cho immersive
+  const [unread, setUnread] = useState(0); // badge thông báo chưa đọc (gộp Tuya + FCM)
   const [sessionMinutes, setSessionMinutes] = useState(0);
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [userName, setUserName] = useState('');
   const [homeId, setHomeId] = useState<number | undefined>(undefined);
   const [homeName, setHomeName] = useState('');
   const [activeDevId, setActiveDevId] = useState('');
+  const [activeDevName, setActiveDevName] = useState('');
   const [lastPairedDevice, setLastPairedDevice] = useState<HomeDevice | undefined>(undefined);
   const [gateError, setGateError] = useState('');
   const [gateNonce, setGateNonce] = useState(0);
@@ -84,6 +93,30 @@ export default function App() {
   const auth = useAuth();
   const [splashDone, setSplashDone] = useState(false);
   const routed = useRef(false);
+
+  // Badge số thông báo CHƯA ĐỌC (gộp Tuya + FCM). Refresh lúc mở app + khi app về foreground +
+  // sau khi mở màn Notifications (onRead). Chưa đăng nhập → 0.
+  const refreshUnread = useCallback(() => {
+    const u = auth.user?.uid;
+    if (!u) {
+      setUnread(0);
+      return;
+    }
+    void getUnreadCount(u)
+      .then(setUnread)
+      .catch(() => {});
+  }, [auth.user?.uid]);
+
+  useEffect(() => {
+    refreshUnread();
+  }, [refreshUnread]);
+
+  useEffect(() => {
+    const sub = RNAppState.addEventListener('change', (s) => {
+      if (s === 'active') refreshUnread();
+    });
+    return () => sub.remove();
+  }, [refreshUnread]);
 
   // 0) Init Tuya SDK MỘT lần trước mọi call auth/pairing (nếu không getUserInstance()=null → crash).
   // 1) Kiểm tra phiên lúc khởi động. 2) Phiên hết hạn (SDK kick) → về auth.
@@ -136,7 +169,7 @@ export default function App() {
     })();
   }, [splashDone, auth.status]);
 
-  // Home-gate (chuẩn SmartLife): sau login → đảm bảo có nhà — chưa có thì TỰ tạo "My Home" mặc định
+  // Home-gate (chuẩn SmartLife): sau login → đảm bảo có nhà - chưa có thì TỰ tạo "My Home" mặc định
   // (không bắt user qua màn Create Home) → vào thẳng tab Thiết bị. gateNonce: bump khi bấm "Thử lại".
   // Lỗi (mạng/SDK) → hiện Thử lại, KHÔNG tự tạo nhà mù (tránh tạo trùng khi getHomeList lỗi tạm thời).
   useEffect(() => {
@@ -151,7 +184,7 @@ export default function App() {
         setHomeName(home.name || 'My Home');
         setScreen('device-list');
       } catch (e: any) {
-        if (!cancelled) setGateError(e?.message ?? 'Could not load your homes — check your connection and try again.');
+        if (!cancelled) setGateError(e?.message ?? 'Could not load your homes - check your connection and try again.');
       }
     })();
     return () => {
@@ -173,6 +206,7 @@ export default function App() {
     if (typeof params.homeId === 'number') setHomeId(params.homeId);
     if (typeof params.homeName === 'string') setHomeName(params.homeName);
     if (typeof params.devId === 'string') setActiveDevId(params.devId);
+    if (typeof params.devName === 'string') setActiveDevName(params.devName);
     if (
       params.pairedDevice &&
       typeof params.pairedDevice === 'object' &&
@@ -181,7 +215,23 @@ export default function App() {
     ) {
       setLastPairedDevice(params.pairedDevice as HomeDevice);
     }
+    // Đẩy màn hiện tại vào back-stack (dedupe liên tiếp + cap 20) để goBack quay về đúng nơi vừa rời.
+    // Dùng screenRef (không phải biến `screen` đóng băng) vì navigate có thể bị gọi từ closure cũ (effect notification mount-once).
+    const cur = screenRef.current;
+    if (to !== cur) {
+      setHistory((h) => {
+        const next = h[h.length - 1] === cur ? h : [...h, cur];
+        return next.length > 20 ? next.slice(next.length - 20) : next;
+      });
+    }
     setScreen(to);
+  };
+
+  // Quay lại màn TRƯỚC ĐÓ (theo back-stack), không hard-code đích. Rỗng → về device-list.
+  const goBack = () => {
+    const prev = history[history.length - 1] ?? 'device-list';
+    setHistory((h) => h.slice(0, -1));
+    setScreen(prev);
   };
 
   // Đăng xuất dùng chung (Me → Cấu hình thông tin, và HomeScreen cũ).
@@ -208,7 +258,7 @@ export default function App() {
       currentScreen = <IntroScreen navigate={navigate} />;
       break;
     case 'onboard-welcome':
-      // Landing guest theo design "The ritual starts here." — social login trực tiếp từ welcome.
+      // Landing guest theo design "The ritual starts here." - social login trực tiếp từ welcome.
       currentScreen = <AuthScreen navigate={navigate} onAuthed={auth.onAuthed} variant="welcome" />;
       break;
     case 'onboard-email':
@@ -266,7 +316,7 @@ export default function App() {
       );
       break;
     case 'me':
-      currentScreen = <MeScreen navigate={navigate} state={state} user={auth.user} />;
+      currentScreen = <MeScreen navigate={navigate} state={state} user={auth.user} unread={unread} />;
       break;
     case 'reminder':
       currentScreen = <ReminderScreen navigate={navigate} state={state} />;
@@ -281,7 +331,7 @@ export default function App() {
       currentScreen = <HomeManagementScreen navigate={navigate} state={state} homeId={homeId} />;
       break;
     case 'notifications':
-      currentScreen = <NotificationsScreen navigate={navigate} state={state} />;
+      currentScreen = <NotificationsScreen navigate={navigate} state={state} uid={auth.user?.uid} onRead={refreshUnread} />;
       break;
     case 'profile':
       currentScreen = (
@@ -304,7 +354,15 @@ export default function App() {
       );
       break;
     case 'device-detail':
-      currentScreen = <DashboardScreen navigate={navigate} state={state} devId={activeDevId} />;
+      currentScreen = (
+        <DashboardScreen
+          navigate={navigate}
+          state={state}
+          devId={activeDevId}
+          devName={activeDevName}
+          userUid={auth.user?.uid}
+        />
+      );
       break;
     case 'pairing':
       currentScreen = <PairingScreen navigate={navigate} state={state} homeId={homeId} />;
@@ -312,13 +370,8 @@ export default function App() {
     case 'dashboard':
       currentScreen = <DashboardScreen navigate={navigate} state={state} />;
       break;
-    case 'breathwork':
-      currentScreen = (
-        <BreathworkScreen navigate={navigate} onComplete={appState.completeBreathwork} state={state} />
-      );
-      break;
     case 'session':
-      currentScreen = <SessionScreen navigate={navigate} onComplete={handleSessionComplete} />;
+      currentScreen = <SessionScreen navigate={navigate} goBack={goBack} onComplete={handleSessionComplete} onActiveChange={setSessionActive} />;
       break;
     case 'completion':
       currentScreen = (
@@ -340,17 +393,18 @@ export default function App() {
       );
   }
 
-  // Màn thuộc bottom tab → bọc thêm tab bar (Thiết bị / Tôi) ở đáy.
+  // Màn thuộc bottom tab → bọc thêm tab bar ở đáy. NHƯNG ẩn bar khi phiên tắm lạnh ĐANG chạy
+  // (immersive + tránh chạm nhầm tab mất phiên); vẫn hiện lúc setup/pause nên bug1 "vào vẫn thấy bar" vẫn đúng.
   const activeTab = TABBED[screen];
 
   return (
     <ThemeToggleContext.Provider value={toggleTheme}>
       <ThemeContext.Provider value={theme}>
         <ErrorBoundary>
-          {activeTab ? (
+          {activeTab && !(screen === 'session' && sessionActive) ? (
             <View style={{ flex: 1, backgroundColor: theme.bg }}>
               <View style={{ flex: 1 }}>{currentScreen}</View>
-              <BottomTabBar active={activeTab} navigate={navigate} />
+              <BottomTabBar active={activeTab} navigate={navigate} unread={unread} />
             </View>
           ) : (
             currentScreen

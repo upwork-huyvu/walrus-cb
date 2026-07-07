@@ -14,14 +14,14 @@ import { setIntroSeen } from '../state/introFlag';
 
 type Props = { navigate: Navigate };
 
-// Intro first-launch (4 slide, theo design): video card (placeholder — video/ảnh client đưa sau)
+// Intro first-launch (4 slide, theo design): video card (placeholder - video/ảnh client đưa sau)
 // + badge + tiêu đề + mô tả; Next/Get started, Skip all. Xem xong ghi cờ → lần sau vào thẳng welcome.
 const SLIDES = [
   {
     badge: 'INTRODUCTION',
     cardColor: '#1B2A4A',
     title: 'Welcome to Walrus',
-    desc: 'Your complete cold therapy system — designed for serious practitioners and first-timers alike.',
+    desc: 'Your complete cold therapy system - designed for serious practitioners and first-timers alike.',
   },
   {
     badge: 'GETTING STARTED',
@@ -33,7 +33,7 @@ const SLIDES = [
     badge: 'SCIENCE',
     cardColor: '#2A1B3D',
     title: 'Cold Science',
-    desc: 'The research behind cold exposure — how it affects your nervous system, recovery, and mood.',
+    desc: 'The research behind cold exposure - how it affects your nervous system, recovery, and mood.',
   },
   {
     badge: 'SETUP',
@@ -51,7 +51,7 @@ export default function IntroScreen({ navigate }: Props) {
   const last = index === SLIDES.length - 1;
 
   const finish = () => {
-    void setIntroSeen(); // fire-and-forget — không chặn điều hướng
+    void setIntroSeen(); // fire-and-forget - không chặn điều hướng
     // Intro hiện SAU lần đăng nhập đầu → đi tiếp vào app (home-gate → tự tạo "My Home" → Device List).
     navigate('home-gate');
   };

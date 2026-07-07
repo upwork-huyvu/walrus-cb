@@ -1,9 +1,9 @@
 import Svg, { Path } from 'react-native-svg';
 
 // Logo brand cho nút social login (theo design): Google "G" 4 màu + táo Apple.
-// Vẽ SVG (react-native-svg đã build trong APK) — KHÔNG dùng glyph text: ký tự  không render trên Android.
+// Vẽ SVG (react-native-svg đã build trong APK) - KHÔNG dùng glyph text: ký tự  không render trên Android.
 
-/** Google "G" — path chuẩn từ bộ branding "Sign in with Google". */
+/** Google "G" - path chuẩn từ bộ branding "Sign in with Google". */
 export function GoogleLogo({ size = 18 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 18 18">
@@ -27,7 +27,7 @@ export function GoogleLogo({ size = 18 }: { size?: number }) {
   );
 }
 
-/** Táo Apple — mặc định trắng (nút nền đen theo design). */
+/** Táo Apple - mặc định trắng (nút nền đen theo design). */
 export function AppleLogo({ size = 18, color = '#FFFFFF' }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

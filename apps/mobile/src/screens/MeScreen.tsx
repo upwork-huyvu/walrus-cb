@@ -4,9 +4,9 @@ import type { Navigate, ScreenName } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import type { AuthUser } from '../services/auth';
 
-type Props = { navigate: Navigate; state: AppState; user: AuthUser | null };
+type Props = { navigate: Navigate; state: AppState; user: AuthUser | null; unread?: number };
 
-// TAB Tôi — bám layout SmartLife (ảnh Me): profile row trên cùng (→ cấu hình thông tin),
+// TAB Tôi - bám layout SmartLife (ảnh Me): profile row trên cùng (→ cấu hình thông tin),
 // dưới là card menu: Quản lý nhà · Thông báo · Cấu hình thông tin.
 const MENU: { glyph: string; label: string; screen: ScreenName }[] = [
   { glyph: '⌂', label: 'Home management', screen: 'home-management' },
@@ -14,7 +14,7 @@ const MENU: { glyph: string; label: string; screen: ScreenName }[] = [
   { glyph: '⚙', label: 'Profile settings', screen: 'profile' },
 ];
 
-export default function MeScreen({ navigate, state, user }: Props) {
+export default function MeScreen({ navigate, state, user, unread = 0 }: Props) {
   const C = useTheme();
   const displayName = user?.nickName || user?.email || 'Walrus account';
 
@@ -74,6 +74,24 @@ export default function MeScreen({ navigate, state, user }: Props) {
               >
                 <Text style={{ fontSize: 17, color: C.ochre, width: 24, textAlign: 'center' }}>{m.glyph}</Text>
                 <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15, flex: 1 }}>{m.label}</Text>
+                {m.screen === 'notifications' && unread > 0 ? (
+                  <View
+                    style={{
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      paddingHorizontal: 5,
+                      backgroundColor: '#E5484D',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 8,
+                    }}
+                  >
+                    <Text style={{ fontFamily: F.body, color: '#fff', fontSize: 10 }}>
+                      {unread > 9 ? '9+' : String(unread)}
+                    </Text>
+                  </View>
+                ) : null}
                 <Text style={{ color: C.muted, fontSize: 16 }}>›</Text>
               </Pressable>
             ))}

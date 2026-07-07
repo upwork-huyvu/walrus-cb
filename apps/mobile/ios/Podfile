@@ -21,12 +21,12 @@ end
 target 'CoolBathMobile' do
   config = use_native_modules!
 
-  # Tuya Security SDK (bắt buộc — bản iOS của security-algorithm.aar; tải từ console, bung từ
+  # Tuya Security SDK (bắt buộc - bản iOS của security-algorithm.aar; tải từ console, bung từ
   # docs/sdk/iOS_SDK/ios_core_sdk.tar.gz). Thiếu → ThingSmartHomeKit không resolve/init fail.
   pod 'ThingSmartCryption', :path => './ios_core_sdk'
 
   # Firebase (RNFB) + static libraries: các Swift pod (AppCheckCore/FirebaseCoreInternal) cần
-  # modular headers từ các dep ObjC này — thiếu là pod install fail.
+  # modular headers từ các dep ObjC này - thiếu là pod install fail.
   pod 'GoogleUtilities', :modular_headers => true
   pod 'RecaptchaInterop', :modular_headers => true
 

@@ -1,4 +1,4 @@
-// Wrapper mỏng quanh `TuyaErrors` của lib (classify/describe — bảng tĩnh JS-only, message tiếng Việt + cờ retryable).
+// Wrapper mỏng quanh `TuyaErrors` của lib (classify/describe - bảng tĩnh JS-only, message tiếng Việt + cờ retryable).
 // Mục tiêu (audit H-1): KHÔNG nuốt lỗi SDK; trích mã lỗi + cho thông điệp NGƯỜI DÙNG phân biệt (sai region/owner/
 // token/offline) thay vì chuỗi cố định. KHÔNG import tĩnh từ lib (index.tsx gọi getEnforcing khi import → crash
 // JS-only) → lấy `TuyaErrors` qua require try/catch như adapter; dev (native vắng) → fallback message thô.

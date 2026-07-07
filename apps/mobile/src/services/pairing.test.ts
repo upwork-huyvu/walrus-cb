@@ -9,7 +9,7 @@ function load(nativeTuya: any | null) {
   return require('./pairing');
 }
 
-describe('pairingStepLabel — nhãn confirm kiểu SmartLife', () => {
+describe('pairingStepLabel - nhãn confirm kiểu SmartLife', () => {
   const p = load(null);
   it.each([
     ['device_find', 'Searching for device…'],

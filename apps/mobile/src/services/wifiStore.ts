@@ -1,4 +1,4 @@
-// Nhớ Wi-Fi credentials user đã nhập ở màn pairing (LOCAL — AsyncStorage, theo yêu cầu user).
+// Nhớ Wi-Fi credentials user đã nhập ở màn pairing (LOCAL - AsyncStorage, theo yêu cầu user).
 // Lưu ý: AsyncStorage không mã hoá; đủ cho M1 (chỉ trên máy user, không sync/không gửi đi đâu).
 // Pattern try/catch như deviceStore: native vắng → no-op, không crash.
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -53,6 +53,6 @@ export async function saveWifi(ssid: string, password: string): Promise<void> {
     ].slice(0, MAX_SAVED);
     await AsyncStorage.setItem(KEY, JSON.stringify(next));
   } catch {
-    /* no-op — lần sau user gõ lại, không sao */
+    /* no-op - lần sau user gõ lại, không sao */
   }
 }

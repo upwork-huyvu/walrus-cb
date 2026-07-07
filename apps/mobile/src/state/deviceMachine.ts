@@ -1,4 +1,4 @@
-// Máy trạng thái thiết bị (reducer THUẦN — không gọi native, test được bằng jest).
+// Máy trạng thái thiết bị (reducer THUẦN - không gọi native, test được bằng jest).
 // Gom: trạng thái kết nối (ConnStatus) + loading/error khi đọc snapshot + reconcile optimistic→ack cho target temp.
 import { DEFAULT_TEMP_RANGE, clampToRange, type TempRange } from '../services/deviceSchema';
 
@@ -11,12 +11,14 @@ export type DeviceState = {
   currentTemp: number | null;
   targetTemp: number | null;
   lightOn: boolean;
+  purifyOn: boolean; // lọc/ozone (lá)
+  freezeOn: boolean; // làm lạnh (chiller)
   pendingTarget: number | null; // target đang chờ ack (optimistic chưa confirm)
   prevTarget: number | null; // target trước khi optimistic (để revert nếu timeout)
   tempRange: TempRange;
 };
 
-// Mặc định: coi như đã có thiết bị (mock) — giữ UX cũ của UI clone (online, 12°C/6°C).
+// Mặc định: coi như đã có thiết bị (mock) - giữ UX cũ của UI clone (online, 12°C/6°C).
 export const initialDeviceState: DeviceState = {
   status: 'online',
   loading: false,
@@ -24,6 +26,8 @@ export const initialDeviceState: DeviceState = {
   currentTemp: 12,
   targetTemp: 6,
   lightOn: false,
+  purifyOn: false,
+  freezeOn: true,
   pendingTarget: null,
   prevTarget: null,
   tempRange: DEFAULT_TEMP_RANGE,
@@ -33,6 +37,8 @@ export type Snapshot = {
   currentTemp: number | null;
   targetTemp: number | null;
   lightOn: boolean;
+  purifyOn?: boolean; // optional: DP placeholder - thiết bị thật có thể chưa expose
+  freezeOn?: boolean;
   isOnline: boolean;
   tempRange: TempRange;
 };
@@ -41,6 +47,8 @@ export type DpPatch = {
   currentTemp?: number | null;
   targetTemp?: number | null;
   lightOn?: boolean;
+  purifyOn?: boolean;
+  freezeOn?: boolean;
   isOnline?: boolean;
 };
 
@@ -72,6 +80,10 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
         currentTemp: s.currentTemp,
         targetTemp: s.targetTemp,
         lightOn: s.lightOn,
+        // Snapshot thiếu DP purify/freeze (thiết bị thật chưa expose) → default FALSE, KHÔNG kế thừa
+        // giá trị của bồn mở trước đó (tránh rò state giữa các bồn).
+        purifyOn: s.purifyOn ?? false,
+        freezeOn: s.freezeOn ?? false,
         tempRange: s.tempRange,
         pendingTarget: null,
         prevTarget: null,
@@ -96,6 +108,14 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
       }
       if (p.lightOn !== undefined && p.lightOn !== state.lightOn) {
         next.lightOn = p.lightOn;
+        changed = true;
+      }
+      if (p.purifyOn !== undefined && p.purifyOn !== state.purifyOn) {
+        next.purifyOn = p.purifyOn;
+        changed = true;
+      }
+      if (p.freezeOn !== undefined && p.freezeOn !== state.freezeOn) {
+        next.freezeOn = p.freezeOn;
         changed = true;
       }
       if (p.targetTemp !== undefined && p.targetTemp !== null) {

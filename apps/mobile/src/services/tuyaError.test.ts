@@ -1,10 +1,10 @@
 import { describeTuyaError, extractCode, extractDomain } from './tuyaError';
 
-// Classifier giả lập TuyaErrors của lib (vì lib không import được trong jest — native vắng).
+// Classifier giả lập TuyaErrors của lib (vì lib không import được trong jest - native vắng).
 const fakeClassifier = {
   describe: (code: string | number, _domain?: string) => {
     const map: Record<string, string> = {
-      '-60': '[sdk:-60] Realtime (MQTT) connection lost — try again.',
+      '-60': '[sdk:-60] Realtime (MQTT) connection lost - try again.',
       '-10001': '[sdk:-10001] Device is offline/not connected.',
       '-1400': '[sdk:-1400] DP not supported or invalid type/value.',
     };
@@ -35,7 +35,7 @@ describe('tuyaError.describeTuyaError', () => {
   it('có classifier + code → message đã bỏ tiền tố + cờ retryable', () => {
     const r = describeTuyaError({ code: '-60', domain: 'sdk' }, { classifier: fakeClassifier });
     expect(r.code).toBe('-60');
-    expect(r.message).toBe('Realtime (MQTT) connection lost — try again.'); // bỏ "[sdk:-60] "
+    expect(r.message).toBe('Realtime (MQTT) connection lost - try again.'); // bỏ "[sdk:-60] "
     expect(r.retryable).toBe(true);
   });
 

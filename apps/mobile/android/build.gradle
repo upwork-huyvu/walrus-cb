@@ -15,14 +15,14 @@ buildscript {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
-        // Firebase (FCM): plugin đọc google-services.json — cần cho @react-native-firebase/app
+        // Firebase (FCM): plugin đọc google-services.json - cần cho @react-native-firebase/app
         classpath("com.google.gms:google-services:4.4.2")
     }
 }
 
 apply plugin: "com.facebook.react.rootproject"
 
-// Repo Maven Tuya — bắt buộc ở phạm vi resolve của :app: transitive dep
+// Repo Maven Tuya - bắt buộc ở phạm vi resolve của :app: transitive dep
 // `com.thingclips.smart:thingsmart` (do lib `api`) KHÔNG kế thừa repositories của lib module;
 // :app phải tự khai (xem packages/tuya-react-native/example/android/build.gradle).
 allprojects {

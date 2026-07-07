@@ -2,6 +2,8 @@
 // (in-memory) để luồng UI clone chạy được trong dev. Cùng pattern require try/catch như services/tuya.ts.
 //
 // KHÔNG auto-create home ngầm: việc tạo home do màn Create Home gọi `createHome` tường minh (xem home-gate).
+import { MOCK_DEVICES, MOCK_DEVICE_LIST } from '../config/mock';
+
 export type HomeInfo = {
   homeId: number;
   name: string;
@@ -83,9 +85,31 @@ export async function ensureDefaultHome(): Promise<HomeInfo> {
   return pickCurrentHome(homes) as HomeInfo;
 }
 
-/** Thiết bị trong 1 home → màn device list. Native vắng → mock (1 thiết bị demo). */
+/** Bồn giả → chỉ field HomeDevice (bỏ field trạng thái seed). */
+function mockHomeDevices(): HomeDevice[] {
+  return MOCK_DEVICE_LIST.map((d) => ({
+    devId: d.devId,
+    name: d.name,
+    productId: d.productId,
+    isOnline: d.isOnline,
+    iconUrl: d.iconUrl,
+  }));
+}
+
+/**
+ * Thiết bị trong 1 home → màn device list.
+ * - Native vắng (Metro-only): mock list (nếu bật) / demo cũ.
+ * - Native có: LẤY THIẾT BỊ THẬT từ SDK; nếu MOCK_DEVICES bật thì CHÈN THÊM bồn giả (không thay thế)
+ *   để test UI - thiết bị thật vẫn hiển thị & điều khiển qua SDK. Native lỗi + mock bật → vẫn hiện mock.
+ */
 export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
-  if (!homeAvailable) return [...mockDevices];
-  const list = await lib.Tuya.getHomeDeviceList(homeId);
-  return Array.isArray(list) ? list : [];
+  if (!homeAvailable) return MOCK_DEVICES ? mockHomeDevices() : [...mockDevices];
+  let real: HomeDevice[] = [];
+  try {
+    const list = await lib.Tuya.getHomeDeviceList(homeId);
+    real = Array.isArray(list) ? list : [];
+  } catch (e) {
+    if (!MOCK_DEVICES) throw e; // prod: lỗi SDK phải nổi lên; dev mock: vẫn hiện bồn giả
+  }
+  return MOCK_DEVICES ? [...real, ...mockHomeDevices()] : real;
 }

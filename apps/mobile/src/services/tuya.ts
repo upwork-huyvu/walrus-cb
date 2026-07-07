@@ -1,9 +1,25 @@
-// Adapter Tuya cho app: dùng lib thật nếu native có mặt; nếu KHÔNG (Metro chưa build native) → mock,
-// để UI clone vẫn chạy được trong dev. Lý do mock: index.tsx của lib gọi TurboModuleRegistry.getEnforcing
-// + new NativeEventEmitter NGAY lúc import → JS-only sẽ throw → bắt bằng require trong try/catch.
-import { parseDeviceDps, buildTempDps, buildLightDps } from './dp';
-import { parseTempRange, DEFAULT_TEMP_RANGE, type TempRange } from './deviceSchema';
+// Adapter Tuya cho app: dùng lib thật nếu native có mặt; nếu KHÔNG (Metro chưa build native)
+// HOẶC bật MOCK_DEVICES (config/mock.ts) → mock có trạng thái + giả lập realtime (mockDevice.ts),
+// để dev UI không cần bồn thật. Lý do require động: index.tsx của lib gọi
+// TurboModuleRegistry.getEnforcing + new NativeEventEmitter NGAY lúc import → JS-only sẽ throw.
+import { isMockDevId } from '../config/mock';
+import {
+  parseDeviceDps,
+  buildTempDps,
+  buildLightDps,
+  buildPurifyDps,
+  buildFreezeDps,
+} from './dp';
+import { parseTempRange, type TempRange } from './deviceSchema';
 import { describeTuyaError } from './tuyaError';
+import {
+  mockRead,
+  mockSetTarget,
+  mockSetLight,
+  mockSetPurify,
+  mockSetFreeze,
+  mockListen,
+} from './mockDevice';
 
 // Log lỗi SDK ở dev (audit H-1: KHÔNG nuốt im lặng). Prod: không spam console.
 function devLogError(where: string, e: unknown): void {
@@ -34,6 +50,8 @@ export type DeviceSnapshot = {
   currentTemp: number | null;
   targetTemp: number | null;
   lightOn: boolean;
+  purifyOn?: boolean; // optional: DP placeholder - thiết bị thật có thể chưa expose
+  freezeOn?: boolean;
   isOnline: boolean; // LAN hoặc cloud (DeviceBean.getIsOnline)
   tempRange: TempRange; // ràng buộc target temp từ schema thiết bị
 };
@@ -42,20 +60,13 @@ export type DevicePatch = {
   currentTemp?: number | null;
   targetTemp?: number | null;
   lightOn?: boolean;
+  purifyOn?: boolean;
+  freezeOn?: boolean;
   isOnline?: boolean;
 };
 export type Subscription = { remove(): void };
 
-// Giá trị mock = giữ nguyên default UI cũ (12°C hiện tại / 6°C mục tiêu / đèn tắt) + coi như online.
-const MOCK: DeviceSnapshot = {
-  currentTemp: 12,
-  targetTemp: 6,
-  lightOn: false,
-  isOnline: true,
-  tempRange: DEFAULT_TEMP_RANGE,
-};
-
-// require động trong try/catch (KHÔNG import tĩnh — tránh crash khi native vắng).
+// require động trong try/catch (KHÔNG import tĩnh - tránh crash khi native vắng).
 let lib: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
@@ -67,6 +78,15 @@ try {
 /** true khi native module Tuya có mặt (đã build native). Dev không build → false → dùng mock. */
 export const tuyaAvailable: boolean = lib != null && lib.Tuya != null;
 
+/**
+ * true → thao tác thiết bị đi qua mock. CHỈ khi: native vắng (Metro-only), chưa có devId,
+ * HOẶC devId là bồn GIẢ (isMockDevId). Thiết bị THẬT (dù MOCK_DEVICES bật) → false → dùng SDK.
+ */
+const shouldMock = (devId?: string): boolean => !tuyaAvailable || !devId || isMockDevId(devId);
+
+// LƯU Ý: KHÔNG gate theo MOCK_DEVICES ở đây. initSdk là init SDK Tuya cho TOÀN app (login/home/pairing
+// đều cần - AppDelegate/Android không init, chỉ có chỗ này). MOCK_DEVICES chỉ mock tầng ĐIỀU KHIỂN
+// thiết bị (read/set/listen bên dưới), không được chặn init SDK → nếu chặn thì login getUserInstance()=null.
 export async function initSdk(): Promise<boolean> {
   if (!tuyaAvailable) return false;
   try {
@@ -79,11 +99,11 @@ export async function initSdk(): Promise<boolean> {
 
 /**
  * Đọc snapshot DP + schema + online của thiết bị → field bồn tắm.
- * - native vắng / devId rỗng (dev/chưa pair) → trả MOCK (KHÔNG coi là lỗi, để UI clone chạy).
+ * - mock (MOCK_DEVICES / native vắng / devId rỗng) → trả state mock (KHÔNG coi là lỗi).
  * - native có + devId có nhưng lib throw (đọc thật thất bại) → **rethrow** để caller hiện state `error`.
  */
 export async function readDevice(devId: string): Promise<DeviceSnapshot> {
-  if (!tuyaAvailable || !devId) return { ...MOCK };
+  if (shouldMock(devId)) return mockRead(devId);
   // timeout để không kẹt 'connecting'/loading nếu native treo (audit M-2).
   const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Device read');
   const d = parseDeviceDps(snap?.dpsJson ?? '{}');
@@ -91,19 +111,24 @@ export async function readDevice(devId: string): Promise<DeviceSnapshot> {
     currentTemp: d.currentTemp,
     targetTemp: d.targetTemp,
     lightOn: d.lightOn ?? false,
+    purifyOn: d.purifyOn ?? undefined,
+    freezeOn: d.freezeOn ?? undefined,
     isOnline: snap?.isOnline ?? false,
     tempRange: parseTempRange(snap?.schemaJson ?? ''),
   };
 }
 
 /**
- * Đặt nhiệt độ mục tiêu — dùng `publishDpsAwaitAck` (resolve khi onDpUpdate khớp) để phân biệt
+ * Đặt nhiệt độ mục tiêu - dùng `publishDpsAwaitAck` (resolve khi onDpUpdate khớp) để phân biệt
  * "đã gửi" vs "thiết bị đã đổi" (cạm bẫy Tuya: onSuccess ≠ đổi xong).
  * @returns `true` = thiết bị đã xác nhận (ack); `false` = không ack / lỗi → caller revert optimistic.
- * native vắng / devId rỗng (mock) → coi như confirmed ngay (`true`).
+ * mock → cập nhật state giả + coi như confirmed ngay (`true`).
  */
 export async function setTargetTemp(devId: string, temp: number): Promise<SetResult> {
-  if (!tuyaAvailable || !devId) return { ok: true };
+  if (shouldMock(devId)) {
+    mockSetTarget(devId, temp);
+    return { ok: true };
+  }
   try {
     if (typeof lib.Tuya.publishDpsAwaitAck === 'function') {
       await lib.Tuya.publishDpsAwaitAck(devId, buildTempDps(temp), 0); // 0 → timeout mặc định native
@@ -117,20 +142,37 @@ export async function setTargetTemp(devId: string, temp: number): Promise<SetRes
   }
 }
 
-export async function setLight(devId: string, on: boolean): Promise<SetResult> {
-  if (!tuyaAvailable || !devId) return { ok: true };
+async function publishBool(
+  devId: string,
+  where: string,
+  dpsJson: string,
+  applyMock: () => void,
+): Promise<SetResult> {
+  if (shouldMock(devId)) {
+    applyMock();
+    return { ok: true };
+  }
   try {
-    await lib.Tuya.publishDps(devId, buildLightDps(on));
+    await lib.Tuya.publishDps(devId, dpsJson);
     return { ok: true };
   } catch (e) {
-    devLogError('setLight', e);
+    devLogError(where, e);
     return { ok: false, error: describeTuyaError(e).message };
   }
 }
 
-/** Lắng nghe realtime DP của thiết bị (onDeviceStatus). No-op khi native vắng. */
+export const setLight = (devId: string, on: boolean): Promise<SetResult> =>
+  publishBool(devId, 'setLight', buildLightDps(on), () => mockSetLight(devId, on));
+
+export const setPurify = (devId: string, on: boolean): Promise<SetResult> =>
+  publishBool(devId, 'setPurify', buildPurifyDps(on), () => mockSetPurify(devId, on));
+
+export const setFreeze = (devId: string, on: boolean): Promise<SetResult> =>
+  publishBool(devId, 'setFreeze', buildFreezeDps(on), () => mockSetFreeze(devId, on));
+
+/** Lắng nghe realtime DP của thiết bị (onDeviceStatus). Mock → giả lập trôi nhiệt độ. */
 export function listenDevice(devId: string, onPatch: (p: DevicePatch) => void): Subscription {
-  if (!tuyaAvailable || !devId) return { remove() {} };
+  if (shouldMock(devId)) return mockListen(devId, onPatch);
   try {
     lib.Tuya.registerDeviceListener(devId);
     const sub = lib.onDeviceStatus((e: { devId: string; isOnline?: boolean; dpsJson?: string }) => {
@@ -143,10 +185,11 @@ export function listenDevice(devId: string, onPatch: (p: DevicePatch) => void): 
         if (d.currentTemp != null) patch.currentTemp = d.currentTemp;
         if (d.targetTemp != null) patch.targetTemp = d.targetTemp;
         if (d.lightOn != null) patch.lightOn = d.lightOn;
+        if (d.purifyOn != null) patch.purifyOn = d.purifyOn;
+        if (d.freezeOn != null) patch.freezeOn = d.freezeOn;
       }
-      // bỏ qua event rỗng (không online flag, không dps)
-      if (patch.isOnline === undefined && patch.currentTemp === undefined &&
-          patch.targetTemp === undefined && patch.lightOn === undefined) return;
+      // bỏ qua event rỗng (không field nào)
+      if (Object.keys(patch).length === 0) return;
       onPatch(patch);
     });
     return {

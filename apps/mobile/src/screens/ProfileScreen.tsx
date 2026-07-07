@@ -118,7 +118,7 @@ export default function ProfileScreen({
     >
       <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13 }}>{label}</Text>
       <Text numberOfLines={1} style={{ fontFamily: F.body, color: C.white, fontSize: 14, flexShrink: 1 }}>
-        {value || '—'}
+        {value || '-'}
       </Text>
     </View>
   );
@@ -383,7 +383,7 @@ export default function ProfileScreen({
             </View>
           </View>
 
-          {/* Email / phone identity — Tuya yêu cầu OTP, không update trực tiếp. */}
+          {/* Email / phone identity - Tuya yêu cầu OTP, không update trực tiếp. */}
           <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 18, marginBottom: 20 }}>
             {sectionLabel('LOGIN IDENTITY')}
             <View style={{ paddingHorizontal: 18, paddingBottom: 18, gap: 12 }}>

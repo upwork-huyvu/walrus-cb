@@ -5,7 +5,7 @@ import { COUNTRIES, countryName } from '../config/countries';
 
 type Props = { value: string; onChange: (code: string) => void; disabled?: boolean };
 
-// Dropdown chọn country code (bảng Western Europe DC của Tuya — xem config/countries.ts).
+// Dropdown chọn country code (bảng Western Europe DC của Tuya - xem config/countries.ts).
 // Row kiểu form của design (label caps + giá trị + ▾) → mở Modal tối có ô tìm kiếm.
 export default function CountryPicker({ value, onChange, disabled }: Props) {
   const C = useTheme();

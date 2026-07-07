@@ -1,11 +1,11 @@
 import Svg, { Path, Circle, Polyline } from 'react-native-svg';
 
-// Icon stroke cho bottom tab (SVG tint theo `color` — KHÔNG dùng glyph text/emoji vì Android
+// Icon stroke cho bottom tab (SVG tint theo `color` - KHÔNG dùng glyph text/emoji vì Android
 // render emoji màu, không tint được). Style feather-line 24x24, strokeWidth 1.8.
 type IconProps = { size?: number; color: string };
 const S = { fill: 'none' as const, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
-/** Device — bông tuyết 6 cánh (ice bath). */
+/** Device - bông tuyết 6 cánh (ice bath). */
 export function IconDevice({ size = 22, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -14,7 +14,7 @@ export function IconDevice({ size = 22, color }: IconProps) {
   );
 }
 
-/** Reminder — đồng hồ. */
+/** Reminder - đồng hồ. (không còn dùng ở bottom tab; giữ lại phòng khi cần) */
 export function IconReminder({ size = 22, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -24,7 +24,17 @@ export function IconReminder({ size = 22, color }: IconProps) {
   );
 }
 
-/** Shop — túi mua hàng. */
+/** Tracking - biểu đồ cột (progress theo ngày). */
+export function IconTracking({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M3 21h18" stroke={color} {...S} />
+      <Path d="M6 21v-7M12 21V6M18 21v-10" stroke={color} {...S} />
+    </Svg>
+  );
+}
+
+/** Shop - túi mua hàng. */
 export function IconShop({ size = 22, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -34,7 +44,7 @@ export function IconShop({ size = 22, color }: IconProps) {
   );
 }
 
-/** Help — dấu hỏi trong vòng tròn. */
+/** Help - dấu hỏi trong vòng tròn. */
 export function IconHelp({ size = 22, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -45,7 +55,7 @@ export function IconHelp({ size = 22, color }: IconProps) {
   );
 }
 
-/** Account — người. */
+/** Account - người. */
 export function IconAccount({ size = 22, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">

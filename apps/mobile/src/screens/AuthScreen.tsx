@@ -227,7 +227,7 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
     </Text>
   ) : null;
 
-  // Nút chính (Create account / Sign in) — pill ochre như design.
+  // Nút chính (Create account / Sign in) - pill ochre như design.
   const primary = (label: string, onPress: () => void, enabled: boolean) =>
     busy ? (
       <ActivityIndicator color={C.ochre} style={{ marginVertical: 18 }} />

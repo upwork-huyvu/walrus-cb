@@ -1,8 +1,8 @@
-// Router tối giản (port từ replit) — không dùng react-navigation.
+// Router tối giản (port từ replit) - không dùng react-navigation.
 // Khoá screen giữ NGUYÊN chuỗi như replit (kebab cho onboarding).
 export type ScreenName =
   | 'splash'
-  | 'intro' // 4 slide video giới thiệu — hiện SAU lần đăng nhập đầu tiên (một lần, cờ AsyncStorage)
+  | 'intro' // 4 slide video giới thiệu - hiện SAU lần đăng nhập đầu tiên (một lần, cờ AsyncStorage)
   | 'onboard-welcome'
   | 'onboard-email'
   | 'onboard-name'
@@ -25,10 +25,9 @@ export type ScreenName =
   | 'pairing'
   | 'home'
   | 'dashboard'
-  | 'breathwork'
   | 'session'
   | 'completion'
-  | 'progress';
+  | 'progress'; // TAB Tracking: record ritual lũy kế + tổng hợp theo ngày (hôm nay + 7 ngày)
 
 export type Navigate = (
   screen: ScreenName,

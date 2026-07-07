@@ -55,7 +55,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
     p,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Pairing timed out — try again')), ms),
+      setTimeout(() => reject(new Error('Pairing timed out - try again')), ms),
     ),
   ]);
 }
@@ -99,7 +99,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   stepRef.current = step;
   foundRef.current = found;
 
-  // Prefill Wi-Fi đang kết nối; fallback sang Wi-Fi đã nhớ (local) — chỉ khi user chưa gõ gì.
+  // Prefill Wi-Fi đang kết nối; fallback sang Wi-Fi đã nhớ (local) - chỉ khi user chưa gõ gì.
   useEffect(() => {
     void (async () => {
       const [current, saved] = await Promise.all([getCurrentWifiSsid(), getSavedWifiList()]);
@@ -252,7 +252,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       scanTimerRef.current = null;
       if (opRef.current === op && stepRef.current === 'searching') {
         stopBleScan();
-        finishError(new Error('No Walrus devices found — check the device power and Wi-Fi, then try again.'));
+        finishError(new Error('No Walrus devices found - check the device power and Wi-Fi, then try again.'));
       }
     }, SCAN_TIMEOUT_MS);
   };
@@ -294,7 +294,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     }
   };
 
-  // "Go to home": lưu tên (nếu đổi) + connect + về Device List (list refetch lúc remount — AC4).
+  // "Go to home": lưu tên (nếu đổi) + connect + về Device List (list refetch lúc remount - AC4).
   const done = async () => {
     if (!result) {
       navigate('device-list', { homeId });
@@ -306,7 +306,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     try {
       if (name && name !== result.name) await renameDevice(result.devId, name);
     } catch (e) {
-      // Đặt tên lỗi không chặn hoàn tất — thiết bị đã pair; đổi tên lại ở detail sau (audit L-2).
+      // Đặt tên lỗi không chặn hoàn tất - thiết bị đã pair; đổi tên lại ở detail sau (audit L-2).
       if (typeof __DEV__ !== 'undefined' && __DEV__) {
         // eslint-disable-next-line no-console
         console.warn('[pairing] renameDevice failed', describeError(e));
@@ -695,7 +695,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
         keyboardVerticalOffset={0}
       >
         <SafeAreaView style={{ flex: 1 }}>
-        {/* Back về Device List (chỉ ở màn tĩnh — đang search/connect thì không thoát ngang) */}
+        {/* Back về Device List (chỉ ở màn tĩnh - đang search/connect thì không thoát ngang) */}
         {(step === 'intro' || step === 'prepare' || step === 'found' || step === 'error') && (
           <Pressable
             onPress={() => navigate('device-list', { homeId })}
@@ -861,7 +861,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
 
               <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24 }}>
                 {infoRow('Pairing mode', `Wi-Fi ${wifiMode}`, true)}
-                {infoRow('Network', ssid || '—')}
+                {infoRow('Network', ssid || '-')}
                 {infoRow('Timeout', '120 seconds')}
               </View>
 
@@ -882,7 +882,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
               </Text>
               <View style={{ alignSelf: 'stretch', marginTop: 30, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
                 {infoRow('Pairing mode', 'Bluetooth + Wi-Fi', true)}
-                {infoRow('Network', ssid || '—')}
+                {infoRow('Network', ssid || '-')}
                 {infoRow('Timeout', '120 seconds')}
               </View>
               <View style={{ alignSelf: 'stretch', marginTop: 20 }}>
@@ -900,7 +900,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 Ready to pair.
               </Text>
 
-              {/* Card thiết bị (design màn 3) — data thật từ BLE scan */}
+              {/* Card thiết bị (design màn 3) - data thật từ BLE scan */}
               <View style={{ borderWidth: 1, borderColor: C.ochre, borderRadius: 16, padding: 18, marginBottom: 24 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                   <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 19 }}>
@@ -910,7 +910,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 </View>
                 {infoRow('Device ID', found.mac || found.uuid)}
                 {infoRow('Signal', 'Strong', true)}
-                {infoRow('Network', ssid || '—')}
+                {infoRow('Network', ssid || '-')}
                 {infoRow('Status', 'Ready', true)}
               </View>
 
@@ -935,11 +935,11 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
 
               <View style={{ alignSelf: 'stretch', marginTop: 26, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
                 {infoRow('Pairing mode', activePairMode || `Wi-Fi ${wifiMode}`, true)}
-                {infoRow('Network', ssid || '—')}
+                {infoRow('Network', ssid || '-')}
                 {infoRow('Timeout', '120 seconds')}
               </View>
 
-              {/* Checklist 3 bước (design màn 4) — nhích theo tiến trình pairing thật */}
+              {/* Checklist 3 bước (design màn 4) - nhích theo tiến trình pairing thật */}
               <View style={{ alignSelf: 'stretch', marginTop: 30, paddingHorizontal: 12 }}>
                 {CONNECT_STEPS.map((label, i) => {
                   const done_ = i < connectIdx;
@@ -1002,7 +1002,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 {(result?.name || 'Walrus Ice Bath') + ' is ready.'}{'\n'}Control it from anywhere.
               </Text>
 
-              {/* Đặt tên (Tuya/SmartLife — design thiếu, giữ + style design) */}
+              {/* Đặt tên (Tuya/SmartLife - design thiếu, giữ + style design) */}
               <View style={{ alignSelf: 'stretch' }}>
                 {field('DEVICE NAME', deviceName, setDeviceName, 'Walrus Ice Bath')}
                 {saving ? (

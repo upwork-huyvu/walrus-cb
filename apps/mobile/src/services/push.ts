@@ -1,8 +1,11 @@
 import { Platform } from 'react-native';
+import { PUSH_API_KEY } from '../config/api';
+import { registerPushToken, unregisterPushToken } from './api';
 
-// Adapter push cho app — Rev 2 (Option A): Tuya = SENDER. Android đăng ký FCM token với Tuya,
-// iOS đăng ký APNs token với Tuya; Tuya đẩy banner qua cert FCM/APNs
-// đã up console + tự lưu Message Center per-user. KHÔNG còn gọi backend /push/tokens.
+// Adapter push cho app. Đăng ký token với CẢ hai (provider là config phía backend, app không biết dùng cái nào):
+//  - Tuya (SDK registerDevice): Android FCM token, iOS APNs token → Tuya cloud là sender.
+//  - Backend (/push/tokens, api-key): FCM registration token (cả 2 nền tảng) → firebase-admin là sender khi
+//    NOTIFICATION_PROVIDER=fcm. Chỉ đăng ký backend khi có PUSH_API_KEY (chưa cấu hình → bỏ, tránh 401 ở dev).
 // require-guard @react-native-firebase/messaging + @notifee/react-native (import tĩnh chạm native
 // lúc import → crash khi Metro chưa build native). Native vắng → no-op. Cùng pattern services/tuya.ts.
 
@@ -86,17 +89,32 @@ async function getTuyaPushToken(): Promise<TuyaPushToken | null> {
   }
 }
 
-/** Đăng ký token với Tuya cloud (map với user Tuya ĐANG LOGIN — SDK tự biết, không cần uid). */
+/** Đăng ký token với Tuya cloud (map với user Tuya ĐANG LOGIN - SDK tự biết, không cần uid). */
 async function registerWithTuya(token: string, provider: TuyaPushProvider): Promise<void> {
   if (tuyaLib?.Tuya?.registerDevice == null) return; // bridge/native vắng → no-op
   await tuyaLib.Tuya.registerDevice(token, provider);
 }
 
+// uid Tuya của phiên hiện tại - dùng để đăng-ký-lại backend khi token refresh (Android).
+let currentUid: string | null = null;
+
 /**
- * Đăng ký push cho phiên đăng nhập: xin quyền → lấy token native → registerDevice với Tuya.
- * Gọi SAU khi login Tuya thành công (Tuya map token với user hiện tại). No-op an toàn khi thiếu native.
+ * Đăng ký FCM registration token với BACKEND (firebase-admin sender). Dùng token của
+ * getFcmToken() (KHÔNG phải APNs thô của Tuya) - firebase-admin gửi qua FCM, iOS bridge APNs.
+ * Bỏ qua khi chưa cấu hình PUSH_API_KEY (dev).
  */
-export async function syncPushToken(): Promise<void> {
+async function registerWithBackend(tuyaUid: string): Promise<void> {
+  if (!PUSH_API_KEY) return;
+  const fcm = await getFcmToken();
+  if (!fcm) return;
+  await registerPushToken(tuyaUid, fcm, Platform.OS === 'ios' ? 'ios' : 'android');
+}
+
+/**
+ * Đăng ký push cho phiên đăng nhập: xin quyền → lấy token native → registerDevice với Tuya
+ * + đăng ký FCM token với backend. Gọi SAU khi login Tuya thành công (kèm uid). No-op an toàn khi thiếu native.
+ */
+export async function syncPushToken(tuyaUid?: string): Promise<void> {
   if (!pushAvailable) return;
   try {
     const granted = await requestPushPermission();
@@ -104,6 +122,14 @@ export async function syncPushToken(): Promise<void> {
     const pushToken = await getTuyaPushToken();
     if (!pushToken) return;
     await registerWithTuya(pushToken.token, pushToken.provider);
+    if (tuyaUid) {
+      currentUid = tuyaUid;
+      try {
+        await registerWithBackend(tuyaUid);
+      } catch (e) {
+        devWarn('registerWithBackend', e); // backend down KHÔNG được làm hỏng đường Tuya
+      }
+    }
   } catch (e) {
     devWarn('syncPushToken', e);
   }
@@ -116,6 +142,11 @@ export function listenTokenRefresh(): () => void {
   try {
     return messagingLib().onTokenRefresh((token: string) => {
       registerWithTuya(token, 'fcm').catch((e) => devWarn('onTokenRefresh', e));
+      if (currentUid && PUSH_API_KEY) {
+        registerPushToken(currentUid, token, 'android').catch((e) =>
+          devWarn('onTokenRefreshBackend', e),
+        );
+      }
     });
   } catch (e) {
     devWarn('listenTokenRefresh', e);
@@ -129,6 +160,16 @@ export function listenTokenRefresh(): () => void {
 export async function removePushToken(): Promise<void> {
   if (!pushAvailable) return;
   try {
+    // Gỡ token FCM khỏi backend TRƯỚC (cần token hiện tại - deleteToken sẽ vô hiệu nó).
+    if (PUSH_API_KEY) {
+      try {
+        const fcm = await getFcmToken();
+        if (fcm) await unregisterPushToken(fcm);
+      } catch (e) {
+        devWarn('unregisterWithBackend', e);
+      }
+    }
+    currentUid = null;
     if (Platform.OS === 'ios') {
       await tuyaLib?.Tuya?.unregisterDevice?.();
       return;
@@ -143,7 +184,7 @@ export async function removePushToken(): Promise<void> {
 const ANDROID_CHANNEL_ID = 'default';
 
 /**
- * Tạo notification channel SỚM lúc app boot (Android 8+ bắt buộc channel tồn tại — nếu chỉ tạo
+ * Tạo notification channel SỚM lúc app boot (Android 8+ bắt buộc channel tồn tại - nếu chỉ tạo
  * lúc foreground-display thì noti đến khi app đang KILL có thể rơi vào channel không tồn tại).
  * Khớp meta-data default_notification_channel_id trong AndroidManifest.
  */

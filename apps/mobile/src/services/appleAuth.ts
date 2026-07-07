@@ -1,4 +1,4 @@
-// Lấy Apple identityToken (Sign in with Apple — iOS) + profile fields, để truyền vào Tuya
+// Lấy Apple identityToken (Sign in with Apple - iOS) + profile fields, để truyền vào Tuya
 // loginByAuth2WithType 'ap' (bridge JS: thirdLogin(identityToken,'ap',extraInfo)).
 // Xem docs/research/tuya-ios-third-party-login.md. Pattern require try/catch + cờ như googleAuth.ts.
 //

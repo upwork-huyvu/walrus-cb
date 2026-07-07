@@ -51,7 +51,7 @@ export async function signInGoogle(): Promise<string> {
   if (!GOOGLE_WEB_CLIENT_ID) {
     throw new GoogleSignInError(
       'NO_CONFIG',
-      'Google Web Client ID (type WEB) is not configured in src/config/google.ts — see docs/research/tuya-google-login.md.',
+      'Google Web Client ID (type WEB) is not configured in src/config/google.ts - see docs/research/tuya-google-login.md.',
     );
   }
   configureGoogle();
@@ -82,18 +82,18 @@ export async function signInGoogle(): Promise<string> {
   if (!idToken) {
     throw new GoogleSignInError(
       'NO_ID_TOKEN',
-      'Google did not return an idToken — make sure webClientId is of type WEB. See docs/research/tuya-google-login.md.',
+      'Google did not return an idToken - make sure webClientId is of type WEB. See docs/research/tuya-google-login.md.',
     );
   }
   return idToken;
 }
 
-// Đăng xuất Google (gọi kèm logout Tuya). Best-effort — nuốt lỗi.
+// Đăng xuất Google (gọi kèm logout Tuya). Best-effort - nuốt lỗi.
 export async function signOutGoogle(): Promise<void> {
   if (!googleAvailable) return;
   try {
     await GoogleSignin.signOut();
   } catch {
-    /* nuốt — vẫn coi như đã đăng xuất */
+    /* nuốt - vẫn coi như đã đăng xuất */
   }
 }

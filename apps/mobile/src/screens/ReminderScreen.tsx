@@ -14,7 +14,7 @@ import {
 
 type Props = { navigate: Navigate; state: AppState };
 
-// TAB Reminder — filter reminder (design menu "Filter reminder · Next change in 23 days").
+// TAB Reminder - filter reminder (design menu "Filter reminder · Next change in 23 days").
 // FAQ: thay filter mỗi 90 ngày; nhắc khi còn 7 ngày. Ngày thay lưu local (filterStore).
 export default function ReminderScreen({ navigate, state }: Props) {
   const C = useTheme();
@@ -92,7 +92,7 @@ export default function ReminderScreen({ navigate, state }: Props) {
                 </Text>
                 {warn || overdue ? (
                   <Text style={{ fontFamily: F.body, color: overdue ? '#E5484D' : C.ochre, fontSize: 12, marginTop: 8 }}>
-                    {overdue ? 'Replace the filter now — water quality may degrade.' : 'Time to order a replacement filter.'}
+                    {overdue ? 'Replace the filter now - water quality may degrade.' : 'Time to order a replacement filter.'}
                   </Text>
                 ) : null}
               </>

@@ -6,7 +6,7 @@ import { AppRegistry } from 'react-native';
 import App from './App';
 import { name as appName } from './app.json';
 
-// Handler noti khi app BACKGROUND/QUIT — phải đăng ký ở top-level (ngoài React), require-guard để
+// Handler noti khi app BACKGROUND/QUIT - phải đăng ký ở top-level (ngoài React), require-guard để
 // Metro chưa build native không crash. Data-only message → hiện bằng Notifee; notification message
 // đã được OS tự hiện (Android/APNs). Xem services/push.ts.
 try {

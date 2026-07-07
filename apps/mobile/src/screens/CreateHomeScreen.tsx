@@ -34,7 +34,7 @@ export default function CreateHomeScreen({ navigate, onHomeCreated }: Props) {
       onHomeCreated?.(home.homeId);
       navigate('device-list', { homeId: home.homeId, homeName: home.name });
     } catch (e: any) {
-      setErr(e?.message ?? 'Could not create home — try again');
+      setErr(e?.message ?? 'Could not create home - try again');
       setLoading(false);
     }
   };

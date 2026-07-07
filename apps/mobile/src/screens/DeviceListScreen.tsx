@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -13,6 +14,7 @@ import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getHomeDeviceList, type HomeDevice } from '../services/home';
+import { BathIcon } from '../components/DeviceIcons';
 
 type Props = {
   navigate: Navigate;
@@ -22,7 +24,7 @@ type Props = {
   pairedDevice?: HomeDevice;
 };
 
-// TAB Thiết bị (landing sau login) — bám layout Tuya SmartLife:
+// TAB Thiết bị (landing sau login) - bám layout Tuya SmartLife:
 // trên-trái = chọn nhà (⌂ tên nhà ▾ → Quản lý nhà) · trên-phải = ＋ thêm thiết bị;
 // thân = danh sách thiết bị / empty-state "Thêm thiết bị đầu tiên". Remount → tự refetch.
 export default function DeviceListScreen({ navigate, state, homeId, homeName, pairedDevice }: Props) {
@@ -70,8 +72,8 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
   }, [load]);
 
   const openDevice = (d: HomeDevice) => {
-    // Chỉ điều hướng — device-detail (DashboardScreen) tự connect theo devId (tránh gọi connectDevice 2 lần).
-    navigate('device-detail', { devId: d.devId });
+    // Chỉ điều hướng - device-detail (DashboardScreen) tự connect theo devId (tránh gọi connectDevice 2 lần).
+    navigate('device-detail', { devId: d.devId, devName: d.name });
   };
 
   return (
@@ -168,22 +170,45 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    gap: 14,
                     borderWidth: 1,
-                    borderColor: C.border,
+                    borderColor: 'rgba(196,135,58,0.45)',
+                    backgroundColor: 'rgba(196,135,58,0.12)',
                     borderRadius: 16,
-                    padding: 18,
+                    padding: 16,
                     marginBottom: 12,
                   }}
                 >
+                  {/* Icon: thiết bị thật dùng iconUrl; bồn giả (không url) → icon bồn tắm */}
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 13,
+                      backgroundColor: 'rgba(196,135,58,0.22)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {d.iconUrl ? (
+                      <Image source={{ uri: d.iconUrl }} style={{ width: 30, height: 30, borderRadius: 8 }} />
+                    ) : (
+                      <BathIcon color={C.ochre} />
+                    )}
+                  </View>
+
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 17 }}>
                       {d.name || 'Device'}
                     </Text>
-                    <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginTop: 4 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginTop: 4 }}
+                    >
                       {d.devId}
                     </Text>
                   </View>
+
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <View
                       style={{

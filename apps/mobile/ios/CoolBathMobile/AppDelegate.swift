@@ -16,7 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    // Firebase (FCM): chỉ configure khi có GoogleService-Info.plist trong bundle —
+    // Firebase (FCM): chỉ configure khi có GoogleService-Info.plist trong bundle -
     // thiếu file (clone mới/chưa tải từ Firebase console) thì app vẫn chạy, push tắt.
     if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
       FirebaseApp.configure()
