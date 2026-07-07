@@ -1,0 +1,10 @@
+# Mẫu config runtime cho app mobile. Copy sang .env rồi điền giá trị thật:
+#   cp .env.example .env
+# File .env KHÔNG được commit (nằm trong .gitignore). File .example NÀY thì commit.
+
+# Backend NestJS. DEV local: http://<IP-máy-Mac>:3006 (lấy IP: ipconfig getifaddr en0).
+# Prod: https URL đã deploy (Vercel).
+API_BASE_URL=http://localhost:3006
+
+# Key dùng chung bảo vệ /push/tokens (MVP), phải khớp backend. Để trống = bỏ đăng ký push ở dev.
+PUSH_API_KEY=
