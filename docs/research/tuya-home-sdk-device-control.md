@@ -1,39 +1,39 @@
-# Tuya Research: Device Control (nâng cao) — query DP, standard instruction set, group, multi-control, timer/schedule, publish có option
+# Tuya Research: Device Control (nâng cao) - query DP, standard instruction set, group, multi-control, timer/schedule, publish có option
 
 - **Ngày:** 2026-06-29 · **SDK version tham chiếu:** Android `com.thingclips.smart:thingsmart` **7.5.x** · iOS `ThingSmartHomeKit` **~7.5** · Data Center: **Central Europe**
 - **Quan hệ với note nền tảng:** Bổ sung cho `docs/research/tuya-m1-sdk-foundation.md` (đã có `publishDps(json)` cơ bản + `registerDevListener`/`onDpUpdate`). **Note này KHÔNG lặp publishDps cơ bản**, mà phủ: query 1 DP không tự báo, bộ lệnh chuẩn (standard instruction set / dpCodes / schema), publish có option (mode + thứ tự kênh), điều khiển nhóm (group publishDps), multi-control linkage, hẹn giờ/lịch (cloud timer), đọc trạng thái online + sub-device.
 - **Nguồn chính:**
-  - Device Control (Android) — https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y
-  - Device Control (iOS) — https://developer.tuya.com/en/docs/app-development/iOS-device-control?id=Kaiyeu0xukcuc
-  - Device Management (Android) — https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
-  - Group Management — https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
-  - Multi-Control Linkage — https://developer.tuya.com/en/docs/app-development/devicemulticontrol?id=Ka6ki8l92gduk
-  - Scheduled Tasks (timer) — https://developer.tuya.com/en/docs/app-development/timer?id=Ka6ki8l85zpcu
-  - Device Schedule (extension) — https://developer.tuya.com/en/docs/app-development/extension-device-timer?id=Kcy2jpy6859p1
-  - Standard Instruction Set — https://developer.tuya.com/en/docs/iot/standarddescription?id=K9i5ql6waswzq
-  - Change Control Instruction Mode — https://developer.tuya.com/en/docs/iot/change-control-instruction-mode?id=Kcbz8lahbg5st
-  - iOS Device DP Parser — https://developer.tuya.com/en/docs/app-development/ios_device_control?id=Kcxopr96vsl0f
-  - iOS ThingSmartTimer header (API ref) — https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/ios-arm64_2_thing_smart_timer_kit_8framework_2_headers_2_thing_smart_timer_8h_source.html
+  - Device Control (Android) - https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y
+  - Device Control (iOS) - https://developer.tuya.com/en/docs/app-development/iOS-device-control?id=Kaiyeu0xukcuc
+  - Device Management (Android) - https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
+  - Group Management - https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
+  - Multi-Control Linkage - https://developer.tuya.com/en/docs/app-development/devicemulticontrol?id=Ka6ki8l92gduk
+  - Scheduled Tasks (timer) - https://developer.tuya.com/en/docs/app-development/timer?id=Ka6ki8l85zpcu
+  - Device Schedule (extension) - https://developer.tuya.com/en/docs/app-development/extension-device-timer?id=Kcy2jpy6859p1
+  - Standard Instruction Set - https://developer.tuya.com/en/docs/iot/standarddescription?id=K9i5ql6waswzq
+  - Change Control Instruction Mode - https://developer.tuya.com/en/docs/iot/change-control-instruction-mode?id=Kcbz8lahbg5st
+  - iOS Device DP Parser - https://developer.tuya.com/en/docs/app-development/ios_device_control?id=Kcxopr96vsl0f
+  - iOS ThingSmartTimer header (API ref) - https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/ios-arm64_2_thing_smart_timer_kit_8framework_2_headers_2_thing_smart_timer_8h_source.html
 - **Độ tin cậy:** Android lấy verbatim khá đầy đủ. iOS `ThingSmartDevice`/`ThingSmartTimer`/`ThingSmartMultiControl` verbatim tốt; `ThingSmartGroup` (bản Smart App SDK chuẩn, không phải Commercial Lighting) chỉ confirm được tên method, **signature đầy đủ cần mở header iOS khi code**. Mục "Câu hỏi mở" liệt kê chỗ chưa verify tận chữ ký.
 
 ---
 
 ## Phạm vi
-1. **Query DP** — đọc 1 DP không tự báo (vd countdown/timer info) bằng `getDp`; đọc snapshot toàn bộ DP từ `DeviceBean.getDps()`.
-2. **Bộ lệnh chuẩn (Standard Instruction Set / DP schema)** — phân biệt **standard instruction (code-based)** vs **DP instruction (id-based)**; đọc schema/dpCodes để map dpId ↔ code.
-3. **Publish có option** — `publishDps` với **mode** (LAN/Internet/Auto) và với **orders** (thứ tự ưu tiên kênh BLE/cloud); `sendCacheDps` cho thiết bị low-power.
-4. **Điều khiển nhóm** — tạo group Wi-Fi/Zigbee, `IThingGroup.publishDps` / `ThingSmartGroup`.
-5. **Multi-control / linkage** — liên kết DP công tắc giữa nhiều thiết bị.
-6. **Hẹn giờ / lịch (cloud timer)** — add/update/query/delete timer cho device & group.
-7. **Trạng thái online / sub-device** — `getIsOnline`/`isLocalOnline`, listener `onStatusChanged`, field gateway/sub-device.
+1. **Query DP** - đọc 1 DP không tự báo (vd countdown/timer info) bằng `getDp`; đọc snapshot toàn bộ DP từ `DeviceBean.getDps()`.
+2. **Bộ lệnh chuẩn (Standard Instruction Set / DP schema)** - phân biệt **standard instruction (code-based)** vs **DP instruction (id-based)**; đọc schema/dpCodes để map dpId ↔ code.
+3. **Publish có option** - `publishDps` với **mode** (LAN/Internet/Auto) và với **orders** (thứ tự ưu tiên kênh BLE/cloud); `sendCacheDps` cho thiết bị low-power.
+4. **Điều khiển nhóm** - tạo group Wi-Fi/Zigbee, `IThingGroup.publishDps` / `ThingSmartGroup`.
+5. **Multi-control / linkage** - liên kết DP công tắc giữa nhiều thiết bị.
+6. **Hẹn giờ / lịch (cloud timer)** - add/update/query/delete timer cho device & group.
+7. **Trạng thái online / sub-device** - `getIsOnline`/`isLocalOnline`, listener `onStatusChanged`, field gateway/sub-device.
 
 ---
 
 ## Khái niệm & luồng
 
 **Hai chế độ "lệnh điều khiển" (rất quan trọng cho dự án):**
-- **Standard instruction mode (code-based):** lệnh dạng `{"code":"switch","value":true}` — Tuya tự ánh xạ code chuẩn của **category** sang DP thiết bị. Cùng category chỉ cần tích hợp 1 bộ code. Category dùng abbreviation (vd `dj` đèn, `kt` điều hoà, `wk` bộ điều nhiệt…); ice-bath có thể là thiết bị custom.
-- **DP instruction mode (id-based):** lệnh dạng `{"104":20}` — đúng cái `publishDps` đang dùng ở M1. Đây là kênh **chắc ăn nhất** vì map trực tiếp dpId.
+- **Standard instruction mode (code-based):** lệnh dạng `{"code":"switch","value":true}` - Tuya tự ánh xạ code chuẩn của **category** sang DP thiết bị. Cùng category chỉ cần tích hợp 1 bộ code. Category dùng abbreviation (vd `dj` đèn, `kt` điều hoà, `wk` bộ điều nhiệt…); ice-bath có thể là thiết bị custom.
+- **DP instruction mode (id-based):** lệnh dạng `{"104":20}` - đúng cái `publishDps` đang dùng ở M1. Đây là kênh **chắc ăn nhất** vì map trực tiếp dpId.
 - **Đổi mode** ở Tuya Developer Platform (device management). Lưu ý: thay đổi áp dụng ngay ở China DC, **các DC khác mất ~4 giờ** để propagate. ⇒ Với ice-bath ở **Central/Western Europe**, nếu đổi mode phải chờ propagate.
 - **Schema** = định nghĩa kiểu của từng DP (bool/value/enum/string/raw) + ràng buộc (min/max/step/scale/unit/range). Đọc schema để render UI + validate trước khi publish.
 
@@ -49,7 +49,7 @@
 
 ### 1) Publish có option (mode + thứ tự kênh) + low-power cache
 ```java
-// Auto (khuyến nghị) — đã có ở M1
+// Auto (khuyến nghị) - đã có ở M1
 IThingDevice.publishDps(dps, IResultCallback callback);
 
 // Chỉ định kênh bằng enum
@@ -86,10 +86,10 @@ Map<String, Object> dps = bean.getDps();
 - `devId` (String), `productId` (String)
 - `dps` : `Map` DP hiện tại (key = dpId, value = dpValue)
 - `schema` : định nghĩa kiểu DP · `schemaMap` : cache schema
-- `dpCodes` : `Map<String, Object>` — ánh xạ **dp code (standard) ↔ value** (dùng cho standard instruction mode)
-- `dpName` : `Map<String, String>` — tên DP đa ngôn ngữ
-- `getIsOnline()` : `boolean` — online (LAN **hoặc** cloud)
-- `isLocalOnline` : `boolean` — chỉ LAN
+- `dpCodes` : `Map<String, Object>` - ánh xạ **dp code (standard) ↔ value** (dùng cho standard instruction mode)
+- `dpName` : `Map<String, String>` - tên DP đa ngôn ngữ
+- `getIsOnline()` : `boolean` - online (LAN **hoặc** cloud)
+- `isLocalOnline` : `boolean` - chỉ LAN
 - Sub-device/gateway: `parentId`/`parentDevId` (gateway cha), `nodeId` (địa chỉ ngắn sub-device), `meshId`
 
 **`ProductBean`:** `category` (abbreviation loại thiết bị), `capability` (Wi-Fi/BLE/Zigbee…).
@@ -187,7 +187,7 @@ timer.updateCategoryTimerStatus(String taskName, String devId,
                       TimerDeviceTypeEnum type, TimerUpdateEnum op, IResultCallback cb);
 ```
 
-**Biến thể "Device Schedule" extension (ThingDeviceDetailKit, builder-based) — verbatim:**
+**Biến thể "Device Schedule" extension (ThingDeviceDetailKit, builder-based) - verbatim:**
 ```java
 HashMap<String, Object> dps = new HashMap<>();
 dps.put("1", true);
@@ -236,9 +236,9 @@ ThingDeviceDetailKit.getInstance().getDeviceTimerManager().addTimer(builder);
 DP value (Obj-C): bool `@{@"1": @(YES)}`, string `@{@"4": @"ff5500"}`, enum `@{@"5": @"2"}`, value `@{@"6": @(20)}`, raw `@{@"15": @"1122"}`.
 
 ### 2) Snapshot/schema/online (ThingSmartDeviceModel)
-- `dps` (NSDictionary) — DP hiện tại
+- `dps` (NSDictionary) - DP hiện tại
 - `productId` (NSString)
-- `schemaArray` (NSArray) — định nghĩa schema DP
+- `schemaArray` (NSArray) - định nghĩa schema DP
 - `isOnline` (BOOL)
 > iOS không có `getDp` riêng nổi bật như Android; query DP thường thực hiện qua publish DP "query type" hoặc đọc `dps`. Cần verify `getDp` trên header iOS khi code.
 
@@ -266,9 +266,9 @@ DP value (Obj-C): bool `@{@"1": @(YES)}`, string `@{@"4": @"ff5500"}`, enum `@{@
 // groupModel (ThingSmartGroupModel) -> deviceList
 // DP update group về qua ThingSmartHomeDelegate (group dps update)
 ```
-> Signature `addDevice`/`removeDevice`/`dismissGroup`/delegate `ThingSmartGroupDelegate` của **Smart App SDK chuẩn** chỉ confirm tên — mở header iOS khi code (Commercial Lighting có thêm `publishSwitchStatus`/`publishBrightPercent`… nhưng đó là SDK khác, đừng nhầm).
+> Signature `addDevice`/`removeDevice`/`dismissGroup`/delegate `ThingSmartGroupDelegate` của **Smart App SDK chuẩn** chỉ confirm tên - mở header iOS khi code (Commercial Lighting có thêm `publishSwitchStatus`/`publishBrightPercent`… nhưng đó là SDK khác, đừng nhầm).
 
-### 5) Multi-control linkage (ThingSmartMultiControl) — verbatim
+### 5) Multi-control linkage (ThingSmartMultiControl) - verbatim
 ```objc
 - (void)getDeviceDpInfoWithDevId:(NSString *)devId
                          success:(void (^)(NSArray<ThingSmartMultiControlDatapointModel *> *))success
@@ -300,7 +300,7 @@ DP value (Obj-C): bool `@{@"1": @(YES)}`, string `@{@"4": @"ff5500"}`, enum `@{@
                                failure:(ThingFailureError)failure;
 ```
 
-### 6) Hẹn giờ / lịch (ThingSmartTimer) — verbatim từ header iOS
+### 6) Hẹn giờ / lịch (ThingSmartTimer) - verbatim từ header iOS
 ```objc
 - (void)addTimerWithTask:(NSString *)task loops:(NSString *)loops
                    bizId:(NSString *)bizId bizType:(NSUInteger)bizType
@@ -349,7 +349,7 @@ DP value (Obj-C): bool `@{@"1": @(YES)}`, string `@{@"4": @"ff5500"}`, enum `@{@
 ---
 
 ## Mã lỗi liên quan
-(Bổ sung cho bảng ở note nền tảng — các code điều khiển hay gặp.)
+(Bổ sung cho bảng ở note nền tảng - các code điều khiển hay gặp.)
 
 | Code | Ý nghĩa | Xử lý |
 |---|---|---|
@@ -361,16 +361,16 @@ DP value (Obj-C): bool `@{@"1": @(YES)}`, string `@{@"4": @"ff5500"}`, enum `@{@
 | `-1402` | Query DP timeout | thử lại; kiểm tra online |
 | `-10001` | Device không kết nối | kiểm tra online state trước khi publish |
 | Device Schedule extension | `1`=device offline, `2`=execution failure, `3`=device info unavailable, `4`=timeout, `5`=device exception | xử lý theo `IThingTimerCallBack.fail(errorCode, errorMsg)` |
-> Standard vs DP instruction mode mismatch **không** có error code riêng — biểu hiện là publish "thành công" nhưng DP không đổi. Đây là cạm bẫy với standard mode.
+> Standard vs DP instruction mode mismatch **không** có error code riêng - biểu hiện là publish "thành công" nhưng DP không đổi. Đây là cạm bẫy với standard mode.
 
 ---
 
 ## Cạm bẫy
-1. **`onSuccess` ≠ điều khiển xong** (lặp lại từ M1 vì cực quan trọng): mọi `publishDps`/group/timer — chỉ update UI khi `onDpUpdate`/`dpsUpdate` về.
+1. **`onSuccess` ≠ điều khiển xong** (lặp lại từ M1 vì cực quan trọng): mọi `publishDps`/group/timer - chỉ update UI khi `onDpUpdate`/`dpsUpdate` về.
 2. **`getDp` không trả qua callback của nó** mà qua `onDpUpdate` → đăng ký listener trước khi gọi `getDp`.
 3. **Standard vs DP instruction mode**: dự án nên dùng **DP id-based** (`{"104":20}`) cho ice-bath để chắc ăn; chỉ dùng code-based nếu thiết bị đã map standard category. Đổi mode mất **~4h propagate** ở DC ngoài China → đừng test ngay sau khi đổi.
 4. **Multi-control chỉ cho DP `switch_number`/`sub_switch_number`** → **không** dùng được cho nhiệt độ value của ice-bath. Tính năng này nhiều khả năng **ngoài scope** dự án 1-thiết-bị.
-5. **Group**: phải `init home` (getHomeDetail) trước; group có productId — chỉ gom **cùng product**. Dự án 1 ice-bath/home → group/multi-control hầu như **không cần** (cân nhắc cắt khỏi MVP).
+5. **Group**: phải `init home` (getHomeDetail) trước; group có productId - chỉ gom **cùng product**. Dự án 1 ice-bath/home → group/multi-control hầu như **không cần** (cân nhắc cắt khỏi MVP).
 6. **Timer API mới vs cũ**: Android dùng `getTimerInstance()` (>=3.18.0), iOS dùng `bizId/bizType` (devId-based đã deprecated). Đừng dùng API cũ.
 7. **`loops` format**: chuỗi 7 ký tự bắt đầu từ một thứ cố định (`"0000000"`=một lần, `"1111111"`=hằng ngày). Sai độ dài → `-5`. `time` = `"HH:mm"`. Cần truyền `timezone` đúng để lịch chạy đúng giờ thiết bị.
 8. **`sendCacheDps`** chỉ cho thiết bị low-power (battery); ice-bath cắm điện thường online → dùng publish thường.
@@ -383,7 +383,7 @@ DP value (Obj-C): bool `@{@"1": @(YES)}`, string `@{@"4": @"ff5500"}`, enum `@{@
 
 Map vào lib `@jimmy-vu/react-native-turbo-tuya`. Ưu tiên mở rộng **`TuyaDevice`** (đã có publishDps/getDps/listener). Tạo **`TuyaTimer`** (module mới) cho hẹn giờ. **`TuyaGroup`**/**`TuyaMultiControl`** đề xuất nhưng **để sau / có thể bỏ** cho dự án 1-thiết-bị.
 
-### TuyaDevice (mở rộng — nên làm cho ice-bath)
+### TuyaDevice (mở rộng - nên làm cho ice-bath)
 ```ts
 // Query 1 DP không tự báo; kết quả vẫn về qua onDeviceStatus(onDpUpdate)
 queryDp(devId: string, dpId: string): Promise<void>;
@@ -411,7 +411,7 @@ isCloudConnected(): Promise<boolean>;   // getServerInstance().isServerConnect()
 sendCacheDps(devId: string, dpsJson: string, validitySec: number, dpCacheType: 0|1): Promise<boolean>;
 ```
 
-### TuyaTimer (module mới — nếu cần lịch warm-up/auto-off cho ice-bath)
+### TuyaTimer (module mới - nếu cần lịch warm-up/auto-off cho ice-bath)
 ```ts
 interface TimerInput {
   taskName: string;        // group timer
@@ -438,7 +438,7 @@ updateTimerStatus(taskName: string, bizId: string, bizType: 'device'|'group',
 ```
 **Platform notes:** Android `ThingHomeSdk.getTimerInstance()` + `ThingTimerBuilder` (devId + deviceType); iOS `ThingSmartTimer` + `bizId/bizType`. Lib chuẩn hoá `bizType` 2 bên (Android map sang `TimerDeviceTypeEnum`).
 
-### TuyaGroup (đề xuất — để sau, có thể cắt khỏi MVP)
+### TuyaGroup (đề xuất - để sau, có thể cắt khỏi MVP)
 ```ts
 createGroup(homeId: number, productId: string, name: string, devIds: string[]): Promise<number>; // groupId
 groupPublishDps(groupId: number, dpsJson: string): Promise<void>;
@@ -448,7 +448,7 @@ dismissGroup(groupId: number): Promise<void>;
 ```
 **Platform notes:** Android `newGroupInstance(groupId).publishDps` + `IGroupListener`; iOS `groupWithGroupId:` + `ThingSmartGroupDelegate`. Chỉ gom thiết bị **cùng productId**.
 
-### TuyaMultiControl (đề xuất — KHÔNG khuyến nghị cho ice-bath)
+### TuyaMultiControl (đề xuất - KHÔNG khuyến nghị cho ice-bath)
 Chỉ hỗ trợ DP `switch_number`/`sub_switch_number` ⇒ không hợp với DP nhiệt độ value. Bỏ qua trừ khi sau này có nhiều công tắc liên động.
 
 > **Khuyến nghị cho dự án (1 ice-bath/home):** Bắt buộc làm `TuyaDevice` mở rộng (queryDp, publishDpsWithMode, getDeviceSnapshot+schema, isDeviceOnline). Cân nhắc làm `TuyaTimer` nếu UX cần đặt lịch bật/tắt. **Bỏ** group + multi-control khỏi MVP (không phù hợp mô hình 1 thiết bị + DP value).
@@ -457,25 +457,25 @@ Chỉ hỗ trợ DP `switch_number`/`sub_switch_number` ⇒ không hợp với D
 
 ## Câu hỏi mở / cần xác minh trên thiết bị
 - **Ice-bath dùng standard hay DP instruction mode?** Đọc schema/dpCodes thiết bị thật để biết có code chuẩn không; mặc định dùng DP id-based.
-- **iOS `getDp` query DP** verbatim: header iOS `ThingSmartDevice` (trang DP parser confirm parser nhưng chưa thấy `getDp` rõ) — mở header khi code.
-- **iOS `ThingSmartGroup` (Smart App SDK chuẩn)**: signature `addDevice/removeDevice/dismissGroup` + delegate `ThingSmartGroupDelegate` — mở header (đừng dùng API Commercial Lighting `publishBrightPercent`…).
-- **`CommunicationEnum` giá trị cụ thể** (LAN/MQTT/BLE/HTTP = số mấy) — mở API reference Android khi code `publishDps(dps, orders, cb)`.
-- **`actions` JSON format** của `ThingTimerBuilder.setActions` (Android timer chuẩn) vs `setDps(Map)` của extension — verify khi code.
-- **Timer có chạy khi thiết bị offline?** (cloud timer vs device-local timer) — cần test trên ice-bath thật.
+- **iOS `getDp` query DP** verbatim: header iOS `ThingSmartDevice` (trang DP parser confirm parser nhưng chưa thấy `getDp` rõ) - mở header khi code.
+- **iOS `ThingSmartGroup` (Smart App SDK chuẩn)**: signature `addDevice/removeDevice/dismissGroup` + delegate `ThingSmartGroupDelegate` - mở header (đừng dùng API Commercial Lighting `publishBrightPercent`…).
+- **`CommunicationEnum` giá trị cụ thể** (LAN/MQTT/BLE/HTTP = số mấy) - mở API reference Android khi code `publishDps(dps, orders, cb)`.
+- **`actions` JSON format** của `ThingTimerBuilder.setActions` (Android timer chuẩn) vs `setDps(Map)` của extension - verify khi code.
+- **Timer có chạy khi thiết bị offline?** (cloud timer vs device-local timer) - cần test trên ice-bath thật.
 
 ---
 
 ## Nguồn (URL đã đọc)
-- Device Control (Android) — https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y
-- Device Control (iOS) — https://developer.tuya.com/en/docs/app-development/iOS-device-control?id=Kaiyeu0xukcuc
-- Device Management (Android) — https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
-- Group Management — https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
-- Multi-Control Linkage — https://developer.tuya.com/en/docs/app-development/devicemulticontrol?id=Ka6ki8l92gduk
-- Scheduled Tasks (timer) — https://developer.tuya.com/en/docs/app-development/timer?id=Ka6ki8l85zpcu
-- Device Schedule (extension) — https://developer.tuya.com/en/docs/app-development/extension-device-timer?id=Kcy2jpy6859p1
-- Standard Instruction Set — https://developer.tuya.com/en/docs/iot/standarddescription?id=K9i5ql6waswzq
-- Change Control Instruction Mode — https://developer.tuya.com/en/docs/iot/change-control-instruction-mode?id=Kcbz8lahbg5st
-- iOS Device DP Parser — https://developer.tuya.com/en/docs/app-development/ios_device_control?id=Kcxopr96vsl0f
-- iOS ThingSmartTimer header (API ref) — https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/ios-arm64_2_thing_smart_timer_kit_8framework_2_headers_2_thing_smart_timer_8h_source.html
-- iOS Group Control (đối chiếu) — https://developer.tuya.com/en/docs/app-development/ios-saas-commercial-lighting-group-control?id=Kdbcsfpp7bpcz
-- Device Control intro — https://developer.tuya.com/en/docs/app-development/device-control-intro?id=Kat5r2cqw9ypu
+- Device Control (Android) - https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y
+- Device Control (iOS) - https://developer.tuya.com/en/docs/app-development/iOS-device-control?id=Kaiyeu0xukcuc
+- Device Management (Android) - https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
+- Group Management - https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
+- Multi-Control Linkage - https://developer.tuya.com/en/docs/app-development/devicemulticontrol?id=Ka6ki8l92gduk
+- Scheduled Tasks (timer) - https://developer.tuya.com/en/docs/app-development/timer?id=Ka6ki8l85zpcu
+- Device Schedule (extension) - https://developer.tuya.com/en/docs/app-development/extension-device-timer?id=Kcy2jpy6859p1
+- Standard Instruction Set - https://developer.tuya.com/en/docs/iot/standarddescription?id=K9i5ql6waswzq
+- Change Control Instruction Mode - https://developer.tuya.com/en/docs/iot/change-control-instruction-mode?id=Kcbz8lahbg5st
+- iOS Device DP Parser - https://developer.tuya.com/en/docs/app-development/ios_device_control?id=Kcxopr96vsl0f
+- iOS ThingSmartTimer header (API ref) - https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/ios-arm64_2_thing_smart_timer_kit_8framework_2_headers_2_thing_smart_timer_8h_source.html
+- iOS Group Control (đối chiếu) - https://developer.tuya.com/en/docs/app-development/ios-saas-commercial-lighting-group-control?id=Kdbcsfpp7bpcz
+- Device Control intro - https://developer.tuya.com/en/docs/app-development/device-control-intro?id=Kat5r2cqw9ypu

@@ -1,4 +1,4 @@
-# Báo cáo Audit — feature `m1-admin-push` — 2026-06-30
+# Báo cáo Audit - feature `m1-admin-push` - 2026-06-30
 
 - **Phạm vi:** feature `m1-admin-push` (track backend + admin). File trong scope:
   - Backend: `src/notifications/*` (dto, types, service, spec, controller, module), `src/app.module.ts`, `src/config/env.validation.ts`
@@ -6,7 +6,7 @@
 - **Stack phát hiện:** NestJS (REST, Vercel) + Tuya Cloud OpenAPI client · Next.js admin (App Router, Server Actions) · Supabase Auth (qua backend)
 - **Checklist áp dụng:** `nestjs`, `admin-web`, `security-secrets` (luôn áp dụng)
 - **Người/agent audit:** Claude (skill /audit) · **Ngày:** 2026-06-30
-- **Lưu ý:** read-only — không sửa code. `npm audit`/build chưa chạy được (E503 Nexus) → một số mục để "xác minh thủ công".
+- **Lưu ý:** read-only - không sửa code. `npm audit`/build chưa chạy được (E503 Nexus) → một số mục để "xác minh thủ công".
 
 ## Tóm tắt
 | Mức | Số lượng |
@@ -59,14 +59,14 @@
 ### [🔵 L-1] `ValidationPipe` thiếu `forbidNonWhitelisted`
 - **Vị trí:** `apps/backend/src/main.ts:7` (cross-cutting, ngoài file feature nhưng ảnh hưởng DTO mới)
 - **Checklist:** nestjs (Validation)
-- **Bằng chứng:** `new ValidationPipe({ whitelist: true, transform: true })` — checklist khuyến nghị thêm `forbidNonWhitelisted: true`.
+- **Bằng chứng:** `new ValidationPipe({ whitelist: true, transform: true })` - checklist khuyến nghị thêm `forbidNonWhitelisted: true`.
 - **Vì sao sai / rủi ro:** field lạ bị **âm thầm loại** thay vì trả 400 → client gửi sai key (vd `template_id` thay vì `templateId`) sẽ không được báo. Rủi ro thấp.
 - **Cách sửa đề xuất:** thêm `forbidNonWhitelisted: true` (1 dòng, lợi toàn backend).
 
 ### [🔵 L-2] `SendPushDto.params` không ràng buộc value là string
 - **Vị trí:** `apps/backend/src/notifications/dto/send-push.dto.ts:14`
 - **Checklist:** nestjs (Validation)
-- **Bằng chứng:** `@IsObject() @IsOptional() params?: Record<string, string>` — chỉ kiểm "là object", không kiểm value đều là string.
+- **Bằng chứng:** `@IsObject() @IsOptional() params?: Record<string, string>` - chỉ kiểm "là object", không kiểm value đều là string.
 - **Vì sao sai / rủi ro:** nếu value là số/null, `JSON.stringify` ra `template_param` không phải toàn string → Tuya có thể từ chối. Hiện form admin chỉ gửi string nên rủi ro thấp.
 - **Cách sửa đề xuất:** validate sâu (vd `@IsString({ each: true })` trên `Object.values`, hoặc custom validator), hoặc ép `String(v)` khi build payload trong service.
 
@@ -99,20 +99,20 @@
 - **Cách sửa đề xuất:** sau khi xác minh response thật, map sang DTO output gọn (id/name/title/type/status).
 
 ## Mục đã kiểm nhưng cần xác minh thủ công
-- **`npm audit`** (backend + admin) — chưa chạy được do **E503 Nexus**; kiểm khi có registry.
-- **`tsc`/`jest`/`next build`** — defer (E503). Đã review tay; cần chạy thật để chốt AC1–AC5.
-- **`API_BASE_URL` phải là HTTPS ở prod** (server-only env; `lib/api.ts`/`lib/auth.ts` dùng) — xác minh cấu hình Vercel.
-- **Trạng thái duyệt template** (`status` enum) — `templates/page.tsx` hiển thị thô; xác minh giá trị thật từ Tuya.
-- **AC6 (gửi live)** — chặn bởi subscribe product + duyệt template + token-registration M3; xác minh khi đủ điều kiện.
-- **Region:** Cloud Project EU (`openapi.tuyaeu.com`) phải khớp gói push đã authorize — xác minh trên Tuya console.
+- **`npm audit`** (backend + admin) - chưa chạy được do **E503 Nexus**; kiểm khi có registry.
+- **`tsc`/`jest`/`next build`** - defer (E503). Đã review tay; cần chạy thật để chốt AC1–AC5.
+- **`API_BASE_URL` phải là HTTPS ở prod** (server-only env; `lib/api.ts`/`lib/auth.ts` dùng) - xác minh cấu hình Vercel.
+- **Trạng thái duyệt template** (`status` enum) - `templates/page.tsx` hiển thị thô; xác minh giá trị thật từ Tuya.
+- **AC6 (gửi live)** - chặn bởi subscribe product + duyệt template + token-registration M3; xác minh khi đủ điều kiện.
+- **Region:** Cloud Project EU (`openapi.tuyaeu.com`) phải khớp gói push đã authorize - xác minh trên Tuya console.
 
 ## Việc cần làm tiếp (feed vào /fix-plan hoặc /dev)
-- [ ] M-1 — thêm timeout (AbortController) cho `TuyaCloudService.request` (lợi toàn backend)
-- [ ] M-3 — `apiGet` xử lý 401/403 → `redirect('/login')` (sửa `lib/api.ts`, lợi cả users)
-- [ ] M-2 — global exception filter map lỗi Tuya → mã HTTP đúng (502/4xx)
-- [ ] L-1 — bật `forbidNonWhitelisted` trong `ValidationPipe`
-- [ ] L-2 — ép/validate value `params` là string
-- [ ] L-3 — hạ log `uid` xuống debug
-- [ ] L-4/L-6 — phân trang + map output template khi biết schema thật
-- [ ] L-5 — đưa `TUYA_APP_BIZ_TYPE` vào prod-required hoặc document
+- [ ] M-1 - thêm timeout (AbortController) cho `TuyaCloudService.request` (lợi toàn backend)
+- [ ] M-3 - `apiGet` xử lý 401/403 → `redirect('/login')` (sửa `lib/api.ts`, lợi cả users)
+- [ ] M-2 - global exception filter map lỗi Tuya → mã HTTP đúng (502/4xx)
+- [ ] L-1 - bật `forbidNonWhitelisted` trong `ValidationPipe`
+- [ ] L-2 - ép/validate value `params` là string
+- [ ] L-3 - hạ log `uid` xuống debug
+- [ ] L-4/L-6 - phân trang + map output template khi biết schema thật
+- [ ] L-5 - đưa `TUYA_APP_BIZ_TYPE` vào prod-required hoặc document
 </content>

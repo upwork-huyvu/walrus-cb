@@ -12,14 +12,14 @@
 <1-3 câu: bước tiếp theo cần làm chính xác là gì. Nếu BLOCKED: đang chờ gì/ai.>
 
 ## Checklist các bước (đồng bộ với plan.md mục 4)
-- [ ] B1 — <tên bước>  · <pending|doing|done|blocked>
-- [ ] B2 — <tên bước>  · <...>
+- [ ] B1 - <tên bước>  · <pending|doing|done|blocked>
+- [ ] B2 - <tên bước>  · <...>
 
 ## Checklist tiêu chí hoàn thành (đồng bộ với plan.md mục 3)
-- [ ] AC1 — <...>
-- [ ] AC2 — <...>
+- [ ] AC1 - <...>
+- [ ] AC2 - <...>
 
-## Nhật ký chạy (Run log) — mới nhất ở trên
+## Nhật ký chạy (Run log) - mới nhất ở trên
 > Mỗi lần DEV/TEST/FIX-PLAN ghi 1 dòng: thời gian · bước · kết quả · ghi chú.
 
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |

@@ -1,6 +1,6 @@
-# Báo cáo Audit — <scope> — <YYYY-MM-DD>
+# Báo cáo Audit - <scope> - <YYYY-MM-DD>
 
-- **Phạm vi:** <part/feature/diff/repo — liệt kê file hoặc range cụ thể>
+- **Phạm vi:** <part/feature/diff/repo - liệt kê file hoặc range cụ thể>
 - **Stack phát hiện:** <RN CLI / Tuya SDK / NestJS / Supabase / FCM / admin...>
 - **Checklist áp dụng:** <react-native, tuya-sdk, security-secrets, ...>
 - **Người/agent audit:** <...> · **Ngày:** <YYYY-MM-DD>

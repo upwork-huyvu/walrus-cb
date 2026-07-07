@@ -1,14 +1,14 @@
-# Context: In-app pairing (Wi-Fi + Bluetooth) — mobile
+# Context: In-app pairing (Wi-Fi + Bluetooth) - mobile
 
 - **Slug:** `m1-mobile-pairing`
 - **Liên kết → Research:** [device-pairing](../../docs/research/tuya-home-sdk-device-pairing.md) · [bluetooth](../../docs/research/tuya-home-sdk-bluetooth.md) · [foundation](../../docs/research/tuya-m1-sdk-foundation.md)
 
 ## Quyết định kỹ thuật (Decision log)
-- **2026-06-30** — Pairing dùng method **auto-token** (`startWifiPairingAuto`/`startBleWifiPairing`) để khỏi tự quản token 10 phút.
-- **2026-06-30** — Adapter pairing theo cùng pattern B6: `require` try/catch + **mock fallback** (UI flow test được trong Metro chưa build native).
-- **2026-06-30** — `devId` sau pair lưu **AsyncStorage** (`deviceStore`) → `useAppState` đọc lúc mount (lấp `DEVICE_ID=''` của B6).
-- **2026-06-30** — Login/Home thật là **upstream** (auth/home-setup chưa làm) → tạm `ensureHome()` (getHomeList→createHome) + giả định đã login; thay khi có 2 feature kia.
-- **2026-06-30 (B3/B4)** — `PairingScreen` thu `ssid`/`pwd` ở bước `choose` (cả Wi-Fi EZ lẫn combo BLE+Wi-Fi đều cần). Nhánh BLE = **combo** `pairBleWifi` (ice-bath nhiều khả năng dual-mode); single `startBlePairing` để dự phòng sau. `connectDevice(id?)` của `useAppState` nhận devId từ pairing (persist + set state + đọc snapshot + subscribe). Home/OnboardDevice nút connect → `navigate('pairing')` (không còn mock connect).
+- **2026-06-30** - Pairing dùng method **auto-token** (`startWifiPairingAuto`/`startBleWifiPairing`) để khỏi tự quản token 10 phút.
+- **2026-06-30** - Adapter pairing theo cùng pattern B6: `require` try/catch + **mock fallback** (UI flow test được trong Metro chưa build native).
+- **2026-06-30** - `devId` sau pair lưu **AsyncStorage** (`deviceStore`) → `useAppState` đọc lúc mount (lấp `DEVICE_ID=''` của B6).
+- **2026-06-30** - Login/Home thật là **upstream** (auth/home-setup chưa làm) → tạm `ensureHome()` (getHomeList→createHome) + giả định đã login; thay khi có 2 feature kia.
+- **2026-06-30 (B3/B4)** - `PairingScreen` thu `ssid`/`pwd` ở bước `choose` (cả Wi-Fi EZ lẫn combo BLE+Wi-Fi đều cần). Nhánh BLE = **combo** `pairBleWifi` (ice-bath nhiều khả năng dual-mode); single `startBlePairing` để dự phòng sau. `connectDevice(id?)` của `useAppState` nhận devId từ pairing (persist + set state + đọc snapshot + subscribe). Home/OnboardDevice nút connect → `navigate('pairing')` (không còn mock connect).
 
 ## Bản đồ file/module (sẽ thêm khi code)
 | File | Vai trò |
@@ -21,10 +21,10 @@
 | `apps/mobile/src/screens/onboarding/OnboardDeviceScreen.tsx` | (B3) "Pair now" → pairing |
 | `apps/mobile/src/screens/HomeScreen.tsx` | (B3) connect → pairing |
 | `apps/mobile/src/state/useAppState.ts` | (B2/B4) devId từ store + connect sau pair |
-| `apps/mobile/src/services/tuya.ts` | (B6 đã có) device adapter — pairing dùng chung lib |
+| `apps/mobile/src/services/tuya.ts` | (B6 đã có) device adapter - pairing dùng chung lib |
 
 ## Liên kết → Audit
-- **2026-06-30** — [docs/audit/2026-06-30-mobile.md](../../docs/audit/2026-06-30-mobile.md): 🔴1 🟠3 🟡5 🔵2. Liên quan pairing:
+- **2026-06-30** - [docs/audit/2026-06-30-mobile.md](../../docs/audit/2026-06-30-mobile.md): 🔴1 🟠3 🟡5 🔵2. Liên quan pairing:
   H-1 Android thiếu permission BLE/Location · H-2 iOS usage string Location rỗng + thiếu BLE/LocalNetwork · M-3 thiếu AP fallback
   · M-5 thiếu timeout JS pairing. (H-3 DP-id placeholder + C-1 secret là cross-feature.) → feed `/fix-plan` khi wire native.
 

@@ -18,7 +18,7 @@ native SDKs, so research both iOS and Android for any topic.
 |---|---|
 | Fast Integration | 🔗 https://developer.tuya.com/en/docs/app-development/integrated |
 | Quick Start (Android) | 🔗 https://developer.tuya.com/en/docs/app-development/tutorial-for-android-final |
-| **Home SDK (Android)** — pairing/control/home | 🔗 https://developer.tuya.com/en/docs/app-development/android-home-sdk-dir |
+| **Home SDK (Android)** - pairing/control/home | 🔗 https://developer.tuya.com/en/docs/app-development/android-home-sdk-dir |
 | BizBundle SDK | 🔗 https://developer.tuya.com/en/docs/app-development/extension-sdk |
 | UI BizBundle | 🔗 https://developer.tuya.com/en/docs/app-development/introduction |
 
@@ -28,21 +28,21 @@ native SDKs, so research both iOS and Android for any topic.
 | What is app development (overview) | 🔗 https://developer.tuya.com/en/docs/app-development/What-is-app-development |
 | Fast Integration | 🔗 https://developer.tuya.com/en/docs/app-development/integrate-sdk |
 | Quick Start (iOS) | 🔗 https://developer.tuya.com/en/docs/app-development/tutorial-for-ios-final |
-| **Home SDK (iOS)** — pairing/control/home | 🔗 https://developer.tuya.com/en/docs/app-development/ios-home-sdk-dir |
+| **Home SDK (iOS)** - pairing/control/home | 🔗 https://developer.tuya.com/en/docs/app-development/ios-home-sdk-dir |
 | Upgrade Guide | 🔗 https://developer.tuya.com/en/docs/app-development/migration_guide |
 | Privacy Manifest (iOS) | 🔗 https://developer.tuya.com/en/docs/app-development/PrivacyInfo |
 
 ## Capability areas (confirmed on both overview pages)
-- **User Account Management** — register/login (email/phone), reset password,
+- **User Account Management** - register/login (email/phone), reset password,
   session expiration.
-- **Home Management** — homes & rooms, sharing, member/owner roles.
-- **Device Operations** — pair, control, report status, groups, scheduled tasks,
+- **Home Management** - homes & rooms, sharing, member/owner roles.
+- **Device Operations** - pair, control, report status, groups, scheduled tasks,
   firmware (OTA).
 
 ## Priority topics for this project (map to milestones)
-1. SDK init + **Data Center/region** config + AppKey/AppSecret (M1) — region MUST
+1. SDK init + **Data Center/region** config + AppKey/AppSecret (M1) - region MUST
    match the Cloud Project's Data Center.
-2. Login / session (M1) — reconcile with app auth (Supabase Email/Google/Apple).
+2. Login / session (M1) - reconcile with app auth (Supabase Email/Google/Apple).
 3. Home management + **Owner permission** required for SDK linking (M1).
 4. **Device pairing**: Wi-Fi EZ + AP fallback, pairing **token & expiry**, 2.4GHz;
    **BLE / dual-mode** pairing (M1).
@@ -55,7 +55,7 @@ native SDKs, so research both iOS and Android for any topic.
 > URL under a Home SDK dir, or an error-code reference), add it here with the
 > topic, and upgrade 🔗 → ✅ once you've fetched it.
 
-## Deep pages confirmed ✅ (M1 foundation — 2026-06-28)
+## Deep pages confirmed ✅ (M1 foundation - 2026-06-28)
 Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-sdk-foundation.md)
 | Topic | URL |
 |---|---|
@@ -64,7 +64,7 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | Preparation (create App SDK, package/bundle, SHA-256) | ✅ https://developer.tuya.com/en/docs/app-development/preparation?id=Ka69nt983bhh5 |
 | **Data Center mappings** (EU=Western Europe, launched 2025-11-25) | ✅ https://developer.tuya.com/en/docs/iot/oem-app-data-center-distributed?id=Kafi0ku9l07qb |
 | Third-party login (thirdLogin: gg/ap/fb, idToken) | ✅ https://developer.tuya.com/en/docs/app-development/userthirdlogin?id=Ka6a9oalounvd |
-| **iOS Third-party login** (`loginByAuth2WithType:` — Apple `ap`/identityToken/NSDictionary extraInfo, Google `gg`) → note [tuya-ios-third-party-login.md](../../../docs/research/tuya-ios-third-party-login.md) | ✅ https://developer.tuya.com/en/docs/app-development/iOS-user-thirdparty?id=Kaixu9bbogqxi |
+| **iOS Third-party login** (`loginByAuth2WithType:` - Apple `ap`/identityToken/NSDictionary extraInfo, Google `gg`) → note [tuya-ios-third-party-login.md](../../../docs/research/tuya-ios-third-party-login.md) | ✅ https://developer.tuya.com/en/docs/app-development/iOS-user-thirdparty?id=Kaixu9bbogqxi |
 | Email register/login (sendVerifyCodeWithUserName, loginWithEmail) | ✅ https://developer.tuya.com/en/docs/app-development/useremail?id=Ka6a99luv3tr1 |
 | Home Information Management (createHome, role==2 owner) | ✅ https://developer.tuya.com/en/docs/app-development/familyrelations?id=Ka6ki8h2c2yo5 |
 | Wi-Fi EZ Mode (getActivatorToken 10min, ActivatorBuilder TY_EZ) | ✅ https://developer.tuya.com/en/docs/app-development/quick-connection-mode?id=Kaixju76a5iq9 |
@@ -79,9 +79,9 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | SIG Mesh (iOS, ThingSmartBleMesh/ThingSmartSIGMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23 |
 | Tuya Mesh (iOS, ThingSmartBleMesh/ThingBLEMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz |
 
-## Cloud OpenAPI — App Push Notification (server→user) confirmed ✅ (2026-06-30)
+## Cloud OpenAPI - App Push Notification (server→user) confirmed ✅ (2026-06-30)
 Note: [docs/research/tuya-cloud-app-push.md](../../../docs/research/tuya-cloud-app-push.md)
-Khác với App SDK ở trên — đây là **Cloud OpenAPI** (backend gọi, target theo `uid`).
+Khác với App SDK ở trên - đây là **Cloud OpenAPI** (backend gọi, target theo `uid`).
 | Topic | URL |
 |---|---|
 | Mobile Push Notification Service (mục lục 4 endpoint) | ✅ https://developer.tuya.com/en/docs/cloud/app-push?id=Kaiuye3tb3yho |
@@ -91,7 +91,16 @@ Khác với App SDK ở trên — đây là **Cloud OpenAPI** (backend gọi, ta
 | Subscription & Template (subscribe product + duyệt ≤2 ngày, biz_type) | ✅ https://developer.tuya.com/en/docs/iot/app-push-notification?id=Kaiuyyn5po2kw |
 | Configure Placeholders (`${var}` / `${dp**}`) | ✅ https://developer.tuya.com/en/docs/iot/message-push-Placeholder?id=Kby77w6kmpfdt |
 | **Duyệt template** (status 0/1/2, verify_reason; lý do & chiến thuật) → note [tuya-push-template-approval.md](../../../docs/research/tuya-push-template-approval.md) | ✅ (các trang trên, fetch lại 2026-07-04) |
-| Configure Push Notification — alarm THIẾT BỊ trên console (auto-approve nếu dùng template Tuya gợi ý, ~1 ngày; KHÁC App Push API) | ✅ https://developer.tuya.com/en/docs/iot/alarm?id=K93ixsmlff32o |
+| Configure Push Notification - alarm THIẾT BỊ trên console (auto-approve nếu dùng template Tuya gợi ý, ~1 ngày; KHÁC App Push API) | ✅ https://developer.tuya.com/en/docs/iot/alarm?id=K93ixsmlff32o |
+
+## Auth App SDK ↔ custom backend confirmed ✅ (2026-07-06)
+Note: [docs/research/tuya-app-session-verification.md](../../../docs/research/tuya-app-session-verification.md)
+KL: Tuya KHÔNG cho backend verify session app-đã-login → tự dựng lớp auth (Supabase Auth / OAuth-consent).
+| Topic | URL |
+|---|---|
+| OAuth 2.0 Authorization Flow (web-consent H5 → callback code → grant_type=2) | ✅ https://developer.tuya.com/en/docs/iot/authorization-code-page-usage?id=Kdkyz44dz6a7r |
+| Login with UID (`loginOrRegisterWithUid` - backend-của-bạn làm IdP) | ✅ https://developer.tuya.com/en/docs/app-development/useruid?id=Ka6a99lybyr0k |
+| Authentication Method (OAuth token exchange params) | 🔗 https://developer.tuya.com/en/docs/iot/authentication-method?id=Ka49gbaxjygox |
 
 ## How to find a deep page you don't have
 `WebSearch` with `allowed_domains: ["developer.tuya.com"]`, e.g.

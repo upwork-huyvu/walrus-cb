@@ -1,28 +1,28 @@
-# Tuya Research: Home SDK — User Account (nâng cao: profile, mật khẩu, huỷ tài khoản, third-party, region/timezone, session)
+# Tuya Research: Home SDK - User Account (nâng cao: profile, mật khẩu, huỷ tài khoản, third-party, region/timezone, session)
 
 - **Ngày:** 2026-06-29 · **SDK version tham chiếu:** Android `thingsmart` **7.5.x**; iOS ThingSmartHomeKit **~7.5**
-- **Phạm vi nối tiếp:** note nền tảng đã phủ login email/thirdLogin/session cơ bản — note này đi sâu phần **quản lý tài khoản sau khi đã đăng nhập**.
+- **Phạm vi nối tiếp:** note nền tảng đã phủ login email/thirdLogin/session cơ bản - note này đi sâu phần **quản lý tài khoản sau khi đã đăng nhập**.
 - **Nguồn chính:**
-  - User Account Management (overview) — https://developer.tuya.com/en/docs/app-development/usermanage?id=Ka69qtzy9l8nc
-  - Manage User Accounts (Android) — https://developer.tuya.com/en/docs/app-development/android-account-information?id=Kaixm19qdk5yk
-  - Manage User Accounts (iOS) — https://developer.tuya.com/en/docs/app-development/iOS-user-infoupdate?id=Kaixuudvdx84h
-  - iOS App: Implement User Account Features — https://developer.tuya.com/en/docs/app-development/tutorial-for-ios-account?id=Kalawg5deam3k
-  - Handling of Expired Session — https://developer.tuya.com/en/docs/app-development/usersession?id=Ka6a9oalhcyua
-  - Multi-device Login Management — https://developer.tuya.com/en/docs/app-development/multi_login?id=Kf3zo4f1wpsel
-  - User bean (API ref) — https://tuya.github.io/tuya-home-android-sdk-api-reference/com/thingclips/smart/android/user/bean/User.html
+  - User Account Management (overview) - https://developer.tuya.com/en/docs/app-development/usermanage?id=Ka69qtzy9l8nc
+  - Manage User Accounts (Android) - https://developer.tuya.com/en/docs/app-development/android-account-information?id=Kaixm19qdk5yk
+  - Manage User Accounts (iOS) - https://developer.tuya.com/en/docs/app-development/iOS-user-infoupdate?id=Kaixuudvdx84h
+  - iOS App: Implement User Account Features - https://developer.tuya.com/en/docs/app-development/tutorial-for-ios-account?id=Kalawg5deam3k
+  - Handling of Expired Session - https://developer.tuya.com/en/docs/app-development/usersession?id=Ka6a9oalhcyua
+  - Multi-device Login Management - https://developer.tuya.com/en/docs/app-development/multi_login?id=Kf3zo4f1wpsel
+  - User bean (API ref) - https://tuya.github.io/tuya-home-android-sdk-api-reference/com/thingclips/smart/android/user/bean/User.html
 - **Lưu ý độ tin cậy:** WebFetch tóm tắt bằng model nhỏ. **Android** lấy verbatim khá đầy đủ (trang account-information + API index). **iOS** signature lấy được tốt từ trang account + class reference. Một số API (getThirdLoginInfo, getCountryList/getTimeZoneList trong SDK) **không tìm thấy tên verbatim** → xem "Câu hỏi mở".
 
 ---
 
 ## TL;DR (cho người sắp code)
 1. **Profile đọc từ cache local, không cần call mạng:** `getUser()` (Android) / properties trên `[ThingSmartUser sharedInstance]` (iOS) trả về object `User` đã có sẵn `nickName`, `headPic`, `email`, `mobile`, `tempUnit`, `timezoneId`, `sid`, `uid`. Muốn **đồng bộ mới nhất từ server** → gọi `updateUserInfo()` (Android) trước rồi đọc lại.
-2. **`tempUnit` là số: `1 = Celsius (°C)`, `2 = Fahrenheit (°F)`.** Đổi đơn vị: Android `setTempUnit(TempUnitEnum, cb)`, iOS `updateTempUnitWithTempUnit:` (truyền `NSInteger`). **Rất hợp ice-bath** — hiển thị nhiệt độ theo đơn vị user chọn.
+2. **`tempUnit` là số: `1 = Celsius (°C)`, `2 = Fahrenheit (°F)`.** Đổi đơn vị: Android `setTempUnit(TempUnitEnum, cb)`, iOS `updateTempUnitWithTempUnit:` (truyền `NSInteger`). **Rất hợp ice-bath** - hiển thị nhiệt độ theo đơn vị user chọn.
 3. **`uploadUserAvatar` (Android) / `updateHeadIcon:` (iOS) đã DEPRECATED** vì rủi ro compliance. Nên dùng avatar mặc định / chọn từ preset, **đừng cho upload ảnh tuỳ ý**. Có biến thể `updateAvatarWithImageUrl(url)` nhận URL thay vì file.
 4. **Đổi nickname:** Android `updateNickName(name, IReNickNameCallback)` (alias cũ `reRickName`), iOS `updateNickname:success:failure:`. Lưu ý: nếu nickname mặc định lấy từ SNS (vd WeChat) thì **không sửa được**.
 5. **Mật khẩu:** SDK chỉ phơi **reset qua verification code** (`resetEmailPassword` / `resetPhonePassword`), **KHÔNG có API "đổi mật khẩu khi đang đăng nhập" verbatim** trong doc Home SDK → luồng "change password" cũng đi qua reset (gửi code type `3` → đặt mật khẩu mới). Xem "Câu hỏi mở".
 6. **Huỷ tài khoản:** `cancelAccount(cb)` (cả 2 nền tảng). **Có cửa sổ hoàn tác 7 ngày:** nếu user login lại trong 1 tuần thì lệnh xoá bị huỷ; quá hạn → xoá vĩnh viễn toàn bộ dữ liệu. Code gửi mã unregister là `type = 8`.
 7. **Logout có 2 biến thể:** `logout(ILogoutCallback)` cho account thường, `touristLogOut(ILogoutCallback)` cho anonymous/tourist account. iOS: `loginOut:failure:`.
-8. **Liên kết third-party (sau khi đã login):** Android `bindThirdPlatform(...)` với `IThirdBindCallback`. Type codes giống thirdLogin: `gg`=Google, `ap`=Apple, `fb`=Facebook. (iOS chưa lấy được signature verbatim cho bind — xem "Câu hỏi mở".)
+8. **Liên kết third-party (sau khi đã login):** Android `bindThirdPlatform(...)` với `IThirdBindCallback`. Type codes giống thirdLogin: `gg`=Google, `ap`=Apple, `fb`=Facebook. (iOS chưa lấy được signature verbatim cho bind - xem "Câu hỏi mở".)
 9. **Session hết hạn:** Android `ThingHomeSdk.setOnNeedLoginListener(INeedLoginListener)` → `onNeedLogin(Context)`; iOS observe notification `ThingSmartUserNotificationUserSessionInvalid`. Trigger khi: không hoạt động lâu (~45 ngày), reset password, xoá account, hoặc bị **kick-off do login ở thiết bị khác**.
 10. **Multi-device login (iOS có API rõ):** liệt kê phiên (`getLoginTerminalListWithSuccess:`), lấy logout code (`getLogoutCodeByAuthorizingAccount:`), kết thúc phiên khác (`terminateSessionOnDevice:logoutCode:`).
 
@@ -30,7 +30,7 @@
 
 ## Khái niệm & luồng
 
-**Object `User` = bản chụp profile trong cache.** Sau login, SDK giữ một instance `User` (Android: `getUserInstance().getUser()`; iOS: singleton `[ThingSmartUser sharedInstance]`). Mọi field profile đọc trực tiếp từ đây — không tốn network. Khi user sửa profile trên thiết bị khác, **gọi `updateUserInfo()` (sync) rồi đọc lại** để có giá trị mới (doc: "if the user is logged in from multiple mobile phones … changes are synchronized … when the user information is checked").
+**Object `User` = bản chụp profile trong cache.** Sau login, SDK giữ một instance `User` (Android: `getUserInstance().getUser()`; iOS: singleton `[ThingSmartUser sharedInstance]`). Mọi field profile đọc trực tiếp từ đây - không tốn network. Khi user sửa profile trên thiết bị khác, **gọi `updateUserInfo()` (sync) rồi đọc lại** để có giá trị mới (doc: "if the user is logged in from multiple mobile phones … changes are synchronized … when the user information is checked").
 
 **Luồng các tác vụ chính:**
 - *Xem profile:* `getUser()` → đọc field → (tuỳ chọn `updateUserInfo()` để refresh).
@@ -75,7 +75,7 @@ void setTempUnit(TempUnitEnum unit, IResultCallback callback);
 // Đổi timezone
 void updateTimeZone(String timezoneId, IResultCallback callback);   // "Asia/Shanghai"
 
-// Avatar — DEPRECATED (rủi ro compliance), tránh dùng:
+// Avatar - DEPRECATED (rủi ro compliance), tránh dùng:
 void uploadUserAvatar(File file, IBooleanCallback callback);
 void updateAvatarWithImageUrl(String imageUrl, IBooleanCallback callback);
 ```
@@ -98,7 +98,7 @@ void resetPhonePassword(String countryCode, String phone, String verifyCode,
 
 ### 4) Huỷ tài khoản & logout
 ```java
-// Huỷ tài khoản — có cửa sổ hoàn tác 7 ngày
+// Huỷ tài khoản - có cửa sổ hoàn tác 7 ngày
 void cancelAccount(IResultCallback callback);
 
 // Logout account thường
@@ -147,7 +147,7 @@ ThingHomeSdk.setOnNeedLoginListener(new INeedLoginListener() {
 
 ## API iOS (verbatim / đối chiếu)
 
-### 1) Đọc profile — properties trên `[ThingSmartUser sharedInstance]`
+### 1) Đọc profile - properties trên `[ThingSmartUser sharedInstance]`
 ```objc
 @property (nonatomic, strong, readonly) NSString  *sid;            // Session ID
 @property (nonatomic, strong, readonly) NSString  *uid;            // User ID
@@ -182,7 +182,7 @@ ThingHomeSdk.setOnNeedLoginListener(new INeedLoginListener() {
 
 - (void)updateLatitude:(double)latitude longitude:(double)longitude;
 
-// Avatar — DEPRECATED:
+// Avatar - DEPRECATED:
 - (void)updateHeadIcon:(UIImage *)headIcon
                success:(nullable ThingSuccessHandler)success
                failure:(nullable ThingFailureError)failure;
@@ -239,7 +239,7 @@ ThingHomeSdk.setOnNeedLoginListener(new INeedLoginListener() {
          failure:(nullable ThingFailureError)failure;
 ```
 
-### 5) Session expired — Notification
+### 5) Session expired - Notification
 ```objc
 [[NSNotificationCenter defaultCenter]
     addObserver:self
@@ -272,7 +272,7 @@ ThingHomeSdk.setOnNeedLoginListener(new INeedLoginListener() {
 
 ## Bean / Callback / Listener
 
-### `User` bean (Android — verbatim từ API reference)
+### `User` bean (Android - verbatim từ API reference)
 | Field | Type | Getter | Ghi chú |
 |---|---|---|---|
 | `nickName` | String | `getNickName()` | hiển thị |
@@ -329,15 +329,15 @@ ThingHomeSdk.setOnNeedLoginListener(new INeedLoginListener() {
 
 ## Cạm bẫy
 1. **`tempUnit` là int 1/2, không phải string/"C"/"F".** Map cẩn thận sang UI ice-bath; lưu cache để render trước khi sync xong.
-2. **Avatar upload deprecated** — nếu vẫn gọi có thể bị từ chối/rủi ro compliance. Dùng preset avatar hoặc `updateAvatarWithImageUrl` với URL nội bộ kiểm soát được.
+2. **Avatar upload deprecated** - nếu vẫn gọi có thể bị từ chối/rủi ro compliance. Dùng preset avatar hoặc `updateAvatarWithImageUrl` với URL nội bộ kiểm soát được.
 3. **Không có "change password" cho user đang login** trong Home SDK → phải đi qua luồng reset (gửi code type 3). UX cần giải thích là "đổi mật khẩu" nhưng dưới nền là reset bằng OTP.
-4. **`cancelAccount` không xoá ngay** — có 7 ngày hoàn tác; **đừng hứa với user là "xoá vĩnh viễn ngay".** Sau cancel phải logout/clear state local và về Login.
+4. **`cancelAccount` không xoá ngay** - có 7 ngày hoàn tác; **đừng hứa với user là "xoá vĩnh viễn ngay".** Sau cancel phải logout/clear state local và về Login.
 5. **Session listener phải đăng ký 1 lần, sớm (Application/AppDelegate).** Nếu đăng ký muộn hoặc nhiều lần → miss event hoặc xử lý trùng. **iOS < v5.1 bắn nhiều lần → debounce.**
-6. **`getUser()` là cache** — sau khi user đổi profile ở thiết bị khác, không gọi `updateUserInfo()` thì vẫn thấy giá trị cũ.
+6. **`getUser()` là cache** - sau khi user đổi profile ở thiết bị khác, không gọi `updateUserInfo()` thì vẫn thấy giá trị cũ.
 7. **Đổi nickname từ SNS bị chặn:** nếu nickname mặc định lấy từ tài khoản SNS (vd WeChat) thì `updateNickName` không có tác dụng.
-8. **`bindThirdPlatform` thứ tự param chưa rõ** (5 String) — verify Javadoc/header trước khi tích hợp Google/Apple link.
-9. **Region/DC bất biến theo account:** account đăng ký ở DC nào thì cố định ở đó. Đổi country/region của user **không** = di chuyển account sang DC khác (ràng buộc DC của dự án vẫn nguyên — xem note nền tảng).
-10. **TurboModule + session:** `INeedLoginListener`/notification phải được bridge thành **event emitter** lên JS (`onSessionExpired`) để app điều hướng — không thể poll.
+8. **`bindThirdPlatform` thứ tự param chưa rõ** (5 String) - verify Javadoc/header trước khi tích hợp Google/Apple link.
+9. **Region/DC bất biến theo account:** account đăng ký ở DC nào thì cố định ở đó. Đổi country/region của user **không** = di chuyển account sang DC khác (ràng buộc DC của dự án vẫn nguyên - xem note nền tảng).
+10. **TurboModule + session:** `INeedLoginListener`/notification phải được bridge thành **event emitter** lên JS (`onSessionExpired`) để app điều hướng - không thể poll.
 
 ---
 
@@ -346,7 +346,7 @@ ThingHomeSdk.setOnNeedLoginListener(new INeedLoginListener() {
 Mở rộng module **`TuyaAuth`** (đã có login/session) cho phần profile + mật khẩu + huỷ tài khoản + third-party bind; thêm **`TuyaCommon`** (mới) cho country/timezone nếu xác minh được API SDK; session expired đẩy qua **event emitter** trên `TuyaCore`/`TuyaAuth`.
 
 ```ts
-// ===== TuyaAuth (mở rộng) — Profile =====
+// ===== TuyaAuth (mở rộng) - Profile =====
 interface TuyaUserProfile {
   uid: string;
   sid: string;
@@ -373,33 +373,33 @@ updateTempUnit(unit: 1 | 2): Promise<void>;            // 1=°C, 2=°F
 updateTimeZone(timezoneId: string): Promise<void>;     // IANA tz id
 updateAvatarByUrl(imageUrl: string): Promise<void>;    // tránh upload file (deprecated)
 
-// ===== TuyaAuth — Mật khẩu (reset qua OTP; dùng cho cả "đổi mật khẩu") =====
+// ===== TuyaAuth - Mật khẩu (reset qua OTP; dùng cho cả "đổi mật khẩu") =====
 // type: 1 register, 2 login, 3 reset password, 8 unregister
 sendAccountVerifyCode(userName: string, countryCode: string, type: 1|2|3|8): Promise<void>;
 resetEmailPassword(countryCode: string, email: string, code: string, newPassword: string): Promise<void>;
 resetPhonePassword(countryCode: string, phone: string, code: string, newPassword: string): Promise<void>;
 
-// ===== TuyaAuth — Huỷ tài khoản & logout =====
+// ===== TuyaAuth - Huỷ tài khoản & logout =====
 cancelAccount(): Promise<void>;          // có 7 ngày hoàn tác; sau đó clear state + về Login
 logout(): Promise<void>;                 // logout account thường
 
-// ===== TuyaAuth — Third-party binding =====
+// ===== TuyaAuth - Third-party binding =====
 type ThirdProvider = 'gg' | 'ap' | 'fb';
 bindThirdParty(provider: ThirdProvider, token: string, extraInfo?: string): Promise<void>;
 unbindThirdParty(provider: ThirdProvider): Promise<void>;   // CẦN verify API native tồn tại
 getLinkedThirdParties(): Promise<ThirdProvider[]>;          // CẦN verify (getThirdLoginInfo?)
 
-// ===== TuyaAuth — Session events (event emitter) =====
+// ===== TuyaAuth - Session events (event emitter) =====
 // emit khi INeedLoginListener.onNeedLogin (Android) / ThingSmartUserNotificationUserSessionInvalid (iOS)
 addListener(eventName: 'onSessionExpired', cb: (reason?: string) => void): void;
 removeListeners(count: number): void;
 
-// ===== TuyaAuth — Multi-device login (iOS rõ; Android cần verify) =====
+// ===== TuyaAuth - Multi-device login (iOS rõ; Android cần verify) =====
 interface TuyaLoginTerminal { terminalId: string; platform: string; os: string; loginTime: number; }
 getLoginTerminals(): Promise<TuyaLoginTerminal[]>;
 terminateSession(terminalId: string, logoutCode: string): Promise<void>;
 
-// ===== TuyaCommon (module MỚI đề xuất) — country / region / timezone =====
+// ===== TuyaCommon (module MỚI đề xuất) - country / region / timezone =====
 // Map qua requestWithApiName ("tuya.m.country.list", v.v.) nếu SDK không phơi helper trực tiếp
 interface TuyaCountry { name: string; countryCode: string; abbreviation?: string; }
 getCountryList(lang?: string): Promise<TuyaCountry[]>;
@@ -419,7 +419,7 @@ getDefaultRegion(countryCode: string): Promise<string>;    // iOS: getDefaultReg
 ## Câu hỏi mở / cần xác minh
 - **Đổi mật khẩu khi đang login:** Home SDK có method riêng không, hay bắt buộc qua reset+OTP? (doc không có `changePassword` verbatim).
 - **`getThirdLoginInfo` / query third-party đã liên kết:** không tìm thấy tên verbatim trong API index → đọc Javadoc `IThingUser` / header iOS để xác nhận tên thật + có method **unbind** third-party không.
-- **`bindThirdPlatform(String×5, IThirdBindCallback)`** — ý nghĩa & thứ tự 5 tham số (type, token, ...?). Verify trước khi nối Google/Apple link.
+- **`bindThirdPlatform(String×5, IThirdBindCallback)`** - ý nghĩa & thứ tự 5 tham số (type, token, ...?). Verify trước khi nối Google/Apple link.
 - **Android multi-device login:** iOS có `getLoginTerminalList…`/`terminateSessionOnDevice…`; Android tương đương tên gì? (chưa lấy verbatim).
 - **`getCountryList`/`getTimeZoneList` trong SDK:** doc gợi ý "SDK v5.2+ built-in" nhưng cũ thì gọi `requestWithApiName "tuya.m.country.list"`. Xác nhận có helper native trong 7.5.x không.
 - **`tempUnit` mapping chắc chắn** 1=°C / 2=°F trên cả 2 nền tảng (đã thấy ở doc iOS + Android enum; verify runtime).
@@ -428,18 +428,18 @@ getDefaultRegion(countryCode: string): Promise<string>;    // iOS: getDefaultReg
 ---
 
 ## Nguồn (URL đã đọc)
-- User Account Management (overview) — https://developer.tuya.com/en/docs/app-development/usermanage?id=Ka69qtzy9l8nc
-- Manage User Accounts (Android) — https://developer.tuya.com/en/docs/app-development/android-account-information?id=Kaixm19qdk5yk
-- Manage User Accounts (iOS) — https://developer.tuya.com/en/docs/app-development/iOS-user-infoupdate?id=Kaixuudvdx84h
-- iOS App: Implement User Account Features — https://developer.tuya.com/en/docs/app-development/tutorial-for-ios-account?id=Kalawg5deam3k
-- Android App: Implement User Account Features — https://developer.tuya.com/en/docs/app-development/tutorial-for-android-account?id=Kalfig5pub1uz
-- Register/Login with Email (verify code type, reset password) — https://developer.tuya.com/en/docs/app-development/useremail?id=Ka6a99luv3tr1
-- Login with Third-Party Account — https://developer.tuya.com/en/docs/app-development/userthirdlogin?id=Ka6a9oalounvd
-- Handling of Expired Session — https://developer.tuya.com/en/docs/app-development/usersession?id=Ka6a9oalhcyua
-- Multi-device Login Management — https://developer.tuya.com/en/docs/app-development/multi_login?id=Kf3zo4f1wpsel
-- Account Logout — https://developer.tuya.com/en/docs/app-development/android-app-sdk/user-management/userlogout?id=Ka6a9oaty0kye
-- Common API Methods (country list via requestWithApiName) — https://developer.tuya.com/en/docs/app-development/commoninterface?id=Ka5vc94pvqo8i
-- User bean (API reference) — https://tuya.github.io/tuya-home-android-sdk-api-reference/com/thingclips/smart/android/user/bean/User.html
-- ThingSmartUser class reference (iOS) — https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/
-- API index (Android, B/U/S index methods) — https://tuya.github.io/tuya-home-android-sdk-api-reference/index-files/index-2.html , index-18.html , index-20.html
-- Global Error Codes — https://developer.tuya.com/en/docs/iot/error-code?id=K989ruxx88swc
+- User Account Management (overview) - https://developer.tuya.com/en/docs/app-development/usermanage?id=Ka69qtzy9l8nc
+- Manage User Accounts (Android) - https://developer.tuya.com/en/docs/app-development/android-account-information?id=Kaixm19qdk5yk
+- Manage User Accounts (iOS) - https://developer.tuya.com/en/docs/app-development/iOS-user-infoupdate?id=Kaixuudvdx84h
+- iOS App: Implement User Account Features - https://developer.tuya.com/en/docs/app-development/tutorial-for-ios-account?id=Kalawg5deam3k
+- Android App: Implement User Account Features - https://developer.tuya.com/en/docs/app-development/tutorial-for-android-account?id=Kalfig5pub1uz
+- Register/Login with Email (verify code type, reset password) - https://developer.tuya.com/en/docs/app-development/useremail?id=Ka6a99luv3tr1
+- Login with Third-Party Account - https://developer.tuya.com/en/docs/app-development/userthirdlogin?id=Ka6a9oalounvd
+- Handling of Expired Session - https://developer.tuya.com/en/docs/app-development/usersession?id=Ka6a9oalhcyua
+- Multi-device Login Management - https://developer.tuya.com/en/docs/app-development/multi_login?id=Kf3zo4f1wpsel
+- Account Logout - https://developer.tuya.com/en/docs/app-development/android-app-sdk/user-management/userlogout?id=Ka6a9oaty0kye
+- Common API Methods (country list via requestWithApiName) - https://developer.tuya.com/en/docs/app-development/commoninterface?id=Ka5vc94pvqo8i
+- User bean (API reference) - https://tuya.github.io/tuya-home-android-sdk-api-reference/com/thingclips/smart/android/user/bean/User.html
+- ThingSmartUser class reference (iOS) - https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/
+- API index (Android, B/U/S index methods) - https://tuya.github.io/tuya-home-android-sdk-api-reference/index-files/index-2.html , index-18.html , index-20.html
+- Global Error Codes - https://developer.tuya.com/en/docs/iot/error-code?id=K989ruxx88swc

@@ -1,11 +1,11 @@
-# Checklist — Supabase (Postgres + Auth)
+# Checklist - Supabase (Postgres + Auth)
 
 Supabase provides Postgres + Auth. The NestJS backend talks to it; the RN app may
-use the Supabase client for auth. Two keys, two trust levels — keep them straight.
+use the Supabase client for auth. Two keys, two trust levels - keep them straight.
 
 ## Keys & trust boundary (🔴)
 - [ ] **`anon` (publishable) key** only in clients (RN app, admin web).
-- [ ] **`service_role` (secret) key** only on the server (NestJS) / secure env —
+- [ ] **`service_role` (secret) key** only on the server (NestJS) / secure env -
       NEVER in the app bundle, admin browser JS, or repo. It bypasses RLS.
 - [ ] No `service_role` token shipped to the browser or mobile, even temporarily.
 
@@ -15,7 +15,7 @@ use the Supabase client for auth. Two keys, two trust levels — keep them strai
 - [ ] Policies scope rows to `auth.uid()` (a user sees only their own
       devices/usage); admin access via a checked role/claim, not a blanket policy.
 - [ ] Policies tested (a user cannot read/modify another user's rows). Don't
-      assume — verify the policy SQL.
+      assume - verify the policy SQL.
 - [ ] Server code that legitimately needs cross-user access uses `service_role`
       consciously, and that path is itself authorized.
 
@@ -31,7 +31,7 @@ use the Supabase client for auth. Two keys, two trust levels — keep them strai
 
 ## Data model & migrations
 - [ ] Schema/migrations are **in the repo** (`supabase/migrations/`), reviewable
-      and reproducible — not only changed via dashboard.
+      and reproducible - not only changed via dashboard.
 - [ ] `device_mapping` (user ↔ Tuya device/home), `profiles`, usage/summary
       tables have sensible constraints, FKs, indexes on lookup columns.
 - [ ] Timestamps (`created_at`/`updated_at`) + soft-delete strategy where needed.

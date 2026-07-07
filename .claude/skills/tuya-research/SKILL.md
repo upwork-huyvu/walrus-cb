@@ -3,7 +3,7 @@ name: tuya-research
 description: Deep-research a Tuya Smart Life App SDK topic from the official developer.tuya.com docs (iOS + Android), follow links to detailed sub-pages, and write a synthesized, cited Vietnamese research note into docs/research/. Use when the user asks to "research/tìm hiểu/đọc tài liệu Tuya" about a capability (pairing/pairing token, device control DP, home management, OTA, login, error codes) or before implementing anything that touches the Tuya SDK.
 ---
 
-# tuya-research — deep research from official Tuya docs
+# tuya-research - deep research from official Tuya docs
 
 Produces a durable, **cited** research note (in **Vietnamese**) so the team
 implements against the real SDK, not guesses. Uses `WebFetch` (and `WebSearch`
@@ -21,7 +21,7 @@ If none given, ask which capability.
 
 ## Method
 1. **Start from verified entry points** in [sources.md](sources.md) (both iOS and
-   Android — this is an RN CLI app bridging *both* native SDKs, so cover both).
+   Android - this is an RN CLI app bridging *both* native SDKs, so cover both).
    `WebFetch` the relevant Home SDK section for the topic.
 2. **Follow the links.** Tuya docs are a tree; the overview pages link to
    detailed pages (e.g. Home SDK → Device Pairing → EZ/AP/BLE). `WebFetch` each
@@ -35,7 +35,7 @@ If none given, ask which capability.
    account must be the Home **Owner**; pairing token expiry; 2.4GHz Wi-Fi for EZ;
    BLE permissions; DP value types.
 5. **Cite everything.** Every claim gets the source URL + (page title). If docs
-   are ambiguous or you couldn't confirm, say so explicitly — do not invent API
+   are ambiguous or you couldn't confirm, say so explicitly - do not invent API
    names or signatures.
 
 ## Output

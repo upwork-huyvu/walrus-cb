@@ -1,16 +1,16 @@
-# Tuya Research: Smart Life App SDK — Device Management (rename / remove / reset / OTA / group / room / Wi-Fi signal)
+# Tuya Research: Smart Life App SDK - Device Management (rename / remove / reset / OTA / group / room / Wi-Fi signal)
 
 - **Ngày:** 2026-06-29 · **SDK version tham chiếu:** Android `com.thingclips.smart:thingsmart` **7.5.x** · iOS `ThingSmartHomeKit` **~7.5**
 - **Data Center:** Central Europe (theo cấu hình dự án).
 - **Nguồn chính:**
-  - Device Management (Android) — https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
-  - Device Management (iOS) — https://developer.tuya.com/en/docs/app-development/device?id=Ka5cgmmjr46cp
-  - Firmware Update (Android) — https://developer.tuya.com/en/docs/app-development/otaupdate?id=Ka6ki8la8wnr9
-  - Firmware Update (chung Android+iOS) — https://developer.tuya.com/en/docs/app-development/otaupdate?id=Kceuh0g56a4nw
-  - Firmware Update (iOS) — https://developer.tuya.com/en/docs/app-development/ios-device-firmware?id=Kaj1ck2g3jaqs
-  - Group Management (Android) — https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
-  - Group Management (iOS) — https://developer.tuya.com/en/docs/app-development/group?id=Ka5srtq1wirky
-  - Room Device Management — https://developer.tuya.com/en/docs/app-development/extension-room-device?id=Kdq3sdupfn2me
+  - Device Management (Android) - https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
+  - Device Management (iOS) - https://developer.tuya.com/en/docs/app-development/device?id=Ka5cgmmjr46cp
+  - Firmware Update (Android) - https://developer.tuya.com/en/docs/app-development/otaupdate?id=Ka6ki8la8wnr9
+  - Firmware Update (chung Android+iOS) - https://developer.tuya.com/en/docs/app-development/otaupdate?id=Kceuh0g56a4nw
+  - Firmware Update (iOS) - https://developer.tuya.com/en/docs/app-development/ios-device-firmware?id=Kaj1ck2g3jaqs
+  - Group Management (Android) - https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
+  - Group Management (iOS) - https://developer.tuya.com/en/docs/app-development/group?id=Ka5srtq1wirky
+  - Room Device Management - https://developer.tuya.com/en/docs/app-development/extension-room-device?id=Kdq3sdupfn2me
 - **Lưu ý độ tin cậy:** WebFetch tóm tắt bằng model nhỏ. API **Android** (device mgmt, OTA, group) lấy verbatim khá đầy đủ; **iOS** lấy được signature chính xác cho updateName/remove/resetFactory, OTA, group. Mục "Cạm bẫy" + "Câu hỏi mở" liệt kê chỗ cần xác minh tận chữ ký khi code.
 
 ---
@@ -18,7 +18,7 @@
 ## Phạm vi
 Quản lý thiết bị **sau khi pair**:
 1. **Rename** (đổi tên), đồng bộ multi-device.
-2. **Remove** (gỡ khỏi home) vs **Factory reset** (khôi phục xuất xưởng, xoá dữ liệu) — khác nhau.
+2. **Remove** (gỡ khỏi home) vs **Factory reset** (khôi phục xuất xưởng, xoá dữ liệu) - khác nhau.
 3. **Thông tin chi tiết**: các field của `DeviceBean` (Android) / `ThingSmartDeviceModel` (iOS).
 4. **OTA firmware**: check version → start upgrade → progress listener → cancel → auto-upgrade switch.
 5. **Gán phòng** (room assignment).
@@ -195,7 +195,7 @@ device.delegate = self;
 // delegate: - (void)group:(ThingSmartGroup *)group dpsUpdate:(NSDictionary *)dps;
 ```
 
-### 5) Gán phòng (Room — iOS, verbatim · `ThingSmartRoomBiz`)
+### 5) Gán phòng (Room - iOS, verbatim · `ThingSmartRoomBiz`)
 ```objc
 - (void)addDeviceWithDeviceId:(NSString *)deviceId roomId:(long long)roomId homeId:(long long)homeId
                       success:(ThingSuccessHandler)success failure:(ThingFailureError)failure;
@@ -231,14 +231,14 @@ mGroup.onDestroy();
 ### Room (Android)
 ```java
 IThingRoom room = ThingHomeSdk.newRoomInstance(long roomId);
-// room.addDevice(devId, IResultCallback) / room.removeDevice(...) — chữ ký verbatim cần mở trang khi code
+// room.addDevice(devId, IResultCallback) / room.removeDevice(...) - chữ ký verbatim cần mở trang khi code
 ```
 
 ---
 
 ## Bean / Callback / Listener
 
-### DeviceBean (Android) — field chính
+### DeviceBean (Android) - field chính
 | Field | Ý nghĩa |
 |---|---|
 | `devId` | Device ID |
@@ -251,7 +251,7 @@ IThingRoom room = ThingHomeSdk.newRoomInstance(long roomId);
 | `productId` | Product ID (cần khi tạo group) |
 | `iconUrl` | Icon |
 
-### ThingSmartDeviceModel (iOS) — field chính
+### ThingSmartDeviceModel (iOS) - field chính
 | Field | Ý nghĩa |
 |---|---|
 | `devId` | Device ID |
@@ -267,7 +267,7 @@ IThingRoom room = ThingHomeSdk.newRoomInstance(long roomId);
 | `capability` / `deviceType` | Năng lực / phân loại |
 | `iconUrl` | Icon |
 
-### UpgradeInfoBean (Android) / ThingSmartFirmwareUpgradeModel (iOS) — OTA
+### UpgradeInfoBean (Android) / ThingSmartFirmwareUpgradeModel (iOS) - OTA
 | Field | Ý nghĩa |
 |---|---|
 | `currentVersion` | Version đang chạy |
@@ -302,9 +302,9 @@ IThingRoom room = ThingHomeSdk.newRoomInstance(long roomId);
 
 ## Cạm bẫy
 1. **remove ≠ resetFactory.** UI cần phân biệt rõ: "Gỡ thiết bị" (remove, có thể pair lại nhanh) vs "Khôi phục xuất xưởng" (reset, xoá data). Cả hai đều khiến device về trạng thái chờ pair → callback `onRemoved`/`deviceRemoved` → app phải điều hướng khỏi màn hình device.
-2. **rename không tự cập nhật UI** — phải đợi `onDevInfoUpdate` (Android) / `deviceInfoUpdate:` (iOS) rồi đọc lại `name` từ bean/model. Đừng optimistic-update mà không reconcile.
+2. **rename không tự cập nhật UI** - phải đợi `onDevInfoUpdate` (Android) / `deviceInfoUpdate:` (iOS) rồi đọc lại `name` từ bean/model. Đừng optimistic-update mà không reconcile.
 3. **OTA là quá trình dài + rủi ro brick** nếu mất nguồn/mất mạng giữa chừng. Phải: kiểm `upgradeStatus`/`canUpgrade` trước, hiển thị progress, cảnh báo người dùng giữ nguồn, xử lý `5005` (sóng yếu). Với ice-bath, nên cảnh báo "không tắt máy khi đang cập nhật".
-4. **`getFirmwareUpgradeInfo` trả LIST nhiều bean** (mỗi module = 1 type). Phải lọc bean cần nâng (vd `upgradeStatus==1`) rồi truyền vào `startFirmwareUpgrade(list)` — không truyền list rỗng.
+4. **`getFirmwareUpgradeInfo` trả LIST nhiều bean** (mỗi module = 1 type). Phải lọc bean cần nâng (vd `upgradeStatus==1`) rồi truyền vào `startFirmwareUpgrade(list)` - không truyền list rỗng.
 5. **Wi-Fi signal trả về bất đồng bộ qua callback/delegate** (`onSignalValueFind` / `device:signal:`), không phải return trực tiếp. iOS đặc biệt: gọi `getWifiSignalStrengthWithSuccess` nhưng **giá trị RSSI về qua delegate `device:signal:`**, success block chỉ báo "đã gửi request".
 6. **Group chỉ gom cùng `productId`.** Cần đọc `productId` từ bean. Ice-bath 1 device → thường bỏ qua group.
 7. **iOS gộp OTA callback vào `ThingSmartDeviceDelegate`** trong khi Android tách `IDevOTAListener` riêng → khi bridge sang TurboModule phải map về **một bộ event chung** (vd `onOtaProgress`, `onOtaStatusChanged`).
@@ -350,7 +350,7 @@ setAutoUpgradeSwitch(devId: string, state: number): Promise<void>;
 ```
 `UpgradeInfo` đề xuất: `{ type, typeDesc, currentVersion, version, upgradeStatus, upgradeType, fileSize, controlType, canUpgrade, desc }`.
 
-### `TuyaHome` (group + room — ưu tiên thấp, chỉ nếu cần)
+### `TuyaHome` (group + room - ưu tiên thấp, chỉ nếu cần)
 ```ts
 createGroup(homeId: number, productId: string, name: string, devIds: string[]): Promise<number>; // groupId
 publishGroupDps(groupId: number, dpsJson: string): Promise<void>;
@@ -366,22 +366,22 @@ assignDeviceToRoom(homeId: number, roomId: number, devId: string): Promise<void>
 ## Câu hỏi mở / cần xác minh trên thiết bị
 - **Chữ ký verbatim Android còn thiếu:** `IGetOtaInfoCallback`, `IDevOTAListener`, `IOtaProgressCallback` (tên tham số chính xác); `IThingRoom.addDevice/removeDevice`; `getSubDevList` của gateway. Mở trang Android trực tiếp khi code.
 - **iOS `getWifiSignalStrengthWithSuccess`**: success block có trả RSSI trực tiếp hay luôn qua `device:signal:`? Cần verify khi code (note giả định về qua delegate).
-- **OTA của ice-bath có những `type` nào** (MCU / Wi-Fi module / BT) — đọc từ `checkFirmwareUpgrade` trên thiết bị thật để biết cần nâng channel nào.
+- **OTA của ice-bath có những `type` nào** (MCU / Wi-Fi module / BT) - đọc từ `checkFirmwareUpgrade` trên thiết bị thật để biết cần nâng channel nào.
 - **`upgradeStatus`/`upgradeType` mapping** cần khớp đúng với firmware thực tế của sản phẩm (giá trị có thể khác theo product).
 - **Ice-bath có gateway/sub-device không?** Nếu là Wi-Fi standalone thì bỏ toàn bộ sub-device/group/room.
-- **`controlType`** ý nghĩa boolean lúc đang OTA (có cho điều khiển không) — xác minh hành vi UI khi update.
+- **`controlType`** ý nghĩa boolean lúc đang OTA (có cho điều khiển không) - xác minh hành vi UI khi update.
 
 ---
 
 ## Nguồn (URL đã đọc)
-- Device Management (Android) — https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
-- Device Management (iOS) — https://developer.tuya.com/en/docs/app-development/device?id=Ka5cgmmjr46cp
-- Device Service (core) — https://developer.tuya.com/en/docs/app-development/iot_app_sdk_core_device?id=Kdljiad0alpw5
-- Firmware Update (Android) — https://developer.tuya.com/en/docs/app-development/otaupdate?id=Ka6ki8la8wnr9
-- Firmware Update (Android+iOS) — https://developer.tuya.com/en/docs/app-development/otaupdate?id=Kceuh0g56a4nw
-- Firmware Update (iOS) — https://developer.tuya.com/en/docs/app-development/ios-device-firmware?id=Kaj1ck2g3jaqs
-- Group Management (Android) — https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
-- Group Management (iOS) — https://developer.tuya.com/en/docs/app-development/group?id=Ka5srtq1wirky
-- Room Device Management — https://developer.tuya.com/en/docs/app-development/extension-room-device?id=Kdq3sdupfn2me
-- Home Information Management — https://developer.tuya.com/en/docs/app-development/familyrelations?id=Ka6ki8h2c2yo5
-- Error Codes — https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a
+- Device Management (Android) - https://developer.tuya.com/en/docs/app-development/devicemanage?id=Ka6ki8r2rfiuu
+- Device Management (iOS) - https://developer.tuya.com/en/docs/app-development/device?id=Ka5cgmmjr46cp
+- Device Service (core) - https://developer.tuya.com/en/docs/app-development/iot_app_sdk_core_device?id=Kdljiad0alpw5
+- Firmware Update (Android) - https://developer.tuya.com/en/docs/app-development/otaupdate?id=Ka6ki8la8wnr9
+- Firmware Update (Android+iOS) - https://developer.tuya.com/en/docs/app-development/otaupdate?id=Kceuh0g56a4nw
+- Firmware Update (iOS) - https://developer.tuya.com/en/docs/app-development/ios-device-firmware?id=Kaj1ck2g3jaqs
+- Group Management (Android) - https://developer.tuya.com/en/docs/app-development/group?id=Ka6ki8l6zjfhj
+- Group Management (iOS) - https://developer.tuya.com/en/docs/app-development/group?id=Ka5srtq1wirky
+- Room Device Management - https://developer.tuya.com/en/docs/app-development/extension-room-device?id=Kdq3sdupfn2me
+- Home Information Management - https://developer.tuya.com/en/docs/app-development/familyrelations?id=Ka6ki8h2c2yo5
+- Error Codes - https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a

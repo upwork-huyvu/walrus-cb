@@ -1,13 +1,13 @@
-# Tuya Research: Cloud OpenAPI — request signing (HMAC-SHA256) + token + endpoints
+# Tuya Research: Cloud OpenAPI - request signing (HMAC-SHA256) + token + endpoints
 
 - **Ngày:** 2026-06-28 · Dùng cho: `m1-backend-scaffold` (TuyaModule, B4)
 - **Nguồn chính:**
-  - Sign Requests for Cloud Authorization — https://developer.tuya.com/en/docs/iot/new-singnature?id=Kbw0q34cs2e5g
-  - Request Structure / endpoints — https://developer.tuya.com/en/docs/iot/api-request?id=Ka4a8uuo1j4t4
-  - Get Token — https://developer.tuya.com/en/docs/cloud/6c1636a9bd?id=Ka7kjumkoa53v
+  - Sign Requests for Cloud Authorization - https://developer.tuya.com/en/docs/iot/new-singnature?id=Kbw0q34cs2e5g
+  - Request Structure / endpoints - https://developer.tuya.com/en/docs/iot/api-request?id=Ka4a8uuo1j4t4
+  - Get Token - https://developer.tuya.com/en/docs/cloud/6c1636a9bd?id=Ka7kjumkoa53v
 
 ## TL;DR (cho người sắp code B4)
-1. **Cloud OpenAPI dùng Access ID (`client_id`) + Access Secret (`secret`)** của **Cloud Project** — KHÁC AppKey/AppSecret của App SDK mobile.
+1. **Cloud OpenAPI dùng Access ID (`client_id`) + Access Secret (`secret`)** của **Cloud Project** - KHÁC AppKey/AppSecret của App SDK mobile.
 2. **2 kiểu ký:**
    - **Token request:** `str = client_id + t + nonce + stringToSign`
    - **Business request:** `str = client_id + access_token + t + nonce + stringToSign`
@@ -51,17 +51,17 @@ headers = { client_id, sign, t, sign_method: "HMAC-SHA256", nonce, [access_token
 - **Sai DC endpoint** ⇒ token/biz fail (giống cạm bẫy App SDK). Để `TUYA_OPENAPI_ENDPOINT` ở env.
 - **Sort query params alphabet** trong URL khi ký (nếu có nhiều param).
 - **`t` 13 chữ số (ms)**; lệch giờ server nhiều có thể bị từ chối.
-- **nonce**: nếu gửi header thì BẮT BUỘC nằm trong `str` (token lẫn business). Nếu không dùng nonce thì bỏ cả 2 chỗ cho nhất quán — nhưng doc khuyến nghị có nonce.
+- **nonce**: nếu gửi header thì BẮT BUỘC nằm trong `str` (token lẫn business). Nếu không dùng nonce thì bỏ cả 2 chỗ cho nhất quán - nhưng doc khuyến nghị có nonce.
 - **`access_token` chỉ cho business**, không đưa vào token-request sign.
 - **Unit test ký**: tự test tính ổn định + 1 vector dựng tay; xác nhận cuối cùng bằng **gọi `/v1.0/token` thật** khi có Access ID/Secret.
 
 ## Câu hỏi mở / cần xác minh
 - **DC thực tế của Cloud Project** (Central vs Western Europe) → quyết endpoint.
 - Có bật **nonce** không (chốt: có, dùng UUID v4).
-- Refresh-token flow chính xác (endpoint `/v1.0/token/{refresh_token}`) — verify khi có creds.
+- Refresh-token flow chính xác (endpoint `/v1.0/token/{refresh_token}`) - verify khi có creds.
 
 ## Nguồn (URL đã đọc)
 - https://developer.tuya.com/en/docs/iot/new-singnature?id=Kbw0q34cs2e5g
 - https://developer.tuya.com/en/docs/iot/api-request?id=Ka4a8uuo1j4t4
 - https://developer.tuya.com/en/docs/iot/singnature?id=Ka43a5mtx1gsc
-- Get Token (cloud) — https://developer.tuya.com/en/docs/cloud/6c1636a9bd?id=Ka7kjumkoa53v
+- Get Token (cloud) - https://developer.tuya.com/en/docs/cloud/6c1636a9bd?id=Ka7kjumkoa53v

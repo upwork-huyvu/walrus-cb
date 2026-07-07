@@ -1,12 +1,12 @@
-# Checklist — Admin web dashboard
+# Checklist - Admin web dashboard
 
 Operational panel for admins: list users, linked devices, basic usage data.
-Lower traffic, but **high privilege** — treat as a sensitive surface.
+Lower traffic, but **high privilege** - treat as a sensitive surface.
 
 ## Access control (🔴)
 - [ ] Admin-only: requires authentication **and** an admin role/claim, checked on
       every route and on the API side (not just hidden UI).
-- [ ] No privileged data fetched with elevated keys from the browser — the admin
+- [ ] No privileged data fetched with elevated keys from the browser - the admin
       UI calls the NestJS backend, which authorizes. **`service_role` key is
       never in the browser bundle.**
 - [ ] Session timeout / logout; ideally stronger auth for admins (2FA if feasible).

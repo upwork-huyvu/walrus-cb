@@ -1,13 +1,13 @@
-# Tuya Research: Matter + BLE Mesh — **iOS verbatim** (bổ sung để wire TuyaMatter/TuyaMesh)
+# Tuya Research: Matter + BLE Mesh - **iOS verbatim** (bổ sung để wire TuyaMatter/TuyaMesh)
 
 - **Ngày:** 2026-06-30 · **SDK:** iOS `ThingSmartHomeKit` ~7.5
-- **Mục đích:** lấy **verbatim iOS** cho 2 module cuối (TuyaMatter, TuyaMesh) — phần Android đã có ở
+- **Mục đích:** lấy **verbatim iOS** cho 2 module cuối (TuyaMatter, TuyaMesh) - phần Android đã có ở
   [device-pairing §5](./tuya-home-sdk-device-pairing.md) (Matter) + [bluetooth §7/§8](./tuya-home-sdk-bluetooth.md) (mesh).
 - **Nguồn chính (đã WebFetch trực tiếp):**
-  - Matter iOS — https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
-  - SIG Mesh iOS — https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23
-  - Tuya Mesh iOS — https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz
-- **Độ tin cậy:** signature lấy verbatim từ trang doc (WebFetch model nhỏ tóm tắt) — **property của model** (vd `meshModel.meshId`)
+  - Matter iOS - https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
+  - SIG Mesh iOS - https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23
+  - Tuya Mesh iOS - https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz
+- **Độ tin cậy:** signature lấy verbatim từ trang doc (WebFetch model nhỏ tóm tắt) - **property của model** (vd `meshModel.meshId`)
   vẫn nên đối chiếu header khi build. Mục "Khác biệt" + "Spec-fit" là phần quan trọng nhất cho người wire.
 
 ---
@@ -29,7 +29,7 @@
 
 ---
 
-## A. Matter iOS (verbatim — API hợp nhất)
+## A. Matter iOS (verbatim - API hợp nhất)
 
 ```objc
 // Cấu hình 1 lần (App Group ID)
@@ -114,7 +114,7 @@
 // DP control: trên ThingSmartDevice / ThingSmartBleMeshGroup
 - (void)publishDps:(NSDictionary *)dps success:(nullable ThingSuccessHandler)success failure:(nullable ThingFailureError)failure;
 ```
-> ⚠️ Trang KHÔNG ghi rõ delegate dp-update/online cho SIG (chỉ pairing callback) — DP-update mesh đọc qua `ThingSmartHomeDelegate` (mục C).
+> ⚠️ Trang KHÔNG ghi rõ delegate dp-update/online cho SIG (chỉ pairing callback) - DP-update mesh đọc qua `ThingSmartHomeDelegate` (mục C).
 
 ---
 
@@ -166,7 +166,7 @@
    → iOS `bleMeshWithMeshId:homeId:` bắt buộc homeId. **Đề xuất:** thêm `homeId: number` vào các method mesh (hoặc cache
    `meshId→homeId` từ create/getList). Cũng cần phân biệt **meshType ('sig'|'tuya')** để chọn đúng manager.
 2. **TuyaMatter shape lệch iOS:** spec hiện `parseSetupCode→MatterSetupPayload`, `connectDevice→MatterConnectResult`,
-   `commissionDevice`. iOS không có "connect" tách rời — là `startSearch`/`startActive`. **Đề xuất:** giữ spec thiên-Android
+   `commissionDevice`. iOS không có "connect" tách rời - là `startSearch`/`startActive`. **Đề xuất:** giữ spec thiên-Android
    (Android map tốt) + iOS implement loose: `parseSetupCode` lưu `ThingSmartActivatorDeviceModel`, `connectDevice` = no-op/store,
    `commissionDevice` = `startActive:deviceList:` (dựng `ThingSmartActivatorTypeMatterModel` token/ssid/password). Hoặc thêm
    method iOS-friendly. **Khuyến nghị:** ice-bath gần như KHÔNG dùng Matter/Mesh → để spec-rework là việc tùy chọn về sau.
@@ -178,13 +178,13 @@
 
 ## Câu hỏi mở / cần xác minh trên máy
 - Property `ThingSmartBleMeshModel.meshId`, `ThingSmartActivatorDeviceModel.deviceModelType`, type-name của mesh model (sig vs tuya).
-- `ThingSmartActivatorTypeMatterModel` dựng thế nào (factory? alloc init + set field?) — trang chỉ liệt kê property.
+- `ThingSmartActivatorTypeMatterModel` dựng thế nào (factory? alloc init + set field?) - trang chỉ liệt kê property.
 - SIG mesh: cách lấy `ThingSmartSIGMeshDiscoverDeviceInfo` → truyền vào `startActive:` (giữ từ delegate `didScanedDevice:`).
-- Tuya mesh `startScanWithName:pwd:` — `name`/`pwd` lấy từ đâu (meshModel?), `wifiAddress`/`otaAddress` ý nghĩa.
+- Tuya mesh `startScanWithName:pwd:` - `name`/`pwd` lấy từ đâu (meshModel?), `wifiAddress`/`otaAddress` ý nghĩa.
 
 ## Nguồn (URL đã đọc)
-- Matter iOS — https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
-- SIG Mesh iOS — https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23
-- Tuya Mesh iOS — https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz
-- Matter overview (Android) — https://developer.tuya.com/en/docs/app-development/matter_device_pair?id=Kcr7qt6rp3hi6
+- Matter iOS - https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
+- SIG Mesh iOS - https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23
+- Tuya Mesh iOS - https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz
+- Matter overview (Android) - https://developer.tuya.com/en/docs/app-development/matter_device_pair?id=Kcr7qt6rp3hi6
 - (Android verbatim đã có: device-pairing §5, bluetooth §7/§8)

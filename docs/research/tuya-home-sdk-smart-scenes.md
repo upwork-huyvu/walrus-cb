@@ -1,13 +1,13 @@
-# Tuya Research: Smart Scenes (Ngữ cảnh thông minh) — tap-to-run + automation
+# Tuya Research: Smart Scenes (Ngữ cảnh thông minh) - tap-to-run + automation
 
 - **Ngày:** 2026-06-29 · **SDK version tham chiếu:** Android `thingsmart` **7.5.x** · iOS `ThingSmartHomeKit` **~7.5**
 - **Nguồn chính:**
-  - Smart Scenes (Android, Scene Manager) — https://developer.tuya.com/en/docs/app-development/smartscenemanager?id=Ka6ki8ldkrsbr
-  - Smart Scenes (iOS) — https://developer.tuya.com/en/docs/app-development/smartscene?id=Ka5srtq859mp7
-  - Create Scene (Condition/Action factory, iOS+Android) — https://developer.tuya.com/en/docs/app-development/core-linkage-builder?id=Kd0qp8q3ut3ca
-  - Scene Creation (Android tutorial, Kotlin builders) — https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-scene-create?id=Kd8k48qhwzsq0
-  - Scene Creation (iOS tutorial) — https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-ios-scene-create?id=Kd8kmqr7lh0zh
-- **Lưu ý độ tin cậy:** WebFetch tóm tắt bằng model nhỏ. **Android** có 2 thế hệ API: (a) thế hệ mới `getSceneServiceInstance()` + `NormalScene`/`SavedScene` + **Builder** (`DeviceConditionBuilder`, `DeviceActionBuilder`…) — đây là API hiện hành trong doc 7.x; (b) thế hệ cũ `ThingSmartSceneConditionFactory`/`ThingSmartSceneActionFactory` (trang "Create Scene" gộp chung iOS+Android). **iOS** dùng `ThingSmartSceneManager` + `ThingSmartScene` + `*Factory`. Một số chữ ký iOS xác minh verbatim tốt; vài builder Android lấy được constructor nhưng **chưa thấy đầy đủ code lắp `NormalScene` + `saveSceneV2`** end-to-end → đánh dấu ở "Câu hỏi mở".
+  - Smart Scenes (Android, Scene Manager) - https://developer.tuya.com/en/docs/app-development/smartscenemanager?id=Ka6ki8ldkrsbr
+  - Smart Scenes (iOS) - https://developer.tuya.com/en/docs/app-development/smartscene?id=Ka5srtq859mp7
+  - Create Scene (Condition/Action factory, iOS+Android) - https://developer.tuya.com/en/docs/app-development/core-linkage-builder?id=Kd0qp8q3ut3ca
+  - Scene Creation (Android tutorial, Kotlin builders) - https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-scene-create?id=Kd8k48qhwzsq0
+  - Scene Creation (iOS tutorial) - https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-ios-scene-create?id=Kd8kmqr7lh0zh
+- **Lưu ý độ tin cậy:** WebFetch tóm tắt bằng model nhỏ. **Android** có 2 thế hệ API: (a) thế hệ mới `getSceneServiceInstance()` + `NormalScene`/`SavedScene` + **Builder** (`DeviceConditionBuilder`, `DeviceActionBuilder`…) - đây là API hiện hành trong doc 7.x; (b) thế hệ cũ `ThingSmartSceneConditionFactory`/`ThingSmartSceneActionFactory` (trang "Create Scene" gộp chung iOS+Android). **iOS** dùng `ThingSmartSceneManager` + `ThingSmartScene` + `*Factory`. Một số chữ ký iOS xác minh verbatim tốt; vài builder Android lấy được constructor nhưng **chưa thấy đầy đủ code lắp `NormalScene` + `saveSceneV2`** end-to-end → đánh dấu ở "Câu hỏi mở".
 
 ---
 
@@ -24,7 +24,7 @@
 ---
 
 ## Phạm vi
-Ngữ cảnh thông minh của Home SDK: **tap-to-run (manual scene)** và **automation (tự động theo điều kiện)**. Bao gồm: tạo / sửa / xoá / list / lấy chi tiết / thực thi scene; xây **condition** (device DP, weather, time/schedule, geofence, sunrise-sunset); xây **action** (device dp, delay, notification/push, trigger scene khác, enable/disable automation khác); bật/tắt automation; lắng nghe thay đổi scene realtime. **Không** thuộc phạm vi: Scene UI BizBundle (UI dựng sẵn — dự án tự build UI), Scene Recommendation, IoT/SaaS SDK riêng.
+Ngữ cảnh thông minh của Home SDK: **tap-to-run (manual scene)** và **automation (tự động theo điều kiện)**. Bao gồm: tạo / sửa / xoá / list / lấy chi tiết / thực thi scene; xây **condition** (device DP, weather, time/schedule, geofence, sunrise-sunset); xây **action** (device dp, delay, notification/push, trigger scene khác, enable/disable automation khác); bật/tắt automation; lắng nghe thay đổi scene realtime. **Không** thuộc phạm vi: Scene UI BizBundle (UI dựng sẵn - dự án tự build UI), Scene Recommendation, IoT/SaaS SDK riêng.
 
 ## Khái niệm & luồng
 **Mô hình dữ liệu:** một **Scene** = `{ name, ruleGenre, matchType, conditions[], actions[], preConditions[], enabled, displayColor, coverIcon }`.
@@ -127,7 +127,7 @@ ThingHomeSdk.getSceneServiceInstance().executeService().unRegisterDeviceMqttList
 ThingHomeSdk.getSceneServiceInstance().executeService().unRegisterDeviceMqttListener(callback)  // gỡ 1
 ```
 
-### Condition builders (Android, thế hệ mới — `ConditionBase`)
+### Condition builders (Android, thế hệ mới - `ConditionBase`)
 ```kotlin
 // Device condition (DP của thiết bị)
 val builder = DeviceConditionBuilder(
@@ -160,7 +160,7 @@ val conditionBase = SunRiseSetConditionBuilder(cityId, SunSetRiseRule.SunType.SU
 val conditionBase = GeofenceConditionBuilder(radius, latitude, longitude, address, geofenceType).build() as ConditionBase
 ```
 
-### Action builders (Android, thế hệ mới — `ActionBase`)
+### Action builders (Android, thế hệ mới - `ActionBase`)
 ```kotlin
 // Device DP action (dpIssue)
 val builder = DeviceActionBuilder(deviceId, deviceActionDetailBean, selDpValue, selDpDisplayValue ?: "")
@@ -179,7 +179,7 @@ val actionBase = LinkageRuleActionBuilder(checkedItem.id, ACTION_TYPE_TRIGGER).b
 //   ACTION_TYPE_ENABLE_AUTOMATION / ACTION_TYPE_DISABLE_AUTOMATION
 ```
 
-### Condition expression (Android, thế hệ cũ — factory)
+### Condition expression (Android, thế hệ cũ - factory)
 ```java
 // expr cho device value
 ThingSmartSceneExprModel deviceValueExpr =
@@ -301,7 +301,7 @@ ThingSmartSceneConditionFactory.createTimerCondition(with: timeExpr)
 + (ThingSmartSceneActionModel *)createSendNotificationAction;                       // appPushTrigger
 ```
 
-### PreCondition (khung giờ hiệu lực — iOS)
+### PreCondition (khung giờ hiệu lực - iOS)
 ```swift
 let precondParam = TSmartScenePreconditionParam()
 precondParam.sceneID = currentPrecondition?.scenarioId ?? ""
@@ -342,7 +342,7 @@ ThingSmartScenePreConditionFactory.scenePrecondition(with: precondParam)
 | `ThingSmartScenePreConditionModel` | khung giờ hiệu lực | tạo qua `ThingSmartScenePreConditionFactory.scenePrecondition(with:)` |
 | `ThingSmartSceneConditionFactory` / `ThingSmartSceneActionFactory` | factory build condition/action | (xem trên) |
 | `ThingSmartSceneConditionExprBuilder` | build expr (value/enum/timer) | `createTimerExpr(withTimeZoneId:loops:date:time:)` … |
-| `ThingSmartCityModel`, `ThingSmartSceneDPModel`, `ThingSmartSceneExprModel`, `ThingSmartSceneCoreFeatureModel`, `ThingSmartDeviceModel` | model phụ trợ | — |
+| `ThingSmartCityModel`, `ThingSmartSceneDPModel`, `ThingSmartSceneExprModel`, `ThingSmartSceneCoreFeatureModel`, `ThingSmartDeviceModel` | model phụ trợ | - |
 
 **Callback types iOS:** `TYSuccessHandler` (void), `TYSuccessBOOL` (BOOL), `TYFailureError` (NSError), `void(^)(NSArray<ThingSmartSceneModel*>*)` cho list.
 
@@ -355,22 +355,22 @@ ThingSmartScenePreConditionFactory.scenePrecondition(with: precondParam)
 
 ## Cạm bẫy
 1. **Hai thế hệ API Android** (factory cũ `ThingSmartSceneConditionFactory` vs builder mới `DeviceConditionBuilder`). Doc 7.x ưu tiên **builder + `getSceneServiceInstance()`**; đừng trộn 2 kiểu. Khi viết native module, chốt 1 thế hệ và kiểm tra class tồn tại trong `thingsmart 7.5.x` thực tế.
-2. **`ruleGenre` quyết định loại scene** — quên set ⇒ tạo nhầm. Tap-to-run (1): KHÔNG kèm condition; Automation (2): PHẢI có >=1 condition, và `enabled` mới có tác dụng.
+2. **`ruleGenre` quyết định loại scene** - quên set ⇒ tạo nhầm. Tap-to-run (1): KHÔNG kèm condition; Automation (2): PHẢI có >=1 condition, và `enabled` mới có tác dụng.
 3. **`matchType` 1=OR / 2=AND** dễ nhầm. iOS dùng enum `ThingSmartConditionMatchAny`(1)/`MatchAll`(2). Khi map qua JS phải thống nhất số.
 4. **`saveSceneV2`/`modifySceneV2` cần NormalScene ĐẦY ĐỦ** (conditions+actions). Khi modify, nếu chỉ truyền field thay đổi sẽ mất phần còn lại → luôn fetch detail, sửa, rồi save lại toàn bộ. `modifySceneV2` có cờ `needCleanGidSid`.
-5. **Weather/geofence cần cityId/toạ độ hợp lệ.** Lấy city qua `getCityInfoWithLatitude`/`getCityListWithCountryCode` trước; sai city ⇒ điều kiện không kích hoạt. Geofence cần **quyền vị trị nền** (iOS Always, Android background location) — đây là quyền nhạy cảm, cân nhắc UX.
-6. **Timer/schedule** dùng `loops="1111111"` (7 ngày, T2→CN), `time="HH:mm"`, cần `timeZoneId` đúng — sai TZ ⇒ chạy lệch giờ.
+5. **Weather/geofence cần cityId/toạ độ hợp lệ.** Lấy city qua `getCityInfoWithLatitude`/`getCityListWithCountryCode` trước; sai city ⇒ điều kiện không kích hoạt. Geofence cần **quyền vị trị nền** (iOS Always, Android background location) - đây là quyền nhạy cảm, cân nhắc UX.
+6. **Timer/schedule** dùng `loops="1111111"` (7 ngày, T2→CN), `time="HH:mm"`, cần `timeZoneId` đúng - sai TZ ⇒ chạy lệch giờ.
 7. **MQTT listener (Android)** chỉ báo "có thay đổi" kèm `sceneId`, KHÔNG kèm dữ liệu mới → phải **re-fetch** detail/list. Nhớ `unRegisterDeviceMqttListener` khi rời màn để tránh leak.
 8. **Action `appPushTrigger`/notification** phụ thuộc cấu hình message/FCM phía cloud + quyền thông báo; trên iOS cần entitlement push. Không có push nếu app/cloud chưa bật message center.
 9. **Execute scene khi thiết bị offline**: action không tới thiết bị nhưng cloud vẫn báo success → UI phải dựa thêm `onDpUpdate`/device status để xác nhận thực tế (đặc biệt quan trọng cho preset nhiệt độ ice-bath).
 10. **iOS create là class method** (`+addNewSceneWithName…`) nhưng modify/execute/enable/disable là **instance method** trên `ThingSmartScene` → phải giữ instance (tạo từ `sceneWithSceneId:`/`sceneWithSceneModel:`).
-11. **Số lượng condition/action có giới hạn** theo phía cloud (thường tối đa ~N action/scene) — chưa thấy con số verbatim trong doc, cần test thực tế.
+11. **Số lượng condition/action có giới hạn** theo phía cloud (thường tối đa ~N action/scene) - chưa thấy con số verbatim trong doc, cần test thực tế.
 
 ---
 
 ## Đề xuất API TurboModule
 
-**Tạo module mới `TuyaScene`** (CRUD + execute + automation enable/disable + listener). Vì JSON condition/action rất phức tạp và 2 thế hệ API native khác nhau, đề xuất **truyền condition/action dưới dạng JSON string đã chuẩn hoá** (native parse → build bean/factory tương ứng), thay vì model hoá toàn bộ trên spec TS — giảm bề mặt và dễ tiến hoá. Listener đẩy qua **event emitter** (giống `onDeviceStatus`).
+**Tạo module mới `TuyaScene`** (CRUD + execute + automation enable/disable + listener). Vì JSON condition/action rất phức tạp và 2 thế hệ API native khác nhau, đề xuất **truyền condition/action dưới dạng JSON string đã chuẩn hoá** (native parse → build bean/factory tương ứng), thay vì model hoá toàn bộ trên spec TS - giảm bề mặt và dễ tiến hoá. Listener đẩy qua **event emitter** (giống `onDeviceStatus`).
 
 ```ts
 // === Module mới: TuyaScene ===
@@ -456,18 +456,18 @@ unregisterSceneChangeListener(homeId: number): void;
 
 ## Câu hỏi mở / cần xác minh
 - **Android lắp `NormalScene` + gọi `saveSceneV2` end-to-end**: doc cho builder rời rạc nhưng chưa thấy code gắn `conditionBase`/`actionBase` vào `NormalScene` (setter chính xác: `setConditions`/`setActions`/`setMatchType`/`setRuleGenre`?). Cần đọc API reference (tuya.github.io) hoặc test với SDK thật.
-- **iOS scene change listener realtime** (tương đương `SceneChangeCallback` Android) — có notification name nào không? Cần mở iOS API reference.
+- **iOS scene change listener realtime** (tương đương `SceneChangeCallback` Android) - có notification name nào không? Cần mở iOS API reference.
 - **Giới hạn số condition/action mỗi scene** và **giới hạn số scene mỗi home** (con số cụ thể).
 - **`operator` hợp lệ** cho device/weather condition ("==", "<", ">", "<=", ">=") và format `expr` chính xác (value vs enum vs range).
-- **DP của ice-bath dùng làm condition/action**: cần dpId thực tế (nhiệt độ mục tiêu/hiện tại, power) — phụ thuộc product schema (đã ghi ở note nền tảng).
+- **DP của ice-bath dùng làm condition/action**: cần dpId thực tế (nhiệt độ mục tiêu/hiện tại, power) - phụ thuộc product schema (đã ghi ở note nền tảng).
 - **`extraInfo`/`executorProperty` schema** chi tiết (vd geofence lưu gì, delay lưu gì) để serialize đúng qua JSON bridge.
 - **Quyền background location** cho geofence trên cả 2 nền tảng (iOS Always Authorization; Android `ACCESS_BACKGROUND_LOCATION`).
 
 ## Nguồn (URL đã đọc)
-- Smart Scenes (Android Scene Manager) — https://developer.tuya.com/en/docs/app-development/smartscenemanager?id=Ka6ki8ldkrsbr
-- Smart Scenes (iOS) — https://developer.tuya.com/en/docs/app-development/smartscene?id=Ka5srtq859mp7
-- Create Scene (Condition/Action factory) — https://developer.tuya.com/en/docs/app-development/core-linkage-builder?id=Kd0qp8q3ut3ca
-- Scene Creation (Android tutorial, Kotlin builders) — https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-scene-create?id=Kd8k48qhwzsq0
-- Scene Creation (iOS tutorial) — https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-ios-scene-create?id=Kd8kmqr7lh0zh
-- Smart Home App SDK overview — https://developer.tuya.com/en/docs/app-development/app-sdk-smart-home?id=Kaq6lep0vc16u
-- Error Codes — https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a
+- Smart Scenes (Android Scene Manager) - https://developer.tuya.com/en/docs/app-development/smartscenemanager?id=Ka6ki8ldkrsbr
+- Smart Scenes (iOS) - https://developer.tuya.com/en/docs/app-development/smartscene?id=Ka5srtq859mp7
+- Create Scene (Condition/Action factory) - https://developer.tuya.com/en/docs/app-development/core-linkage-builder?id=Kd0qp8q3ut3ca
+- Scene Creation (Android tutorial, Kotlin builders) - https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-scene-create?id=Kd8k48qhwzsq0
+- Scene Creation (iOS tutorial) - https://developer.tuya.com/en/docs/app-development/extension-sdk-tutorial-ios-scene-create?id=Kd8kmqr7lh0zh
+- Smart Home App SDK overview - https://developer.tuya.com/en/docs/app-development/app-sdk-smart-home?id=Kaq6lep0vc16u
+- Error Codes - https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a

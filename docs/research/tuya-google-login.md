@@ -7,7 +7,7 @@
 ## Kết luận ngắn
 
 **Đúng một nửa.** Tuya SDK **CÓ sẵn method** đăng nhập Google (`thirdLogin(..., "gg", ...)`),
-và code app HIỆN TẠI đã gọi đúng method đó. Nhưng Tuya **KHÔNG** tự lấy Google `idToken` hộ —
+và code app HIỆN TẠI đã gọi đúng method đó. Nhưng Tuya **KHÔNG** tự lấy Google `idToken` hộ -
 **app phải tự tích hợp Google Sign-In để lấy `idToken`**, rồi mới truyền vào Tuya. Ngoài ra
 phải khai báo OAuth Client ID ở **cả Google Cloud lẫn Tuya console**.
 
@@ -27,21 +27,21 @@ Code app đã đúng phần này: `apps/mobile/src/services/auth.ts` → `lib.Tu
 
 ## App phải tự làm (phần Tuya KHÔNG lo)
 
-### 1. Lấy Google idToken (native Google Sign-In) — HIỆN CHƯA CÓ
+### 1. Lấy Google idToken (native Google Sign-In) - HIỆN CHƯA CÓ
 - Cài `@react-native-google-signin/google-signin` (Tuya KHÔNG bundle Google Sign-In).
 - `GoogleSignin.configure({ webClientId })` → `signIn()` → lấy `idToken`.
 - Truyền `idToken` vào `thirdLogin(idToken, 'gg')` thay cho `''` hiện tại
-  (code ghi rõ: *"B4 scaffold: idToken thật phải lấy từ native SDK — chưa wire"*).
+  (code ghi rõ: *"B4 scaffold: idToken thật phải lấy từ native SDK - chưa wire"*).
 
-### 2. Google Cloud Console (OAuth) — CHƯA CÓ
+### 2. Google Cloud Console (OAuth) - CHƯA CÓ
 - **OAuth Consent Screen**: user type = External.
 - **Android OAuth client ID**: Package Name = `com.walrus.wellnesscb` + **SHA-1** =
   SHA-1 keystore (debug: `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`;
-  release: lấy từ walrus-release.keystore) — **phải khớp SHA-1 đã đăng ký trên Tuya**.
+  release: lấy từ walrus-release.keystore) - **phải khớp SHA-1 đã đăng ký trên Tuya**.
 - **Web application OAuth client ID**: tạo và copy `Client ID` → dùng làm `webClientId` cho
   Google Sign-In (để nhận idToken) **và** dán vào Tuya console.
 
-### 3. Tuya Developer Platform — CHƯA CÓ
+### 3. Tuya Developer Platform - CHƯA CÓ
 - Dán Google **Client ID** vào:
   **App → OEM App → Optional Setting → Third-Party Integration → Login Configuration for
   Android → Client ID for Google** (và tab iOS nếu làm iOS).
@@ -77,25 +77,25 @@ GoogleSignin.configure({
 const res = await GoogleSignin.signIn();
 const idToken = res.data.idToken;   // truyền vào thirdLogin(idToken, 'gg')
 ```
-- `idToken` chỉ khác null khi có `webClientId` hợp lệ (type **WEB**) — đây là chi tiết hay bị bỏ sót.
+- `idToken` chỉ khác null khi có `webClientId` hợp lệ (type **WEB**) - đây là chi tiết hay bị bỏ sót.
 
 **Ghi chú quan trọng:** repo demo RN chính thức của Tuya (`TuyaInc/tuyasmart-home-sdk-react-native`)
-đã **ngừng bảo trì**; Tuya khuyến nghị **tự tạo project RN + bridge sang native SDK** — đúng
+đã **ngừng bảo trì**; Tuya khuyến nghị **tự tạo project RN + bridge sang native SDK** - đúng
 hướng dự án đang làm (`@jimmy-vu/react-native-turbo-tuya`). → cách tiếp cận của mình chuẩn.
 
-## Cross-platform (Android + iOS cùng login Google) — 2026-07-01
+## Cross-platform (Android + iOS cùng login Google) - 2026-07-01
 
 **Nguyên tắc mấu chốt: `idToken` có `audience` = WEB Client ID trên CẢ 2 nền.** Vì thế 1 Web
 Client ID dùng chung khắp nơi; client Android/iOS chỉ để Google xác thực danh tính app theo nền.
 
-**Google Cloud — 1 project, tạo 3 OAuth client:**
+**Google Cloud - 1 project, tạo 3 OAuth client:**
 | Client | Định danh bằng | Dùng để |
 |---|---|---|
 | **Android** | package `com.walrus.wellnesscb` + **SHA-1** (debug `5E:8F:16:06:...`; release riêng) | Google verify app Android (KHÔNG dán vào Tuya) |
 | **iOS** | Bundle ID `com.walrus.wellness` | Google verify app iOS + URL scheme (reversed client id) |
-| **Web** | (server) | **`webClientId`** — idToken audience = cái này, dùng CHUNG |
+| **Web** | (server) | **`webClientId`** - idToken audience = cái này, dùng CHUNG |
 
-**react-native-google-signin — 1 config JS chung:**
+**react-native-google-signin - 1 config JS chung:**
 ```js
 GoogleSignin.configure({
   webClientId: '<WEB_CLIENT_ID>',  // GIỐNG nhau Android+iOS → idToken aud = web client
@@ -106,14 +106,14 @@ GoogleSignin.configure({
 - Android: web client id auto từ `google-services.json`. iOS: phải thêm `WEB_CLIENT_ID` vào
   `GoogleService-Info.plist` (iOS không tự có).
 
-**Tuya console — dán CÙNG một Web Client ID vào cả 2 mục:**
+**Tuya console - dán CÙNG một Web Client ID vào cả 2 mục:**
 - Login Configuration for **Android** → Client ID for Google = **Web Client ID**
 - Login Configuration for **iOS** → Client ID for Google = **Web Client ID** (GIỐNG hệt)
 
-→ Code `thirdLogin(idToken, 'gg')` **không đổi** giữa 2 nền — lib lo khác biệt native, idToken
+→ Code `thirdLogin(idToken, 'gg')` **không đổi** giữa 2 nền - lib lo khác biệt native, idToken
 trả về cùng audience nên Tuya verify được cho cả hai.
 
-## Doc chuyên third-party login (userthirdlogin) — xác nhận lại, 2026-07-01
+## Doc chuyên third-party login (userthirdlogin) - xác nhận lại, 2026-07-01
 
 Trang `userthirdlogin?id=Ka6a9oalounvd` (chuyên về đăng nhập bên thứ ba) **nói y hệt**: app
 tự lấy token từ SDK của provider **trước**, rồi mới gọi API Tuya. Nguyên văn: *developers must
@@ -131,11 +131,11 @@ void thirdLogin(String countryCode, String accessToken, String type, String extr
 | Google | `gg` | **idToken** | Google Sign-In | `thirdLogin(..., "gg", "{\"pubVersion\":1}", cb)` |
 | Apple | `ap` | accessToken | Apple | `thirdLogin(..., "ap", ...)` |
 | Facebook | `fb` | accessToken | Facebook SDK | `thirdLogin(..., "fb", ...)` |
-| WeChat | — | code | WeChat SDK | `loginByWechat(countryCode, code, cb)` |
-| Tencent QQ | — | userId+accessToken | QQ SDK | `loginByQQ(countryCode, userId, accessToken, cb)` |
+| WeChat | - | code | WeChat SDK | `loginByWechat(countryCode, code, cb)` |
+| Tencent QQ | - | userId+accessToken | QQ SDK | `loginByQQ(countryCode, userId, accessToken, cb)` |
 
 → Google/Apple/Facebook dùng chung `thirdLogin`; WeChat/QQ có method riêng. Không provider nào
-được Tuya "lo hộ" phần lấy token — luôn cần SDK của provider. Điều này khớp 100% code app hiện
+được Tuya "lo hộ" phần lấy token - luôn cần SDK của provider. Điều này khớp 100% code app hiện
 tại (`thirdLogin` với `'gg'`/`'ap'`), chỉ thiếu bước lấy token thật.
 
 ## Liên kết (nguồn)

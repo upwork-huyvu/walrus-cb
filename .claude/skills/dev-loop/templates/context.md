@@ -1,6 +1,6 @@
 # Context: <TÊN FEATURE>
 
-> File "trí nhớ" — giữ context xuyên suốt các phiên làm việc. Mọi quyết định,
+> File "trí nhớ" - giữ context xuyên suốt các phiên làm việc. Mọi quyết định,
 > phát hiện, cạm bẫy đều ghi vào đây để phiên sau đọc lại là hiểu ngay.
 > Append theo thời gian, đừng xoá lịch sử (trừ khi sai thì gạch đi + ghi lý do).
 
@@ -9,7 +9,7 @@
 ## Quyết định kỹ thuật (Decision log)
 > Mỗi quyết định: chọn gì + vì sao + phương án đã loại.
 
-- **<YYYY-MM-DD>** — <Quyết định>. Lý do: <...>. Đã cân nhắc & loại: <...>.
+- **<YYYY-MM-DD>** - <Quyết định>. Lý do: <...>. Đã cân nhắc & loại: <...>.
 
 ## Bản đồ file/module
 > Những file/module quan trọng của feature này nằm đâu, làm gì.

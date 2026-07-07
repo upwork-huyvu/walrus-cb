@@ -2,29 +2,29 @@
 
 - **Slug:** `m1-admin-royal-redesign`
 - **Phase hiện tại:** `TEST` (Phase 1+2 code done)
-- **Trạng thái:** `in_progress` (code_done — feature chạy; AC4 gửi thật chờ Tuya subscribe)
+- **Trạng thái:** `in_progress` (code_done - feature chạy; AC4 gửi thật chờ Tuya subscribe)
 - **Cập nhật lần cuối:** 2026-07-02
 
 ## ▶ Hành động kế tiếp
 **Phase 1+2 XONG + verified** (admin tsc 0 · eslint 0 · backend jest 26/26 · browser 4 khu vực render đẹp).
 Ảnh: `royal-login.png`, `royal-users.png`, `royal-admins.png`, `royal-notifications.png`. Dev server đang
 chạy (:3000 backend, :3001 admin). **Còn:** commit; AC4 "gửi thật" chờ Tuya subscribe API message-push
-(việc client — như m1-admin-push blocker) + có user Tuya để test round-trip.
+(việc client - như m1-admin-push blocker) + có user Tuya để test round-trip.
 **Bonus fix:** bug redirect-loop token-expiry (proxy.ts).
 
 ## Checklist bước (đồng bộ plan mục 4)
-- [x] B1 — globals.css Gilded Noir + fonts (Cormorant+Inter) + thay #16a34a · **done**
-- [x] B2 — AdminShell sidebar (gộp 2 layout, active qua usePathname) · **done**
-- [x] B3 — reskin login (card royal) + hết green hardcode · **done**
-- [x] B4 — admin-mgmt list+xoá · **done** (backend GET/DELETE /admin/users, chặn tự-xoá 403/404; trang /admins)
-- [x] B5 — notification targeting · **done** (backend uids[]/all loop, jest 8/8; UI multi-select+all+manual UID)
+- [x] B1 - globals.css Gilded Noir + fonts (Cormorant+Inter) + thay #16a34a · **done**
+- [x] B2 - AdminShell sidebar (gộp 2 layout, active qua usePathname) · **done**
+- [x] B3 - reskin login (card royal) + hết green hardcode · **done**
+- [x] B4 - admin-mgmt list+xoá · **done** (backend GET/DELETE /admin/users, chặn tự-xoá 403/404; trang /admins)
+- [x] B5 - notification targeting · **done** (backend uids[]/all loop, jest 8/8; UI multi-select+all+manual UID)
 
 ## Checklist AC (đồng bộ plan mục 3)
-- [x] AC1 — theme Gilded Noir, render sạch (hết sky-blue/green hardcode) ✅
-- [x] AC2 — AdminShell sidebar dùng chung (active gold indicator) ✅
-- [x] AC3 — /admins list + xoá + backend endpoint ✅ (list 200; self-delete 403; not-found 404)
-- [x] AC4 — gửi nhiều user / gửi tất cả (backend loop) ✅ *(logic jest 8/8; gửi thật chờ Tuya subscribe)*
-- [x] AC5 — tsc/lint sạch + browser 4 khu vực OK ✅ (admin tsc 0 · eslint 0 · backend jest 26/26)
+- [x] AC1 - theme Gilded Noir, render sạch (hết sky-blue/green hardcode) ✅
+- [x] AC2 - AdminShell sidebar dùng chung (active gold indicator) ✅
+- [x] AC3 - /admins list + xoá + backend endpoint ✅ (list 200; self-delete 403; not-found 404)
+- [x] AC4 - gửi nhiều user / gửi tất cả (backend loop) ✅ *(logic jest 8/8; gửi thật chờ Tuya subscribe)*
+- [x] AC5 - tsc/lint sạch + browser 4 khu vực OK ✅ (admin tsc 0 · eslint 0 · backend jest 26/26)
 
 ## Nhật ký chạy
 | Thời gian | Bước | Kết quả | Ghi chú |

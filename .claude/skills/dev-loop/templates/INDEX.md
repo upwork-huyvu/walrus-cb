@@ -1,4 +1,4 @@
-# Bảng điều phối tiến trình — Tuya Smart Ice Bath App
+# Bảng điều phối tiến trình - Tuya Smart Ice Bath App
 
 > Nơi DUY NHẤT trả lời "dự án đang ở đâu?". Mọi feature đều phải có 1 dòng ở đây.
 > `/plan` thêm dòng mới; `/dev` `/test` `/fix-plan` cập nhật cột Phase/Trạng thái.

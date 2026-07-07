@@ -3,7 +3,7 @@
 > File này do `/plan` tạo, do `/fix-plan` chỉnh sửa. Là nguồn sự thật về "định làm gì".
 
 - **Slug:** `m1-scaffold-and-tuya-init`
-- **Milestone:** M1 — Nền tảng & Kết nối lõi ($250)
+- **Milestone:** M1 - Nền tảng & Kết nối lõi ($250)
 - **Phần liên quan:** mobile (chủ yếu) + thiết lập monorepo
 - **Ngày tạo:** 2026-06-28
 - **Cập nhật lần cuối:** 2026-06-28
@@ -24,7 +24,7 @@ pairing, control.
   @expo/vector-icons...) → chỉ dùng làm tham chiếu thiết kế, phải migrate sang RN
   CLI, bỏ toàn bộ `expo-*`.
 - **Tuya Data Center của SDK PHẢI trùng Data Center của Cloud Project** (dự án
-  hướng EU) — sai là không tìm thấy thiết bị về sau.
+  hướng EU) - sai là không tìm thấy thiết bị về sau.
 - **AppSecret** Tuya không được nằm trong JS/repo (xem checklist security-secrets).
 - **Link nghiên cứu liên quan:** _chưa có_ → chạy `/tuya-research SDK init & Data Center & integration` TRƯỚC khi code B4–B5.
 
@@ -35,22 +35,22 @@ pairing, control.
 - [ ] AC4: `grep` repo không lộ secret; `.env.example` có placeholder.
 
 ## 4. Các bước thực hiện
-1. **B1 — Khởi tạo monorepo + git**
+1. **B1 - Khởi tạo monorepo + git**
    - Tạo `apps/mobile`, `apps/backend` (placeholder), `apps/admin` (placeholder); `.gitignore` gốc; `git init`.
    - Kiểm thử: cây thư mục đúng; `git status` sạch hợp lý.
-2. **B2 — Init RN CLI app**
+2. **B2 - Init RN CLI app**
    - `npx @react-native-community/cli init` trong `apps/mobile` (bản RN ổn định, Hermes on).
    - Kiểm thử: `npm run android` build ra app rỗng.
-3. **B3 — Port design tokens từ replit UI**
+3. **B3 - Port design tokens từ replit UI**
    - Lấy màu/spacing/typography/components tham chiếu từ `replit_generate/components`, bỏ `expo-*`.
    - Kiểm thử: 1 màn hình placeholder render đúng theme.
-4. **B4 — Thêm native deps Tuya SDK**
+4. **B4 - Thêm native deps Tuya SDK**
    - Android: gradle deps + keep rules (R8); iOS: Pod. (Theo `/tuya-research`.)
    - Kiểm thử: build cả 2 nền tảng không lỗi link.
-5. **B5 — Init SDK đúng Data Center + AppKey từ config**
+5. **B5 - Init SDK đúng Data Center + AppKey từ config**
    - Module bridge khởi tạo SDK sớm; region = EU (hoặc theo Cloud Project); AppKey từ `react-native-config`/native; AppSecret native-only, git-ignored.
    - Kiểm thử: log init success + region; smoke test gọi 1 API SDK không cần thiết bị (vd lấy trạng thái init/user nil).
-6. **B6 — Quét secret + .env.example**
+6. **B6 - Quét secret + .env.example**
    - `.gitignore` phủ env/keystore/google-services/plist; tạo `.env.example`.
    - Kiểm thử: grep secret sạch.
 

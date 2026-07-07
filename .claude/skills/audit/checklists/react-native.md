@@ -1,7 +1,7 @@
-# Checklist — React Native (CLI) + Push (FCM)
+# Checklist - React Native (CLI) + Push (FCM)
 
 Project uses **React Native CLI (not Expo)** because it needs native modules
-(Tuya SDK). The Replit UI under `replit_generate/` is an Expo Snack prototype —
+(Tuya SDK). The Replit UI under `replit_generate/` is an Expo Snack prototype -
 treat it as a design reference to be **migrated**, not shipped.
 
 ## Project / toolchain
@@ -53,7 +53,7 @@ treat it as a design reference to be **migrated**, not shipped.
 - [ ] Sensitive at-rest data (tokens) in Keychain/Keystore, not AsyncStorage
       plaintext.
 
-## Push notifications (FCM) — client side
+## Push notifications (FCM) - client side
 - [ ] Uses a supported lib (`@react-native-firebase/messaging`) wired natively
       on both platforms; APNs configured for iOS.
 - [ ] Token obtained, refresh (`onTokenRefresh`) handled, token sent to backend

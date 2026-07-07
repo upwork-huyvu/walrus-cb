@@ -1,4 +1,4 @@
-# Checklist — Tuya Smart Life App SDK integration
+# Checklist - Tuya Smart Life App SDK integration
 
 The core risk surface of this project. Native SDK (iOS/Android) bridged to RN.
 When a finding here is uncertain, cross-check with a `/tuya-research` note and
@@ -7,9 +7,9 @@ cite the official doc. Docs: developer.tuya.com → app-development (Home SDK).
 ## Initialization & credentials (🔴 highest risk)
 - [ ] **Data Center / region of the SDK init matches the Tuya Cloud Project's
       Data Center** (project requires e.g. Europe). Mismatch = devices "not
-      found" / pairing fails. This is the #1 documented footgun — verify it's not
+      found" / pairing fails. This is the #1 documented footgun - verify it's not
       hardcoded to the wrong region.
-- [ ] `AppKey` is configured; **`AppSecret` is NOT in the JS layer / repo** — it
+- [ ] `AppKey` is configured; **`AppSecret` is NOT in the JS layer / repo** - it
       lives in native secure config and ideally is git-ignored. (see
       security-secrets.md)
 - [ ] SDK initialized once, early (before any account/home/device call); init
@@ -20,14 +20,14 @@ cite the official doc. Docs: developer.tuya.com → app-development (Home SDK).
 ## Account & session
 - [ ] Login flow uses the SDK's account APIs correctly (email/phone), and the
       app's own auth (Supabase: Email/Google/Apple) is reconciled with the Tuya
-      account model — it's clear which identity owns the Tuya Home.
+      account model - it's clear which identity owns the Tuya Home.
 - [ ] Session expiration handled (re-login / refresh), not a silent dead state.
 - [ ] Logout clears SDK caches/session and unregisters listeners.
 
 ## Home & room management
 - [ ] A Home exists/created before pairing; device operations target the right
       Home/room.
-- [ ] **The account used for SDK linking is the Owner of the Home** — required
+- [ ] **The account used for SDK linking is the Owner of the Home** - required
       for linking (documented). Shared/member accounts can't do owner-only ops;
       code handles the permission error.
 - [ ] Home/device list is fetched from SDK and is the source of truth (not a
@@ -47,7 +47,7 @@ cite the official doc. Docs: developer.tuya.com → app-development (Home SDK).
 
 ## Device control & status (DP / data points)
 - [ ] Ice-bath functions map to the device's actual DP IDs and types
-      (current temp, target temp, light, UV sterilize, defrost, power) — verified
+      (current temp, target temp, light, UV sterilize, defrost, power) - verified
       against the real product's DP schema, not guessed.
 - [ ] Commands sent with correct DP value types (bool/enum/value/string); value
       ranges/steps respected (e.g. target-temp min/max).

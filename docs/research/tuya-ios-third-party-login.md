@@ -1,4 +1,4 @@
-# Tuya Research: Đăng nhập bên thứ ba trên iOS (Apple + Google) — `loginByAuth2WithType`
+# Tuya Research: Đăng nhập bên thứ ba trên iOS (Apple + Google) - `loginByAuth2WithType`
 
 - Ngày: 2026-07-02 · Nguồn chính:
   [iOS Third-Party Login](https://developer.tuya.com/en/docs/app-development/iOS-user-thirdparty?id=Kaixu9bbogqxi) ·
@@ -25,7 +25,7 @@
 | **iOS** | `ThingSmartUser -loginByAuth2WithType:countryCode:accessToken:extraInfo:success:failure:` | `type`(NSString) · `countryCode`(NSString) · `accessToken`(NSString: idToken/identityToken) · `extraInfo`(**NSDictionary**) | `success:^{}` (user ở `[ThingSmartUser sharedInstance]`) · `failure:^(NSError*)` | 1 selector chung cho gg/ap/fb |
 | **Android** | `ThingHomeSdk.getUserInstance().thirdLogin(...)` | `countryCode, accessToken, type, extraInfo`(**String**)`, ILoginCallback` | `onSuccess(User)` · `onError(code,msg)` | pass-through (đã impl trong `TuyaAuthModule.kt:114`) |
 
-### Apple (iOS) — code official (verbatim)
+### Apple (iOS) - code official (verbatim)
 ```objc
 ASAuthorizationAppleIDCredential *credential = authorization.credential;
 [[ThingSmartUser sharedInstance]
@@ -58,7 +58,7 @@ ASAuthorizationAppleIDCredential *credential = authorization.credential;
   Với Google còn dán Web Client ID (đã làm ở [[m1-mobile-google-login]]).
 - **Apple:** app cần capability **"Sign in with Apple"** (entitlement) + App ID bật trên Apple
   Developer portal. Lib RN: `@invertase/react-native-apple-authentication`.
-- **Data Center** phải khớp Cloud Project (EU) — như mọi luồng Tuya.
+- **Data Center** phải khớp Cloud Project (EU) - như mọi luồng Tuya.
 - Google: user đăng ký ở **Trung Quốc đại lục** không dùng được (hạn chế triển khai).
 
 ## Cạm bẫy / lưu ý cho dự án
@@ -87,7 +87,7 @@ ASAuthorizationAppleIDCredential *credential = authorization.credential;
   trả về các field này). → tinh chỉnh ở B2/B3/B5 của [[m1-mobile-apple-login]].
 
 ## Câu hỏi mở / cần xác minh trên thiết bị
-- Kiểu chính xác của `accessToken:` (NSString vs NSData) — đọc `ThingSmartUser.h` khi build iOS.
+- Kiểu chính xác của `accessToken:` (NSString vs NSData) - đọc `ThingSmartUser.h` khi build iOS.
 - extraInfo Apple có **bắt buộc** không, hay identityToken (chứa `sub`/`email`) là đủ để Tuya tạo
   account? (Doc đưa đủ 4 key nhưng không nói field nào optional.)
 - Với `nil` email/fullName (lần authorize thứ 2+) → truyền dict rỗng/bỏ key có OK không.

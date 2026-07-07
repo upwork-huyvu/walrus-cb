@@ -3,7 +3,7 @@ name: dev
 description: Implement the next step of a feature's plan for the Tuya Smart Ice Bath project, then update its context.md and progress.md state files. Use when the user asks to "code/dev/implement/làm tiếp" the current task, or to execute a specific step from the plan. Step 2 of the dev-loop.
 ---
 
-# dev — implement the next plan step
+# dev - implement the next plan step
 
 Step ② of the workflow. Full contract: [../dev-loop/SKILL.md](../dev-loop/SKILL.md).
 Code in English (comments matching surrounding code); state files in **Vietnamese**.
@@ -14,11 +14,11 @@ Code in English (comments matching surrounding code); state files in **Vietnames
 2. **Read `progress.md` then `context.md`** for that feature. Start from
    "Hành động kế tiếp". Read `plan.md` for the step's intent + acceptance.
 3. Re-read the actual files you're about to change. Match existing style,
-   naming, and patterns — don't invent a new convention.
+   naming, and patterns - don't invent a new convention.
 
 ## Implement
 4. Do **one** plan step (the next unchecked one), end to end. Resist scope
-   creep — extra ideas go to `plan.md` as new steps, not into this change.
+   creep - extra ideas go to `plan.md` as new steps, not into this change.
 5. Respect the project's hard rules while coding:
    - **Secrets never in client/repo:** Tuya AppSecret, Supabase `service_role`
      key, FCM server key, signing keys → env/native secure config + `.gitignore`.
@@ -29,10 +29,10 @@ Code in English (comments matching surrounding code); state files in **Vietnames
    - **Backend:** validate DTOs; `service_role` only server-side; assume
      Supabase RLS is on.
 6. If you hit something the plan didn't foresee (API differs, step is wrong
-   size, a blocker), **stop coding** and route to `/fix-plan` — don't silently
+   size, a blocker), **stop coding** and route to `/fix-plan` - don't silently
    improvise around a broken plan.
 
-## After coding (save state) — required
+## After coding (save state) - required
 7. Update `context.md`: any decision (+ why), files touched (file map), new
    gotchas.
 8. Update `progress.md`: tick the step, add a Run log row (time · `DEV B#` ·

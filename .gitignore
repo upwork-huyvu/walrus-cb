@@ -34,9 +34,9 @@ packages/*/lib/
 # LƯU Ý: example/android/gradle.properties hiện chứa THING_SMART_APPKEY/SECRET (dev).
 # Trước khi commit, chuyển 2 key đó sang ~/.gradle/gradle.properties (global, ngoài repo).
 
-# Google OAuth client downloads — client_secret*.json chứa secret, KHÔNG commit
+# Google OAuth client downloads - client_secret*.json chứa secret, KHÔNG commit
 **/client_secret*.json
 **/GoogleService-Info.plist
-# Firebase (FCM) app config — chứa định danh project, KHÔNG commit
+# Firebase (FCM) app config - chứa định danh project, KHÔNG commit
 **/google-services.json
 .playwright-mcp/*

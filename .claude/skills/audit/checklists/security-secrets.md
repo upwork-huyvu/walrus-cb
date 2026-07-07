@@ -1,14 +1,14 @@
-# Checklist — Secrets & cross-cutting security (ALWAYS applies)
+# Checklist - Secrets & cross-cutting security (ALWAYS applies)
 
 Run this on every audit regardless of scope. The fastest way to fail this project
 is a leaked key or a missing access control.
 
-## Secret inventory — where each MUST live
+## Secret inventory - where each MUST live
 | Secret | Allowed location | Must NOT be in |
 |---|---|---|
-| Tuya **AppKey** | client native config (public-ish) | — (low risk) |
+| Tuya **AppKey** | client native config (public-ish) | - (low risk) |
 | Tuya **AppSecret** | server / native secure config, git-ignored | JS bundle, repo, logs |
-| Supabase **anon** key | clients (RN, admin) | — (public by design) |
+| Supabase **anon** key | clients (RN, admin) | - (public by design) |
 | Supabase **service_role** key | NestJS server env only | app bundle, browser, repo |
 | FCM **server key / service account** | NestJS server env only | app bundle, repo |
 | Signing keystore / provisioning / `GoogleService-Info.plist` secrets | local/CI secret store | repo |
@@ -37,8 +37,8 @@ is a leaked key or a missing access control.
 - [ ] Principle of least privilege on all keys/roles.
 
 ## Supply chain & compliance
-- [ ] `npm audit` (mobile, backend, admin) — no unaddressed criticals; lockfiles
+- [ ] `npm audit` (mobile, backend, admin) - no unaddressed criticals; lockfiles
       committed.
 - [ ] Data residency consistent (Supabase region ↔ Tuya Data Center, EU intent).
-- [ ] Privacy: iOS Privacy Manifest (Tuya provides one — include it), Android
+- [ ] Privacy: iOS Privacy Manifest (Tuya provides one - include it), Android
       data-safety; collected data documented.

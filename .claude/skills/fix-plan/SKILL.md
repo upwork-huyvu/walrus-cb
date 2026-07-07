@@ -1,9 +1,9 @@
 ---
 name: fix-plan
-description: Revise a feature's plan for the Tuya Smart Ice Bath project when a test failed or reality diverged from the plan — update plan.md, record why in context.md, and reset the next action. Use when the user says the "plan is wrong/sửa plan/điều chỉnh kế hoạch", or after a failed test in the dev-loop. Step 4 of the dev-loop.
+description: Revise a feature's plan for the Tuya Smart Ice Bath project when a test failed or reality diverged from the plan - update plan.md, record why in context.md, and reset the next action. Use when the user says the "plan is wrong/sửa plan/điều chỉnh kế hoạch", or after a failed test in the dev-loop. Step 4 of the dev-loop.
 ---
 
-# fix-plan — revise the plan from what you learned
+# fix-plan - revise the plan from what you learned
 
 Step ④ of the workflow. Full contract: [../dev-loop/SKILL.md](../dev-loop/SKILL.md).
 Artifacts in **Vietnamese**.

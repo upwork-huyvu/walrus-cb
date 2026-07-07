@@ -1,18 +1,18 @@
 # Context: Push Notification server→app qua Firebase FCM
 
-> File "trí nhớ" — giữ context xuyên suốt các phiên. Append theo thời gian.
+> File "trí nhớ" - giữ context xuyên suốt các phiên. Append theo thời gian.
 
 - **Slug:** `m3-push-fcm`
 
 ## Quyết định kỹ thuật (Decision log)
-- **2026-07-02** — Endpoint đăng ký token bảo vệ bằng **API key dùng chung + tin `tuyaUid` từ app (MVP)**.
+- **2026-07-02** - Endpoint đăng ký token bảo vệ bằng **API key dùng chung + tin `tuyaUid` từ app (MVP)**.
   Lý do: mobile không có phiên Supabase, chỉ có phiên Tuya SDK; verify phiên Tuya server-side phức tạp +
   dính bug DC. Đã cân nhắc & loại: verify Tuya session (chậm/phức tạp), Supabase Auth cho mobile (mở scope,
   trái "Tuya=identity M1"). Rủi ro: spoof uid → siết sau.
-- **2026-07-02** — Làm **cả Android + iOS** ngay (user chọn). iOS cần APNs .p8 + Apple Dev Program + Mac →
+- **2026-07-02** - Làm **cả Android + iOS** ngay (user chọn). iOS cần APNs .p8 + Apple Dev Program + Mac →
   có thể deferred phần device verify.
-- **2026-07-02** — Kênh FCM **tách riêng** khỏi `m1-admin-push` (Tuya Cloud App Push). Lý do: 2 cơ chế khác nhau.
-- **2026-07-02** — Hiển thị foreground dùng **@notifee/react-native** (FCM messaging không tự hiện noti khi app mở);
+- **2026-07-02** - Kênh FCM **tách riêng** khỏi `m1-admin-push` (Tuya Cloud App Push). Lý do: 2 cơ chế khác nhau.
+- **2026-07-02** - Hiển thị foreground dùng **@notifee/react-native** (FCM messaging không tự hiện noti khi app mở);
   gửi server dùng **firebase-admin** (HTTP v1, không dùng server key legacy).
 
 ## Bản đồ file/module (dự kiến)
@@ -33,7 +33,7 @@
 | `apps/mobile/android/*`, `apps/mobile/ios/*` | google-services.json/plist, gradle plugin, APNs, permissions |
 
 ## Phát hiện & cạm bẫy (Findings / Gotchas)
-- Backend hiện **chỉ có `AdminAuthGuard`** (Supabase admin) — không có guard user-facing → phải thêm `ApiKeyGuard`.
+- Backend hiện **chỉ có `AdminAuthGuard`** (Supabase admin) - không có guard user-facing → phải thêm `ApiKeyGuard`.
 - Mobile **chưa có** bất kỳ API client / base URL nào tới backend → dựng mới `services/api.ts`.
 - Mobile **chưa có** dep firebase/messaging/notifee.
 - `AuthUser.uid` = Tuya uid (auth.ts:23 mapUser). Mock uid='mock-uid' khi native vắng → map dev không dùng để gửi thật.
@@ -42,15 +42,15 @@
 
 ## Liên kết
 - Plan: [plan.md](plan.md) · Progress: [progress.md](progress.md)
-- Research liên quan: — (không đụng Tuya SDK; tham chiếu docs RN Firebase + Notifee official)
-- Feature liên quan: `m1-admin-push` (Tuya Cloud push — kênh khác), `m1-mobile-auth` (uid), `m3-filter-reminder`/`m3-into-the-cold` (nội dung noti)
+- Research liên quan: - (không đụng Tuya SDK; tham chiếu docs RN Firebase + Notifee official)
+- Feature liên quan: `m1-admin-push` (Tuya Cloud push - kênh khác), `m1-mobile-auth` (uid), `m3-filter-reminder`/`m3-into-the-cold` (nội dung noti)
 
 ## Findings phát sinh (khi code)
 - **firebase-admin v14** dùng **modular subpath import** (`firebase-admin/app`, `firebase-admin/messaging`);
   namespace import `import * as admin` KHÔNG có `.messaging/.apps/.credential` → tsc fail. Đã đổi sang
   `initializeApp/cert/getApps` + `getMessaging`.
 - `getCurrentUser()` trả `AuthUser | null` → guard `u?.uid` trước `syncPushToken`.
-- Mobile jest full **70/70** (appleAuth.test giờ pass — dep đã có sau các commit pull/`npm install`).
+- Mobile jest full **70/70** (appleAuth.test giờ pass - dep đã có sau các commit pull/`npm install`).
 - Chốt API_BASE_URL tạm `https://walrus-cb-backend.vercel.app` (cần xác nhận URL deploy thật) + PUSH_API_KEY để trống (điền khi có).
 
 ## Tóm tắt khi hoàn thành (điền lúc FINISH)
@@ -59,5 +59,5 @@
 Mobile: `services/push.ts`+`api.ts` (require-guard mock fallback), wire `useAuth` (login→register, logout→unregister,
 onTokenRefresh), handler foreground(Notifee)/background/quit(index.js) + tap-routing (`routeFromData`). Verify:
 backend jest 29/29, mobile jest 70/70, tsc+eslint sạch cả 2. **Còn nợ (BLOCKED device/toolchain):** native config thật
-(google-services.json/plist, gradle plugin, APNs .p8, pods — `PUSH_SETUP.md`) + B8 E2E trên Android/iOS + điền env thật.
-Rủi ro đã ghi: API key tin uid (spoof) — siết sau.
+(google-services.json/plist, gradle plugin, APNs .p8, pods - `PUSH_SETUP.md`) + B8 E2E trên Android/iOS + điền env thật.
+Rủi ro đã ghi: API key tin uid (spoof) - siết sau.

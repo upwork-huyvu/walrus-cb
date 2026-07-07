@@ -3,7 +3,7 @@ name: plan
 description: Create or open the implementation plan for a feature/task of the Tuya Smart Ice Bath project. Writes dev-workflow/<feature>/plan.md (+ initializes context.md, progress.md, and registers the feature in INDEX.md). Use when the user asks to "plan/lập kế hoạch" a feature, start a new task, or break work into steps before coding. Step 1 of the dev-loop.
 ---
 
-# plan — make/refresh a feature plan
+# plan - make/refresh a feature plan
 
 Step ① of the workflow. Full contract: [../dev-loop/SKILL.md](../dev-loop/SKILL.md).
 Artifacts in **Vietnamese**.
@@ -15,7 +15,7 @@ Artifacts in **Vietnamese**.
 
 ## Steps
 1. **Slugify** the feature → `<feature-slug>` (e.g. `m1-wifi-pairing`). If a
-   folder already exists, you are *refreshing* — read existing files, don't
+   folder already exists, you are *refreshing* - read existing files, don't
    clobber `context.md` history.
 2. **Investigate before planning.** Glob the repo for the relevant code
    (`package.json`, existing modules) so steps map to real files, not guesses.

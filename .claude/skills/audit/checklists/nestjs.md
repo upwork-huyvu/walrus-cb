@@ -1,4 +1,4 @@
-# Checklist — NestJS backend (on Vercel)
+# Checklist - NestJS backend (on Vercel)
 
 Backend = NestJS REST API, deployed serverless on Vercel, using Supabase for
 Postgres + Auth. Audit Supabase concerns with `supabase.md` too.
@@ -12,15 +12,15 @@ Postgres + Auth. Audit Supabase concerns with `supabase.md` too.
 
 ## Validation & contracts
 - [ ] DTOs with `class-validator`; global `ValidationPipe({ whitelist: true,
-      forbidNonWhitelisted: true, transform: true })` — no unvalidated bodies.
+      forbidNonWhitelisted: true, transform: true })` - no unvalidated bodies.
 - [ ] Response shapes consistent (serializer/interceptor); internal entities not
       leaked raw to clients.
-- [ ] Pagination on list endpoints (admin user/device lists) — no unbounded
+- [ ] Pagination on list endpoints (admin user/device lists) - no unbounded
       queries.
 
 ## Auth & authorization
 - [ ] Auth guard verifies the **Supabase JWT** (validates signature/issuer/exp
-      against Supabase JWKS/secret) — not just decoding without verifying.
+      against Supabase JWKS/secret) - not just decoding without verifying.
 - [ ] Role/ownership checks (a user only sees their own devices; admin role for
       admin endpoints) enforced server-side via guards, not trusted from client.
 - [ ] `service_role` key used **only** server-side; never returned to clients.
@@ -41,13 +41,13 @@ Postgres + Auth. Audit Supabase concerns with `supabase.md` too.
 - [ ] App is request-stateless (no in-memory session/cache assumed to persist;
       cold starts expected). Heavy bootstrap minimized.
 - [ ] **Postgres connections use the Supabase pooler / pgBouncer-style pooling**
-      — opening a fresh direct connection per invocation exhausts connections on
+      - opening a fresh direct connection per invocation exhausts connections on
       serverless. Verify connection strategy.
 - [ ] No reliance on long-lived background jobs/timers inside the function;
       long work offloaded (queue/edge/cron) appropriately.
 - [ ] Function bundle size + cold-start kept reasonable.
 
-## Notifications (FCM) — server side
+## Notifications (FCM) - server side
 - [ ] FCM **server credentials** server-only; push send wrapped in a service
       with retry + invalid-token cleanup (remove dead device tokens).
 - [ ] Device token storage keyed to user; multi-device per user handled.

@@ -1,4 +1,4 @@
-# Research: Build native Tuya Android FAIL — KHÔNG phải thiếu module, mà SAI import + API drift
+# Research: Build native Tuya Android FAIL - KHÔNG phải thiếu module, mà SAI import + API drift
 
 > Ngày: 2026-06-30 · Bối cảnh: lần đầu `gradlew assembleDebug` thật cho `apps/mobile`
 > (trước đó máy dev tưởng không có JDK17+Android SDK nên chưa từng build-verify code native).
@@ -11,7 +11,7 @@ tab **Get SDK** lấy thêm artifact. **Kết luận đó SAI.** Lần quét art
 per-aar, bị timeout/sót) đã KHÔNG quét hết → tưởng class không tồn tại.
 
 Quét lại **đầy đủ 55 artifact** `com.thingclips.smart:*` resolve trong
-`debugRuntimeClasspath` (Python `zipfile`, mở cả `classes.jar` lồng trong aar — 9.179 class):
+`debugRuntimeClasspath` (Python `zipfile`, mở cả `classes.jar` lồng trong aar - 9.179 class):
 **TẤT CẢ class "thiếu" đều CÓ MẶT** trong `thingsmart:7.5.6`. Vấn đề thật:
 
 1. **8 import sai package** (class có thật nhưng code import nhầm đường dẫn).
@@ -29,7 +29,7 @@ Sau khi sửa: `:jimmy-vu_react-native-turbo-tuya:compileDebugKotlin` **BUILD SU
 3. Với mỗi symbol nghi ngờ: `javap -classpath "$CP" -p <FQCN>` để lấy **đúng** package,
    enum constant, chữ ký method, getter. (Đây là nguồn sự thật, không đoán theo doc.)
 
-## Fix 1 — 8 import sai package
+## Fix 1 - 8 import sai package
 
 | File | Class | Import SAI (cũ) | Import ĐÚNG (7.5.6) |
 |---|---|---|---|
@@ -42,7 +42,7 @@ Sau khi sửa: `:jimmy-vu_react-native-turbo-tuya:compileDebugKotlin` **BUILD SU
 | Auth | `INeedLoginListener` | `...home.sdk.api` | `com.thingclips.smart.sdk.api` |
 | Home | `GroupBean` | `...sdk.bean.group.bean` | `com.thingclips.smart.sdk.bean` |
 
-## Fix 2 — API drift (method/enum/chữ ký đổi)
+## Fix 2 - API drift (method/enum/chữ ký đổi)
 
 | File | Cũ (không tồn tại ở 7.5.6) | Đúng (7.5.6) |
 |---|---|---|
@@ -75,7 +75,7 @@ Sau khi sửa: `:jimmy-vu_react-native-turbo-tuya:compileDebugKotlin` **BUILD SU
 
 - Chạy thiết bị thật để verify runtime + hoàn thiện các stub trên (cần token/devId thật).
 - Tuya SDK init runtime cần **package name + keystore SHA-256 đăng ký trong Cloud Project**
-  cho AppKey (`docs/sdk/keys.txt`) — đây mới là bước cần console, nhưng KHÔNG chặn build APK.
+  cho AppKey (`docs/sdk/keys.txt`) - đây mới là bước cần console, nhưng KHÔNG chặn build APK.
 
 ## Liên kết
 - Research liên quan: [tuya-home-sdk-device-pairing.md](tuya-home-sdk-device-pairing.md),

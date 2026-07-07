@@ -1,27 +1,27 @@
-# Tuya Research: Device Pairing (nâng cao) — sub-device/gateway, QR, wired, multi-mode, Matter, search & retry
+# Tuya Research: Device Pairing (nâng cao) - sub-device/gateway, QR, wired, multi-mode, Matter, search & retry
 
 - **Ngày:** 2026-06-29 · **SDK tham chiếu:** Android `com.thingclips.smart:thingsmart` **7.5.x**; iOS `ThingSmartHomeKit` **~7.5**
 - **Phạm vi note này:** các chế độ pairing **ngoài** Wi-Fi EZ/AP cơ bản (đã có ở note nền tảng `tuya-m1-sdk-foundation.md`). Đọc song song để tránh trùng EZ/AP, token cơ bản, BLE single-point.
 - **Nguồn chính** (đầy đủ ở "## Nguồn"):
-  - Sub-Device Pairing (Android) — https://developer.tuya.com/en/docs/app-development/sub-device-configuration?id=Kdljgoav49x55
-  - Device Pairing — unified `ActivatorService` (iOS) — https://developer.tuya.com/en/docs/app-development/extension-activator?id=Kcy2dk3p3e3gn
-  - Matter Device Pairing (Android+iOS) — https://developer.tuya.com/en/docs/app-development/matter_device_pair?id=Kcr7qt6rp3hi6 · iOS — https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
-  - Scan QR Code on Device (Android) — https://developer.tuya.com/en/docs/app-development/Scan-the-QR-code-of-the-device-configuration?id=Kdljgqb401udm
-  - Bluetooth Pairing — unified `ActivatorService` (Android) — https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z
-  - iOS `ThingSmartActivator` API reference (verbatim) — https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/interface_thing_smart_activator.html
-- **Lưu ý độ tin cậy:** Tuya hiện có **HAI thế hệ API pairing** chạy song song (xem mục dưới). Android lấy verbatim tốt cho thế hệ mới (`ActivatorService`) + Matter; iOS `ThingSmartActivator` legacy lấy verbatim từ API reference. Một số signature iOS thế hệ mới (`ThingSmartActivatorConfigProtocol`...) lấy được tên + protocol method nhưng model con (`ThingSmartActivatorTypeModel`...) chưa mở hết field — xem "Câu hỏi mở".
+  - Sub-Device Pairing (Android) - https://developer.tuya.com/en/docs/app-development/sub-device-configuration?id=Kdljgoav49x55
+  - Device Pairing - unified `ActivatorService` (iOS) - https://developer.tuya.com/en/docs/app-development/extension-activator?id=Kcy2dk3p3e3gn
+  - Matter Device Pairing (Android+iOS) - https://developer.tuya.com/en/docs/app-development/matter_device_pair?id=Kcr7qt6rp3hi6 · iOS - https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
+  - Scan QR Code on Device (Android) - https://developer.tuya.com/en/docs/app-development/Scan-the-QR-code-of-the-device-configuration?id=Kdljgqb401udm
+  - Bluetooth Pairing - unified `ActivatorService` (Android) - https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z
+  - iOS `ThingSmartActivator` API reference (verbatim) - https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/interface_thing_smart_activator.html
+- **Lưu ý độ tin cậy:** Tuya hiện có **HAI thế hệ API pairing** chạy song song (xem mục dưới). Android lấy verbatim tốt cho thế hệ mới (`ActivatorService`) + Matter; iOS `ThingSmartActivator` legacy lấy verbatim từ API reference. Một số signature iOS thế hệ mới (`ThingSmartActivatorConfigProtocol`...) lấy được tên + protocol method nhưng model con (`ThingSmartActivatorTypeModel`...) chưa mở hết field - xem "Câu hỏi mở".
 
 ---
 
 ## TL;DR (cho người sắp code)
-1. **CÓ 2 thế hệ API pairing — phải chọn 1 và nhất quán:**
+1. **CÓ 2 thế hệ API pairing - phải chọn 1 và nhất quán:**
    - **Legacy / "instance"** (giống note nền tảng): Android `ThingHomeSdk.getActivatorInstance()` + `ActivatorBuilder` + `newMultiActivator`; iOS `ThingSmartActivator` (singleton + delegate). Bao phủ EZ/AP/wired/QR/sub-device/gateway.
    - **Unified `ActivatorService`** (mới hơn): Android `ActivatorService.activator(ActivatorMode.X)` trả `IActivator` con (`BLEActivator`, `ZigbeeActivator`, `QRScanActivator`...) + `IActivatorListener` + `setParams(XxxActivatorParams)`; iOS `ThingSmartActivatorConfigProtocol`/`SearchProtocol`/`ActiveProtocol`. **Đây là hướng Tuya khuyến nghị cho app đa-chế-độ.**
-   - **Matter** dùng API riêng (`getMatterDevActivatorInstance()` / `ThingSmartMatterActivator`) — không nằm trong 2 nhóm trên.
+   - **Matter** dùng API riêng (`getMatterDevActivatorInstance()` / `ThingSmartMatterActivator`) - không nằm trong 2 nhóm trên.
 2. **Sub-device (Zigbee/BLE qua gateway):** gateway phải **online cloud** + sub-device đang ở **pairing mode**. Android: `ZigbeeActivator` + `ZigbeeActivatorParams(gwDeviceId, timeout)`; iOS: `[activator activeSubDeviceWithGwId:timeout:]`. **Không cần token** (gateway đã online làm trung gian).
-3. **Wired pairing (thiết bị có dây):** thực chất là phát hiện thiết bị đã nối router rồi activate bằng token — iOS dùng `startConfigWiFiWithToken:timeout:` (KHÔNG có `ThingActivatorModeWired` riêng), thiết bị xuất hiện qua delegate. Android: pairing "wired/auto-scan" qua search activator + token.
+3. **Wired pairing (thiết bị có dây):** thực chất là phát hiện thiết bị đã nối router rồi activate bằng token - iOS dùng `startConfigWiFiWithToken:timeout:` (KHÔNG có `ThingActivatorModeWired` riêng), thiết bị xuất hiện qua delegate. Android: pairing "wired/auto-scan" qua search activator + token.
 4. **QR code trên thiết bị:** Android `QRScanActivator` + `QRScanActivatorParams(assetId, code)`; iOS `+[ThingSmartActivator parseQRCode:success:failure:]` → lấy UUID → `getTokenWithUUID:homeId:` → `startConfigWiFi:`. Áp dụng cho thiết bị **đã online internet** (GPRS/NB/IPC...).
-5. **Multi-mode / dual-band (2.4+5GHz):** Tuya gọi là **multi-mode pairing**, dùng `newMultiActivator(builder)` (Android) — pairing **nhiều thiết bị** cùng lúc, mỗi device 1 callback `onActiveSuccess`. Tăng tỉ lệ thành công trên router dual-band so với EZ thuần.
+5. **Multi-mode / dual-band (2.4+5GHz):** Tuya gọi là **multi-mode pairing**, dùng `newMultiActivator(builder)` (Android) - pairing **nhiều thiết bị** cùng lúc, mỗi device 1 callback `onActiveSuccess`. Tăng tỉ lệ thành công trên router dual-band so với EZ thuần.
 6. **Matter** (Android verbatim đầy đủ): `parseSetupCode("MT:...")` → `getActivatorToken` → `connectDevice(ConnectDeviceBuilder)` → `commissionDevice(CommissioningParameters, MatterActivatorCallback)`; có auto-discovery (`startDiscovery`) và xử lý **attestation fail** cho thiết bị chưa cert. iOS cần thêm entitlement `matter.allow-setup-payload` + Bonjour trong Info.plist + `is_matter_support=true`.
 7. **Search/stop activator + retry:** thế hệ mới có `IDiscovery`/`startDiscovery`/`stopDiscovery` (Android) và `startSearch:`/`stopSearch:clearCache:` (iOS) tách rời khỏi `startActive`/`stopActive`. **Luôn `stop()` + `destroy()`/`onDestroy()`** khi rời màn hình để tránh leak listener/cache.
 8. **Token vẫn 10 phút, chết sau 1 device** (Matter cũng vậy) → lấy mới mỗi lần; sub-device qua gateway KHÔNG cần token.
@@ -30,16 +30,16 @@
 
 ## Khái niệm & luồng
 
-### Hai thế hệ API — bảng tổng quan
+### Hai thế hệ API - bảng tổng quan
 | Chế độ | Legacy Android | Unified Android (`ActivatorService`) | iOS legacy (`ThingSmartActivator`) | iOS unified |
 |---|---|---|---|---|
 | EZ / AP Wi-Fi | `ActivatorBuilder` + `newMultiActivator` | (qua Wi-Fi params) | `startConfigWiFi:ssid:password:token:timeout:` mode EZ/AP | `ThingSmartActivatorActiveProtocol` |
 | BLE single-point | `getActivator().newBleActivator()` | `activator(ActivatorMode.BLE)` → `BLEActivator` | `ThingSmartBLEManager` | `...Type Ble` |
-| BLE+Wi-Fi combo | `BleWifiActivator` | qua `ActivatorMode` combo | `ThingSmartBLEWifiActivator` | — |
-| Sub-device (Zigbee) | — | `activator(ActivatorMode.Zigbee)` → `ZigbeeActivator` | `activeSubDeviceWithGwId:timeout:` | `...Type SubDevice` |
-| Gateway (cgw) | — | (qua activator gateway) | `activeGatewayDeviceWithGwId:productId:token:timeout:` | `...Type Router` |
-| QR trên device | — | `activator(ActivatorMode.QRScan)` → `QRScanActivator` | `parseQRCode:` + `getTokenWithUUID:` | `...Type QRCode` |
-| Wired | — | search + token | `startConfigWiFiWithToken:timeout:` | `...Type Wired` |
+| BLE+Wi-Fi combo | `BleWifiActivator` | qua `ActivatorMode` combo | `ThingSmartBLEWifiActivator` | - |
+| Sub-device (Zigbee) | - | `activator(ActivatorMode.Zigbee)` → `ZigbeeActivator` | `activeSubDeviceWithGwId:timeout:` | `...Type SubDevice` |
+| Gateway (cgw) | - | (qua activator gateway) | `activeGatewayDeviceWithGwId:productId:token:timeout:` | `...Type Router` |
+| QR trên device | - | `activator(ActivatorMode.QRScan)` → `QRScanActivator` | `parseQRCode:` + `getTokenWithUUID:` | `...Type QRCode` |
+| Wired | - | search + token | `startConfigWiFiWithToken:timeout:` | `...Type Wired` |
 | Matter | `getMatterDevActivatorInstance()` | (API riêng) | `ThingSmartMatterActivator` | `...Type Matter` |
 
 > Khuyến nghị cho dự án ice-bath: **chốt 1 thế hệ**. Thiết bị chính (bồn tắm đá) gần như chắc là **Wi-Fi/BLE single-point** ⇒ EZ/AP/BLE đã đủ (note nền tảng). Các phần dưới là dự phòng/mở rộng nếu sau này có gateway, sub-device, hoặc đổi sang Matter.
@@ -57,7 +57,7 @@ Quét QR (zxing) → chuỗi → Android `QRScanActivatorParams(assetId, code)`;
 
 ## API Android (verbatim)
 
-### 1) Sub-device pairing — Zigbee qua gateway (unified `ActivatorService`)
+### 1) Sub-device pairing - Zigbee qua gateway (unified `ActivatorService`)
 ```java
 // Khởi tạo activator cho sub-device Zigbee
 ZigbeeActivator zigbeeActivator =
@@ -159,7 +159,7 @@ mThingActivator.onDestroy();   // thoát màn hình → huỷ cache + listener
 ```
 > `newMultiActivator`: "Multiple callbacks are required to pair multiple devices in the same call." ⇒ dùng cho multi-mode/dual-band, pairing đồng thời nhiều thiết bị; mỗi thiết bị thành công gọi `onActiveSuccess` riêng.
 
-### 5) Matter (verbatim — API riêng)
+### 5) Matter (verbatim - API riêng)
 ```java
 // 5.1 Parse setup code
 private IMatterActivator mMatterDevActivatorInstance;
@@ -167,7 +167,7 @@ mMatterDevActivatorInstance = ThingHomeSdk.getMatterDevActivatorInstance();
 SetupPayload setupPayload = mMatterDevActivatorInstance.parseSetupCode("MT:xxxxxxxxx");
 // SetupPayload: version(int), vendorId(int), productId(int), setupPinCode(long), discriminator(Discriminator)
 
-// 5.2 Token (10 phút, chết sau 1 device — như Wi-Fi)
+// 5.2 Token (10 phút, chết sau 1 device - như Wi-Fi)
 ThingHomeSdk.getActivatorInstance().getActivatorToken(homeId, new IThingActivatorGetToken() {
     @Override public void onSuccess(String token) { }
     @Override public void onFailure(String s, String s1) { }
@@ -222,7 +222,7 @@ mMatterDevActivatorInstance.cancelActivator();
 
 ## API iOS (verbatim / đối chiếu)
 
-### 1) `ThingSmartActivator` (legacy) — verbatim từ API reference
+### 1) `ThingSmartActivator` (legacy) - verbatim từ API reference
 ```objc
 + (nullable instancetype)sharedInstance;
 @property (readwrite, nonatomic, weak) id<ThingSmartActivatorDelegate> delegate;
@@ -328,7 +328,7 @@ didPassWIFIToSecurityLevelDeviceWithUUID:(NSString *)uuid;
 @end
 ```
 
-**`ThingSmartActivatorType` (NS_OPTIONS, verbatim — đủ mode):**
+**`ThingSmartActivatorType` (NS_OPTIONS, verbatim - đủ mode):**
 ```objc
 typedef NS_OPTIONS(NSInteger, ThingSmartActivatorType) {
     ThingSmartActivatorTypeDefault     = 0,
@@ -357,7 +357,7 @@ typedef NS_OPTIONS(NSInteger, ThingSmartActivatorType) {
 };
 ```
 
-### 4) Matter iOS (đối chiếu — tên class/method)
+### 4) Matter iOS (đối chiếu - tên class/method)
 ```objc
 // ThingSmartMatterActivator
 - (void)getTokenWithHomeId:success:failure:        // token 10 phút
@@ -414,21 +414,21 @@ typedef NS_OPTIONS(NSInteger, ThingSmartActivatorType) {
 | `-1374` | `nodeId` của sub-device rỗng | sub-device không vào pairing mode đúng |
 | `-1375` | Kênh sub-device chưa liên kết IPC SDK | (camera/NVR) |
 | `-10001` | Device không kết nối | gateway/thiết bị offline |
-> Sub-device qua gateway: lỗi thường là **gateway offline** hoặc **sub-device chưa vào pairing mode** (về qua `onError` với chuỗi message, không phải code chuẩn). Matter: lỗi attestation báo qua `onDeviceAttestationFailed`/`matterDeviceAttestation:error:` (không phải error code thường). Trang error code chính thiên về IPC/P2P — nhiều lỗi pairing chỉ trả message string ⇒ surface nguyên `code+message` lên JS.
+> Sub-device qua gateway: lỗi thường là **gateway offline** hoặc **sub-device chưa vào pairing mode** (về qua `onError` với chuỗi message, không phải code chuẩn). Matter: lỗi attestation báo qua `onDeviceAttestationFailed`/`matterDeviceAttestation:error:` (không phải error code thường). Trang error code chính thiên về IPC/P2P - nhiều lỗi pairing chỉ trả message string ⇒ surface nguyên `code+message` lên JS.
 
 ---
 
 ## Cạm bẫy
 1. **Trộn 2 thế hệ API** (legacy `getActivatorInstance` vs unified `ActivatorService`) trong cùng module → khó maintain. Chốt 1 và document rõ trong lib.
 2. **Sub-device cần gateway ONLINE** + sub-device ở pairing mode; nếu gateway vừa pair xong chưa kịp online cloud sẽ fail. Kiểm tra trạng thái online gateway trước khi start.
-3. **Sub-device KHÔNG dùng activator token** (khác Wi-Fi/Matter) — đừng gọi `getActivatorToken` rồi truyền nhầm.
-4. **QR-on-device chỉ cho thiết bị đã có internet** (GPRS/NB/IPC) — không phải để cấu hình Wi-Fi cho thiết bị mới. Đừng nhầm với QR-mode "thiết bị quét QR trên màn hình app".
-5. **Matter iOS** thiếu entitlement `matter.allow-setup-payload`/Bonjour/`is_matter_support` → parse setup code hoặc discovery sẽ im lặng fail. Matter Android cần khởi tạo Matter SDK riêng (đừng obfuscate Matter SDK — đã note ở ProGuard nền tảng).
+3. **Sub-device KHÔNG dùng activator token** (khác Wi-Fi/Matter) - đừng gọi `getActivatorToken` rồi truyền nhầm.
+4. **QR-on-device chỉ cho thiết bị đã có internet** (GPRS/NB/IPC) - không phải để cấu hình Wi-Fi cho thiết bị mới. Đừng nhầm với QR-mode "thiết bị quét QR trên màn hình app".
+5. **Matter iOS** thiếu entitlement `matter.allow-setup-payload`/Bonjour/`is_matter_support` → parse setup code hoặc discovery sẽ im lặng fail. Matter Android cần khởi tạo Matter SDK riêng (đừng obfuscate Matter SDK - đã note ở ProGuard nền tảng).
 6. **Attestation fail** (`onDeviceAttestationFailed`/`matterDeviceAttestation:error:`) với thiết bị chưa cert → phải hỏi người dùng rồi `continueCommissioningDevice(..., ignoreAttestationFailure=true)`; bỏ qua bước này = treo luồng commission.
-7. **Token 10 phút vẫn áp cho Matter & Wi-Fi/QR** — chết sau 1 device; lấy mới mỗi lần.
+7. **Token 10 phút vẫn áp cho Matter & Wi-Fi/QR** - chết sau 1 device; lấy mới mỗi lần.
 8. **Không `stop()` + `destroy()/onDestroy()`** khi rời màn hình → leak listener, scan chạy nền tốn pin (đặc biệt BLE/discovery timeout 600s).
-9. **`onSuccess`/`didReceiveDevice` ≠ thiết bị sẵn sàng điều khiển** — vẫn nên `newDeviceInstance` + chờ online như luồng control nền tảng.
-10. **Multi-mode `newMultiActivator` trả nhiều callback** — UI phải xử lý danh sách, không giả định 1 device/lần.
+9. **`onSuccess`/`didReceiveDevice` ≠ thiết bị sẵn sàng điều khiển** - vẫn nên `newDeviceInstance` + chờ online như luồng control nền tảng.
+10. **Multi-mode `newMultiActivator` trả nhiều callback** - UI phải xử lý danh sách, không giả định 1 device/lần.
 11. **Permissions BLE** (Android 12+ runtime, iOS Info.plist) áp cho mọi luồng có quét BLE/discovery, kể cả Matter (BLE commissioning) và sub-device BLE-gateway.
 
 ---
@@ -448,7 +448,7 @@ export function startSubDevicePairing(
 ): Promise<void>;                                  // kết quả từng device qua event 'onDeviceFound'
 export function stopSubDevicePairing(gatewayDevId: string): Promise<void>;
 
-// Pair chính gateway (cgw) — Wi-Fi gateway cần token+productId (iOS activeGatewayDeviceWithGwId)
+// Pair chính gateway (cgw) - Wi-Fi gateway cần token+productId (iOS activeGatewayDeviceWithGwId)
 export function startGatewayPairing(
   gatewayDevId: string,
   productId: string,
@@ -462,7 +462,7 @@ export function startQRCodePairing(
   params: { assetId?: string; code: string; homeId: number; timeoutMs: number }
 ): Promise<PairedDevice>;
 
-// Wired pairing (thiết bị nối dây/router) — phát hiện rồi activate bằng token
+// Wired pairing (thiết bị nối dây/router) - phát hiện rồi activate bằng token
 export function startWiredPairing(homeId: number, token: string, timeoutMs: number): Promise<void>;
 
 // Multi-mode / dual-band: pair NHIỀU thiết bị 1 lần (mỗi device 1 event 'onDeviceFound')
@@ -471,11 +471,11 @@ export function startMultiModePairing(
 ): Promise<void>;
 export function stopMultiModePairing(): Promise<void>;
 
-// Search/discovery tách rời (BLE/EZ search) — kết quả qua event 'onSearchDeviceFound'
+// Search/discovery tách rời (BLE/EZ search) - kết quả qua event 'onSearchDeviceFound'
 export function startDeviceDiscovery(mode: 'BLE' | 'EZ', timeoutMs: number): Promise<void>;
 export function stopDeviceDiscovery(): Promise<void>;
 
-// Lifecycle chung — gọi khi rời màn hình pairing
+// Lifecycle chung - gọi khi rời màn hình pairing
 export function destroyActivator(): Promise<void>;
 
 // Events (NativeEventEmitter):
@@ -524,25 +524,25 @@ export function cancelMatterActivator(): Promise<void>;
 
 ## Câu hỏi mở / cần xác minh trên thiết bị
 - **Thiết bị ice-bath có cần chế độ nào ngoài EZ/AP/BLE?** Nếu là Wi-Fi/BLE single-point thuần thì các module nâng cao (sub-device/gateway/Matter) là **dự phòng**, không ưu tiên M1.
-- **`ActivatorMode` enum đầy đủ (Android)** — mới confirm `BLE`, `Zigbee`, `QRScan`; cần mở API reference Android để liệt kê hết (Wired/Auto/...). 
-- **`ThingSmartActivatorTypeModel` field đầy đủ (iOS unified)** — cần mở reference để lấy verbatim (token, spaceId, timeout, ssid, password, gwDevId... — hiện suy từ Matter model).
-- **Wired pairing Android** — chưa thấy class verbatim riêng; nhiều khả năng nằm trong `ActivatorMode.Auto`/search + token. Cần verify.
-- **`ThingActivatorStep` / `onStep` step values** — chuỗi step cụ thể (vd "device_find", "device_bind_success") chưa liệt kê trong doc; cần log thực tế.
-- **iOS Matter signature verbatim đầy đủ** (`connectDevice`, `commissionDevice` tương đương Android) — reference iOS Matter chưa mở hết; hiện đối chiếu được tên method + delegate.
-- **Mã lỗi pairing chuẩn** cho sub-device/gateway/BLE — trang error code thiên về IPC/P2P; phần lớn lỗi pairing trả message string → cần thu thập thực tế.
+- **`ActivatorMode` enum đầy đủ (Android)** - mới confirm `BLE`, `Zigbee`, `QRScan`; cần mở API reference Android để liệt kê hết (Wired/Auto/...). 
+- **`ThingSmartActivatorTypeModel` field đầy đủ (iOS unified)** - cần mở reference để lấy verbatim (token, spaceId, timeout, ssid, password, gwDevId... - hiện suy từ Matter model).
+- **Wired pairing Android** - chưa thấy class verbatim riêng; nhiều khả năng nằm trong `ActivatorMode.Auto`/search + token. Cần verify.
+- **`ThingActivatorStep` / `onStep` step values** - chuỗi step cụ thể (vd "device_find", "device_bind_success") chưa liệt kê trong doc; cần log thực tế.
+- **iOS Matter signature verbatim đầy đủ** (`connectDevice`, `commissionDevice` tương đương Android) - reference iOS Matter chưa mở hết; hiện đối chiếu được tên method + delegate.
+- **Mã lỗi pairing chuẩn** cho sub-device/gateway/BLE - trang error code thiên về IPC/P2P; phần lớn lỗi pairing trả message string → cần thu thập thực tế.
 
 ## Nguồn (URL đã đọc)
-- Sub-Device Pairing (Android) — https://developer.tuya.com/en/docs/app-development/sub-device-configuration?id=Kdljgoav49x55
-- Device Pairing — unified protocols (iOS) — https://developer.tuya.com/en/docs/app-development/extension-activator?id=Kcy2dk3p3e3gn
-- Device Pairing (iOS, tổng quan) — https://developer.tuya.com/en/docs/app-development/activator?id=Ka5cgmlzpfig4
-- Scan QR Code on Device (Android) — https://developer.tuya.com/en/docs/app-development/Scan-the-QR-code-of-the-device-configuration?id=Kdljgqb401udm
-- Pair with QR Code on Device (iOS) — https://developer.tuya.com/en/docs/app-development/qrcode?id=Kcrt7fq8jgeh6
-- Bluetooth Pairing — unified `ActivatorService` (Android) — https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z
-- Wi-Fi EZ Mode (multi-mode `newMultiActivator`) — https://developer.tuya.com/en/docs/app-development/quick-connection-mode?id=Kaixju76a5iq9
-- Matter Device Pairing (Android+iOS) — https://developer.tuya.com/en/docs/app-development/matter_device_pair?id=Kcr7qt6rp3hi6
-- Matter Device Pairing (iOS) — https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
-- Wired Mode (iOS) — https://developer.tuya.com/en/docs/app-development/iOS-network-wired?id=Kaixx5v2vnxhd
-- Sub-Device Control Through Zigbee Gateway — https://developer.tuya.com/en/docs/app-development/gateway?id=Ka6ki8l5e3rjo
-- ThingSmartActivator Class Reference (iOS, verbatim) — https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/interface_thing_smart_activator.html
-- ThingSmartActivatorDelegate Protocol Reference (iOS, verbatim) — https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/protocol_thing_smart_activator_delegate-p.html
-- Error Codes — https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a
+- Sub-Device Pairing (Android) - https://developer.tuya.com/en/docs/app-development/sub-device-configuration?id=Kdljgoav49x55
+- Device Pairing - unified protocols (iOS) - https://developer.tuya.com/en/docs/app-development/extension-activator?id=Kcy2dk3p3e3gn
+- Device Pairing (iOS, tổng quan) - https://developer.tuya.com/en/docs/app-development/activator?id=Ka5cgmlzpfig4
+- Scan QR Code on Device (Android) - https://developer.tuya.com/en/docs/app-development/Scan-the-QR-code-of-the-device-configuration?id=Kdljgqb401udm
+- Pair with QR Code on Device (iOS) - https://developer.tuya.com/en/docs/app-development/qrcode?id=Kcrt7fq8jgeh6
+- Bluetooth Pairing - unified `ActivatorService` (Android) - https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z
+- Wi-Fi EZ Mode (multi-mode `newMultiActivator`) - https://developer.tuya.com/en/docs/app-development/quick-connection-mode?id=Kaixju76a5iq9
+- Matter Device Pairing (Android+iOS) - https://developer.tuya.com/en/docs/app-development/matter_device_pair?id=Kcr7qt6rp3hi6
+- Matter Device Pairing (iOS) - https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k
+- Wired Mode (iOS) - https://developer.tuya.com/en/docs/app-development/iOS-network-wired?id=Kaixx5v2vnxhd
+- Sub-Device Control Through Zigbee Gateway - https://developer.tuya.com/en/docs/app-development/gateway?id=Ka6ki8l5e3rjo
+- ThingSmartActivator Class Reference (iOS, verbatim) - https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/interface_thing_smart_activator.html
+- ThingSmartActivatorDelegate Protocol Reference (iOS, verbatim) - https://tuya.github.io/tuyasmart_home_ios_sdk_api_reference/protocol_thing_smart_activator_delegate-p.html
+- Error Codes - https://developer.tuya.com/en/docs/app-development/errorcode?id=Ka6nxw2k97l8a

@@ -1,4 +1,4 @@
-# Báo cáo Audit — m1-mobile-home-device-flow — 2026-07-02
+# Báo cáo Audit - m1-mobile-home-device-flow - 2026-07-02
 
 - **Phạm vi:** feature `m1-mobile-home-device-flow` (commit `17bb416`). File: `apps/mobile/App.tsx`,
   `src/navigation.ts`, `src/state/homeGate.ts`, `src/services/home.ts`, `src/services/pairing.ts`,
@@ -18,9 +18,9 @@
 | 🔵 Low/Nit | 4 |
 
 **3 vấn đề ưu tiên xử lý:**
-1. **M-1** — gọi `connectDevice` 2 lần (Device List + Device Detail) → race + đọc thiết bị dư thừa.
-2. **M-2** — `getHomeList()` lỗi tạm thời → đẩy user sang Create Home → **nguy cơ tạo nhà TRÙNG**.
-3. **M-3** — home-gate luôn chọn `homes[0]` bất kể role → nếu không phải Owner, pairing (owner-only) sẽ fail.
+1. **M-1** - gọi `connectDevice` 2 lần (Device List + Device Detail) → race + đọc thiết bị dư thừa.
+2. **M-2** - `getHomeList()` lỗi tạm thời → đẩy user sang Create Home → **nguy cơ tạo nhà TRÙNG**.
+3. **M-3** - home-gate luôn chọn `homes[0]` bất kể role → nếu không phải Owner, pairing (owner-only) sẽ fail.
 
 Không có lỗi 🔴/🟠. Không phát hiện rò rỉ secret hay import `expo-*` trong file mới (mọi hit grep là chữ "export").
 
@@ -46,7 +46,7 @@ Không có lỗi 🔴/🟠. Không phát hiện rò rỉ secret hay import `expo
   đúng → gọi `connectDevice` LẦN 2. Kết quả: 2 lần `readDevice`/dispatch `connectStart` cho cùng thiết bị (race,
   đọc DP thừa, có thể nhấp nháy loading).
 - **Cách sửa đề xuất:** cho **1 nơi** sở hữu việc kết nối. Bỏ `void state.connectDevice` trong `openDevice`
-  (chỉ `navigate`), để DashboardScreen (device-detail) tự kết nối theo `devId` — đó đã là nguồn chân lý.
+  (chỉ `navigate`), để DashboardScreen (device-detail) tự kết nối theo `devId` - đó đã là nguồn chân lý.
 
 ### [🟡 M-2] `getHomeList()` lỗi → route thẳng Create Home (nguy cơ tạo nhà trùng)
 - **Vị trí:** `apps/mobile/App.tsx` (home-gate effect, nhánh `catch`)
@@ -89,7 +89,7 @@ Không có lỗi 🔴/🟠. Không phát hiện rò rỉ secret hay import `expo
   `refreshControl` giữ nguyên). Ưu tiên thấp.
 
 ### [🔵 L-2] Nuốt lỗi `renameDevice` không log
-- **Vị trí:** `apps/mobile/src/screens/PairingScreen.tsx` (`done()` — `catch {}`)
+- **Vị trí:** `apps/mobile/src/screens/PairingScreen.tsx` (`done()` - `catch {}`)
 - **Checklist:** tuya-sdk (không nuốt lỗi im lặng)
 - **Bằng chứng:**
   ```tsx
@@ -99,7 +99,7 @@ Không có lỗi 🔴/🟠. Không phát hiện rò rỉ secret hay import `expo
 - **Vì sao sai / rủi ro:** không chặn hoàn tất là hợp lý, nhưng nuốt hoàn toàn → khó chẩn đoán khi rename fail.
 - **Cách sửa đề xuất:** thêm `devLogError('renameDevice', e)` (như pattern ở `services/tuya.ts`) trong `catch`.
 
-### [🔵 L-3] `getHomeDeviceList(homeId ?? 0)` — fallback 0 có thể gọi native sai
+### [🔵 L-3] `getHomeDeviceList(homeId ?? 0)` - fallback 0 có thể gọi native sai
 - **Vị trí:** `apps/mobile/src/screens/DeviceListScreen.tsx:36`
 - **Checklist:** react-native (reliability)
 - **Bằng chứng:** `setDevices(await getHomeDeviceList(homeId ?? 0));`
@@ -117,18 +117,18 @@ Không có lỗi 🔴/🟠. Không phát hiện rò rỉ secret hay import `expo
   (một số SDK cần chờ device cache sync). Đối chiếu với `docs/research/tuya-home-sdk-home-management.md`.
 
 ## Mục đã kiểm nhưng cần xác minh thủ công
-- **Build native + round-trip thật:** `getHomeDeviceList` (Kotlin/ObjC) chưa compile/chạy trên thiết bị — cần
+- **Build native + round-trip thật:** `getHomeDeviceList` (Kotlin/ObjC) chưa compile/chạy trên thiết bị - cần
   Mac/Android SDK + tài khoản Tuya Owner (Data Center = EU) để đóng AC ở mức thiết bị.
-- **Data Center = EU:** không nằm trong diff feature này (init SDK ở `services/tuya`/lib) — đã theo dõi ở
+- **Data Center = EU:** không nằm trong diff feature này (init SDK ở `services/tuya`/lib) - đã theo dõi ở
   `m1-tuya-sdk-library`; cần xác nhận console khi build.
 - **Realtime home change:** device list refetch khi remount + pull-to-refresh; chưa lắng nghe `onHomeChange` để
-  tự cập nhật khi thêm/xoá thiết bị lúc đang ở màn — chấp nhận cho M1 (đã ghi ở plan là câu hỏi mở).
+  tự cập nhật khi thêm/xoá thiết bị lúc đang ở màn - chấp nhận cho M1 (đã ghi ở plan là câu hỏi mở).
 
 ## Việc cần làm tiếp (feed vào /fix-plan hoặc /dev)
-- [ ] M-1 — bỏ `connectDevice` trong `DeviceListScreen.openDevice`, để device-detail sở hữu kết nối.
-- [ ] M-2 — home-gate: lỗi `getHomeList` → state lỗi + Thử lại, không tự route sang create-home.
-- [ ] M-3 — `decideAfterAuth` ưu tiên home owner; luồng pairing xử lý lỗi permission.
-- [ ] L-2 — log lỗi `renameDevice` trong catch.
-- [ ] L-3 — guard `homeId` undefined trước khi gọi `getHomeDeviceList`.
-- [ ] L-1 — (khi cần) đổi device list sang `FlatList`.
-- [ ] L-4 — xác minh nguồn device list native trên thiết bị thật.
+- [ ] M-1 - bỏ `connectDevice` trong `DeviceListScreen.openDevice`, để device-detail sở hữu kết nối.
+- [ ] M-2 - home-gate: lỗi `getHomeList` → state lỗi + Thử lại, không tự route sang create-home.
+- [ ] M-3 - `decideAfterAuth` ưu tiên home owner; luồng pairing xử lý lỗi permission.
+- [ ] L-2 - log lỗi `renameDevice` trong catch.
+- [ ] L-3 - guard `homeId` undefined trước khi gọi `getHomeDeviceList`.
+- [ ] L-1 - (khi cần) đổi device list sang `FlatList`.
+- [ ] L-4 - xác minh nguồn device list native trên thiết bị thật.
