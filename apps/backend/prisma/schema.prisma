@@ -4,6 +4,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Vercel serverless chạy trên Amazon Linux → cần engine Linux, không chỉ "native" (mac dev).
+  // Thiếu → runtime crash "Query engine library ... could not be located". rhel-openssl-3.0.x cho
+  // Node 20+ (AL2023), thêm 1.0.x phòng image cũ. `prisma generate` (postinstall) sinh đủ target.
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "rhel-openssl-1.0.x"]
 }
 
 datasource db {

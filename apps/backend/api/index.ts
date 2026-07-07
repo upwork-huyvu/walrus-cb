@@ -26,6 +26,14 @@ async function bootstrap(): Promise<Express> {
 }
 
 export default async function handler(req: Request, res: Response) {
-  const server = await bootstrap();
-  server(req, res);
+  try {
+    const server = await bootstrap();
+    server(req, res);
+  } catch (err) {
+    // Boot lỗi (thiếu env / engine Prisma / DB không nối được...) → log full vào Vercel Runtime Logs
+    // + trả JSON để thấy ngay qua curl, thay vì "FUNCTION_INVOCATION_FAILED" mù. Siết lại khi ổn định.
+    console.error('[api] bootstrap failed:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'BOOTSTRAP_FAILED', message });
+  }
 }
