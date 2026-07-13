@@ -1,6 +1,7 @@
+import { unstable_rethrow } from 'next/navigation';
 import Link from 'next/link';
 import CreateTemplateForm from '@/components/CreateTemplateForm';
-import { apiGet } from '@/lib/api';
+import { apiGet, getActiveProvider } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,13 +32,8 @@ function StatusBadge({ status }: { status?: TemplateStatus }) {
 
 export default async function TemplatesPage() {
   // Provider đang bật - template CHỈ áp dụng cho Tuya App Push; provider=fcm → vô hiệu hoá.
-  let provider = 'tuya';
-  try {
-    const p = await apiGet<{ provider?: string }>('/notifications/provider');
-    if (p.provider) provider = p.provider;
-  } catch {
-    // ignore - mặc định tuya
-  }
+  // Fallback 'fcm'; auth-fail → /login (không nuốt redirect).
+  const provider = await getActiveProvider();
   const isFcm = provider === 'fcm';
 
   let data: TemplateList = {};
@@ -46,6 +42,7 @@ export default async function TemplatesPage() {
     try {
       data = await apiGet<TemplateList>('/notifications/templates?page_no=1&page_size=50');
     } catch (e) {
+      unstable_rethrow(e); // auth-fail → /login; lỗi khác → hiện error message
       error = e instanceof Error ? e.message : 'Failed to load templates';
     }
   }
