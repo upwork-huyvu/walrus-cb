@@ -79,6 +79,45 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | SIG Mesh (iOS, ThingSmartBleMesh/ThingSmartSIGMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23 |
 | Tuya Mesh (iOS, ThingSmartBleMesh/ThingBLEMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz |
 
+## Wi-Fi EZ pairing failure / multicast entitlement confirmed ✅ (2026-07-10)
+Note: [docs/research/tuya-wifi-ez-pairing-failure.md](../../../docs/research/tuya-wifi-ez-pairing-failure.md)
+KL: **iOS 14.5+ bắt buộc entitlement `com.apple.developer.networking.multicast` mới gửi được gói EZ**
+(Apple duyệt 3-5 ngày). Tuya khuyến nghị **dùng AP mode thay EZ** trên iOS 14.5+. Android **không** thiếu
+`CHANGE_WIFI_MULTICAST_STATE` (AAR Tuya tự khai → merged manifest có sẵn).
+| Topic | URL |
+|---|---|
+| **Request Multicast Entitlement for Wi-Fi EZ** (form Apple, ports UDP 6666/6667 + TCP 6668, 3-5 workdays) | ✅ https://developer.tuya.com/en/docs/iot/oem-ez-privacy-apply?id=Kb8avep9c7wg6 |
+| **Wi-Fi EZ Mode (iOS)** - "Xcode 12.5 cannot send EZ packets on iOS 14.5+"; khuyến nghị AP mode | ✅ https://developer.tuya.com/en/docs/app-development/iOS-network-ez?id=Kceufaqgzx63j |
+| Wi-Fi AP Mode (TY_AP, hỗ trợ router 2.4+5GHz, timeout 100s) | ✅ https://developer.tuya.com/en/docs/app-development/hotspot-mode?id=Kceugwuabayha |
+| Device Pairing overview (Android) - EZ promiscuous vs AP STA→hotspot | ✅ https://developer.tuya.com/en/docs/app-development/wifinetwork?id=Ka6ki8lbwu82c |
+| Bluetooth Pairing - **trang DUY NHẤT liệt kê `<uses-permission>`** (chỉ cho BLE) | ✅ https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z |
+| Apple - Multicast Networking entitlement request form | ✅ https://developer.apple.com/contact/request/networking-multicast |
+
+> ⚠️ Doc Tuya **KHÔNG** liệt kê `<uses-permission>` cho Wi-Fi EZ ở bất kỳ trang Android nào (đã kiểm
+> Fast Integration + EZ + Device Pairing overview). Muốn biết permission thật → đọc **merged manifest**
+> (`app/build/intermediates/merged_manifests/.../AndroidManifest.xml`), đừng grep manifest nguồn.
+
+## Motion sensor / low-power device pairing confirmed ✅ (2026-07-10)
+Note: [docs/research/tuya-wifi-motion-sensor-pairing.md](../../../docs/research/tuya-wifi-motion-sensor-pairing.md)
+KL: **Motion sensor "Wi-Fi" thường thật ra là Zigbee sub-device (TS0202) → CẦN GATEWAY**, app mình chưa wire
+(`startSubDevicePairing` = not_implemented). Nếu là Wi-Fi low-power thật: **tự ngủ sau 3 phút**, phải giữ thức,
+iOS+EZ vẫn dính entitlement multicast → dùng AP.
+| Topic | URL |
+|---|---|
+| **PIR Motion Sensor = Zigbee sub-device** (TS0202, Profile 0x0104, cần gateway) | ✅ https://developer.tuya.com/en/docs/connect-subdevices-to-gateways/tuya-pir-sensor?id=K9ik6zvn49x5m |
+| **Wi-Fi Low-Power Device Solution** (auto-sleep 3 phút; EZ=đèn nhanh, AP=đèn chậm) | ✅ https://developer.tuya.com/en/docs/iot/wifi-module-mcu-development-overview?id=K9eor8kzjbrrn |
+| Product Troubleshooting (weak signal → thử EZ/compatibility/AP; gửi PID+video) | ✅ https://developer.tuya.com/en/docs/iot/product-troubleshooting-guide?id=K9s9rhio9x4xf |
+
+## "Auto Scan" device discovery - Tuya dùng gì confirmed ✅ (2026-07-10)
+Note: [docs/research/tuya-auto-scan-discovery.md](../../../docs/research/tuya-auto-scan-discovery.md)
+KL: Smart Life "Auto Scan" tìm thiết bị Wi-Fi chủ yếu bằng **BLE advertising** - thiết bị Wi-Fi đời mới là
+**combo (bleType có cờ Wifi)**: chạy Wi-Fi nhưng phát BLE beacon lúc pairing để bị dò ra. App mình ĐÃ có
+`startBleScan` (cùng cơ chế). Đường phụ: AP hotspot SSID `SmartLife-*` (iOS không quét Wi-Fi list được).
+| Topic | URL |
+|---|---|
+| SmartLife Auto Scan (cần quyền **Wi-Fi + Bluetooth**) | ✅ https://developer.tuya.com/en/docs/iot/user-manual-for-tuya-smart-v3177?id=K9obrofrfk4sk |
+| Bluetooth Devices - broadcast advertising, **combo (bleType includes Wifi)** | ✅ https://developer.tuya.com/en/docs/app-development/ble?id=Ka5vcxzbglphd |
+
 ## Cloud OpenAPI - App Push Notification (server→user) confirmed ✅ (2026-06-30)
 Note: [docs/research/tuya-cloud-app-push.md](../../../docs/research/tuya-cloud-app-push.md)
 Khác với App SDK ở trên - đây là **Cloud OpenAPI** (backend gọi, target theo `uid`).

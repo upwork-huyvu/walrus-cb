@@ -3,6 +3,7 @@ import {
   Animated,
   SafeAreaView,
   ScrollView,
+  Share,
   Text,
   View,
   TextInput,
@@ -21,6 +22,8 @@ import {
   ensureHome,
   pairWifi,
   pairBleWifi,
+  pairBle,
+  deviceNeedsWifi,
   startBleScan,
   stopBleScan,
   stopBleWifi,
@@ -28,15 +31,21 @@ import {
   onPairingProgress,
   onBleScan,
   describeError,
+  errorDetail,
+  isFailureStep,
   renameDevice,
   pairingStepLabel,
   type PairedDevice,
   type BleScanItem,
   type Subscription,
 } from '../services/pairing';
+import { dumpPairingLog, logPairing } from '../services/pairingLog';
+import { hasBlocker, preflightPairing, type PreflightIssue } from '../services/pairingPreflight';
 import { getSavedWifiList, saveWifi, type SavedWifi } from '../services/wifiStore';
 import {
+  currentWifiAvailable,
   describeWifiScanError,
+  detectCurrentWifi,
   getCurrentWifiSsid,
   scanWifiNetworks,
   wifiScanAvailable,
@@ -69,21 +78,32 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const C = useTheme();
   // homeId tường minh từ Device List (đã qua home-gate). Fallback ensureHome chỉ khi vào pairing trực tiếp.
   const resolveHomeId = async () => homeId ?? (await ensureHome());
-  const [step, setStep] = useState<Step>('intro');
+  // B9: luồng CHÍNH = BLE discovery-first (giống Smart Life). Vào màn → tự quét BLE (effect bên dưới).
+  // 'intro' (nhập Wi-Fi + EZ/AP) giờ là lối "Add manually" fallback cho thiết bị Wi-Fi thuần / khi không thấy gì.
+  const [step, setStep] = useState<Step>('searching');
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [savedWifis, setSavedWifis] = useState<SavedWifi[]>([]);
   const [scannedWifis, setScannedWifis] = useState<ScannedWifi[]>([]);
   const [scanningWifi, setScanningWifi] = useState(false);
+  const [detectingWifi, setDetectingWifi] = useState(false);
   const [wifiScanError, setWifiScanError] = useState('');
-  const [wifiMode, setWifiMode] = useState<WifiMode>('EZ'); // EZ mặc định; AP = fallback khi EZ fail
+  // iOS mặc định AP: EZ cần entitlement multicast của Apple (iOS 14.5+) mà app chưa có → gần như chắc chắn fail.
+  // Chính Tuya khuyến nghị AP cho iOS 14.5+. Android giữ EZ (đường ngắn nhất, không vướng entitlement).
+  // Xem docs/research/tuya-wifi-ez-pairing-failure.md
+  const [wifiMode, setWifiMode] = useState<WifiMode>(Platform.OS === 'ios' ? 'AP' : 'EZ');
+  const [preflight, setPreflight] = useState<PreflightIssue[]>([]);
+  const [checking, setChecking] = useState(false);
   const [activePairMode, setActivePairMode] = useState('');
   const [found, setFound] = useState<BleScanItem | null>(null);
   const [connectIdx, setConnectIdx] = useState(0); // bước active trong CONNECT_STEPS
   const [progressStep, setProgressStep] = useState('');
   const [result, setResult] = useState<PairedDevice | null>(null);
   const [errMsg, setErrMsg] = useState('');
+  // Lỗi SDK báo NGAY TRONG kênh tiến trình (iOS: activator:didReceiveDevice:step:error:).
+  // Nó thường cụ thể hơn error cuối cùng (vd "thiết bị không join được Wi-Fi") → giữ riêng để hiện thêm.
+  const [stepError, setStepError] = useState('');
   const [deviceName, setDeviceName] = useState('');
   const [saving, setSaving] = useState(false);
   const subs = useRef<Subscription[]>([]);
@@ -118,11 +138,24 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     })();
   }, []);
 
+  // Đổi mạng hoặc đổi mode → kết quả preflight cũ hết giá trị. Đừng để banner lỗi thời trên màn hình.
+  useEffect(() => {
+    setPreflight([]);
+  }, [ssid, wifiMode]);
+
   useEffect(() => {
     subs.current = [
       onPairingProgress((e) => {
         setProgressStep(e.step);
-        // Mỗi event tiến trình → nhích checklist (tối đa bước cuối).
+        // SDK có thể đính lỗi vào chính event tiến trình - trước đây bị vứt hoàn toàn.
+        if (e.errorCode || e.errorMessage) {
+          setStepError(
+            `${e.errorMessage || 'SDK reported an error'} [${e.errorDomain || 'sdk'}:${e.errorCode ?? '?'}]`,
+          );
+        }
+        // `device_timeout` / `device_state_error` KHÔNG phải tiến trình → đừng nhích checklist,
+        // nếu không UI sẽ báo "đang chạy tiếp" trong khi thật ra đã hỏng.
+        if (isFailureStep(e.step)) return;
         setConnectIdx((i) => Math.min(i + 1, CONNECT_STEPS.length - 1));
       }),
       onBleScan((e) => {
@@ -141,6 +174,13 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       if (foundRef.current?.uuid) stopBleWifi(foundRef.current.uuid);
       stopBleScan();
     };
+  }, []);
+
+  // B9: vào màn → tự quét BLE ngay (luồng discovery-first). Listener đã đăng ký ở effect trên.
+  // Bluetooth tắt / thiết bị không có BLE → không thấy gì → timeout → màn error có "Add manually".
+  useEffect(() => {
+    startAutoScan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -199,13 +239,30 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   }, [connectPulse, radarWave1, radarWave2, radarWave3, step]);
 
   const finishSuccess = (dev: PairedDevice) => {
+    logPairing('ui.paired', { devId: dev.devId });
     setResult(dev);
     setDeviceName(dev.name || 'Walrus Ice Bath'); // gợi ý tên mặc định, user sửa được
     setStep('paired');
   };
   const finishError = (e: unknown) => {
+    logPairing('ui.failed', { ...errorDetail(e) });
     setErrMsg(describeError(e));
     setStep('error');
+  };
+
+  /** Chia sẻ log chẩn đoán (Share có sẵn trong RN core; repo chưa có lib clipboard). */
+  const shareDiagnostics = async () => {
+    try {
+      await Share.share({ message: dumpPairingLog() });
+    } catch {
+      // user bấm huỷ sheet - không phải lỗi
+    }
+  };
+
+  /** Mốc mở đầu mỗi lần thử: để log phân biệt được các lần retry với nhau. */
+  const beginAttempt = (mode: string) => {
+    setStepError('');
+    logPairing('ui.attempt', { mode, ssid: ssid.trim(), passwordLen: password.length, homeId });
   };
   const persistWifi = async () => {
     const clean = ssid.trim();
@@ -226,49 +283,71 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     stopBleScan();
     stopWifi();
     if (foundRef.current?.uuid) stopBleWifi(foundRef.current.uuid);
+    logPairing('ui.cancel');
     setProgressStep('');
     setConnectIdx(0);
     setActivePairMode('');
+    setStepError('');
     setStep('intro');
   };
 
-  const prepareWifiPairing = () => {
+  /** Chạy preflight; trả về true nếu được phép đi tiếp. Cảnh báo (warn) vẫn cho qua, chỉ hiện lên. */
+  const runPreflight = async (): Promise<boolean> => {
+    setChecking(true);
+    try {
+      const issues = await preflightPairing({ mode: wifiMode, ssid });
+      setPreflight(issues);
+      return !hasBlocker(issues);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const prepareWifiPairing = async () => {
+    if (!(await runPreflight())) return; // chặn SỚM - đừng để user ngồi đợi 120s
     void persistWifi();
     setFound(null);
     setActivePairMode(`Wi-Fi ${wifiMode}`);
     setStep('prepare');
   };
 
-  // "Search for device" (design) = BLE scan; timeout 120s không thấy gì → error + Search again.
-  const startSearch = () => {
+  // BLE discovery (luồng chính B9): quét BLE; timeout 120s không thấy gì → error + Add manually.
+  // KHÔNG bắt nhập Wi-Fi trước (Wi-Fi hỏi sau khi chạm, chỉ với thiết bị combo).
+  const startAutoScan = () => {
     const op = ++opRef.current;
     clearScanTimer();
-    void persistWifi(); // nhớ Wi-Fi cho lần sau (local)
+    beginAttempt('BLE discovery');
     setFound(null);
-    setActivePairMode('Bluetooth + Wi-Fi');
+    setActivePairMode('Bluetooth');
     setStep('searching');
     startBleScan(Math.floor(SCAN_TIMEOUT_MS / 1000));
     scanTimerRef.current = setTimeout(() => {
       scanTimerRef.current = null;
       if (opRef.current === op && stepRef.current === 'searching') {
         stopBleScan();
-        finishError(new Error('No Walrus devices found - check the device power and Wi-Fi, then try again.'));
+        finishError(new Error('No Walrus devices found nearby. Make sure Bluetooth is on and the device is in pairing mode - or add it manually with Wi-Fi.'));
       }
     }, SCAN_TIMEOUT_MS);
   };
 
-  // "Connect to this device" → pair BLE + gửi Wi-Fi credentials.
+  // Chạm thiết bị đã tìm thấy → route theo loại: combo (Wi-Fi+BLE) gửi kèm Wi-Fi; BLE thuần pair thẳng.
   const connectFound = async () => {
     if (!found) return;
+    const needsWifi = deviceNeedsWifi(found);
+    if (needsWifi && ssid.trim().length === 0) return; // combo nhưng chưa nhập Wi-Fi → chặn (nút cũng disabled)
     const op = ++opRef.current;
     clearScanTimer();
-    setActivePairMode('Bluetooth + Wi-Fi');
+    beginAttempt(needsWifi ? 'BLE+Wi-Fi combo' : 'BLE');
+    if (needsWifi) void persistWifi(); // nhớ Wi-Fi cho lần sau (local)
+    setActivePairMode(needsWifi ? 'Bluetooth + Wi-Fi' : 'Bluetooth');
     setConnectIdx(0);
     setProgressStep('connecting');
     setStep('connecting');
     try {
       const hid = await resolveHomeId();
-      const dev = await withTimeout(pairBleWifi(hid, found.uuid, ssid, password), PAIR_TIMEOUT_MS);
+      const dev = needsWifi
+        ? await withTimeout(pairBleWifi(hid, found.uuid, ssid, password), PAIR_TIMEOUT_MS)
+        : await withTimeout(pairBle(hid, found), PAIR_TIMEOUT_MS);
       if (opRef.current === op) finishSuccess(dev);
     } catch (e) {
       if (opRef.current === op) finishError(e);
@@ -277,8 +356,14 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
 
   // Flow chính: pair thẳng qua Wi-Fi (EZ/AP) sau khi user xác nhận thiết bị đã ở đúng pairing mode.
   const runWifi = async () => {
+    // Kiểm lại: user có thể đã đổi mode/mạng ở màn prepare. Bị chặn → quay về intro (chỗ hiện banner).
+    if (!(await runPreflight())) {
+      setStep('intro');
+      return;
+    }
     const op = ++opRef.current;
     clearScanTimer();
+    beginAttempt(`Wi-Fi ${wifiMode}`);
     void persistWifi(); // nhớ Wi-Fi cho lần sau (local)
     setFound(null);
     setActivePairMode(`Wi-Fi ${wifiMode}`);
@@ -382,6 +467,23 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     }
   };
 
+  // iOS (không có scan list): bấm để xin quyền Location + đọc lại SSID wifi đang kết nối rồi điền vào ô.
+  // Cần khi prefill lúc mở màn fail (chưa cấp quyền / vừa đổi mạng). Báo lý do rõ nếu vẫn không đọc được.
+  const detectCurrentWifiAndFill = async () => {
+    if (detectingWifi) return;
+    setDetectingWifi(true);
+    setWifiScanError('');
+    const res = await detectCurrentWifi();
+    if (res.ok) {
+      setSsid(res.ssid);
+      const match = savedWifis.find((item) => item.ssid === res.ssid);
+      if (match) setPassword(match.password);
+    } else {
+      setWifiScanError(res.message);
+    }
+    setDetectingWifi(false);
+  };
+
   const signalLabel = (level: number) => {
     if (level >= -55) return 'Strong';
     if (level >= -70) return 'Good';
@@ -431,6 +533,24 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
             >
               <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>
                 {scanningWifi ? 'Scanning...' : 'Scan'}
+              </Text>
+            </Pressable>
+          ) : currentWifiAvailable ? (
+            // iOS: không có danh sách scan → nút detect lại SSID đang kết nối (xin quyền Location nếu cần).
+            <Pressable
+              onPress={detectCurrentWifiAndFill}
+              disabled={detectingWifi}
+              style={{
+                borderWidth: 1,
+                borderColor: C.ochre,
+                borderRadius: 999,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                opacity: detectingWifi ? 0.55 : 1,
+              }}
+            >
+              <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>
+                {detectingWifi ? 'Detecting...' : 'Use current'}
               </Text>
             </Pressable>
           ) : null}
@@ -668,6 +788,38 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     );
   };
 
+  // Banner preflight: đỏ = chặn (không cho chạy), vàng = cảnh báo (vẫn chạy được).
+  const preflightBanner = () => {
+    if (preflight.length === 0) return null;
+    return (
+      <View style={{ marginBottom: 18, gap: 10 }}>
+        {preflight.map((issue) => {
+          const blocking = issue.severity === 'block';
+          const color = blocking ? '#E5484D' : C.ochre;
+          return (
+            <View
+              key={issue.code}
+              style={{
+                borderWidth: 1,
+                borderColor: color,
+                borderRadius: 12,
+                padding: 14,
+                backgroundColor: blocking ? 'rgba(229,72,77,0.08)' : 'rgba(196,135,58,0.08)',
+              }}
+            >
+              <Text style={{ fontFamily: F.body, color, fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>
+                {blocking ? 'CANNOT PAIR' : 'HEADS UP'}
+              </Text>
+              <Text style={{ fontFamily: F.body, color: C.white, fontSize: 12, lineHeight: 18 }}>
+                {issue.message}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   const infoRow = (label: string, value: string, accent = false) => (
     <View
       style={{
@@ -777,6 +929,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                       >
                         <Text style={{ fontFamily: F.body, color: selected ? C.ochre : C.white, fontSize: 14, marginBottom: 5 }}>
                           {mode}
+                          {/* iOS: EZ cần entitlement multicast của Apple → AP là đường khả thi. */}
+                          {Platform.OS === 'ios' && mode === 'AP' ? '  · recommended' : ''}
                         </Text>
                         <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, lineHeight: 16 }}>
                           {mode === 'EZ' ? 'Fast blink setup' : 'Hotspot setup'}
@@ -787,15 +941,23 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 </View>
               </View>
 
+              {preflightBanner()}
+
               <View style={{ height: 6 }} />
-              <PrimaryButton label={`Continue with ${wifiMode} mode`} onPress={prepareWifiPairing} disabled={ssid.trim().length === 0} />
+              <PrimaryButton
+                label={checking ? 'Checking…' : `Continue with ${wifiMode} mode`}
+                onPress={() => {
+                  void prepareWifiPairing();
+                }}
+                disabled={ssid.trim().length === 0 || checking}
+              />
               <View style={{ height: 6 }} />
 
-              {/* BLE combo vẫn giữ như một option phụ khi thiết bị hỗ trợ BLE provisioning. */}
+              {/* Quay lại luồng auto-scan (BLE discovery) - không cần nhập Wi-Fi trước. */}
               <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
-                <Pressable onPress={startSearch} hitSlop={8} disabled={ssid.trim().length === 0}>
-                  <Text style={{ fontFamily: F.body, color: ssid.trim() ? C.ochre : C.muted, fontSize: 13 }}>
-                    Search via Bluetooth instead
+                <Pressable onPress={startAutoScan} hitSlop={8}>
+                  <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 13 }}>
+                    Auto-scan for devices instead
                   </Text>
                 </Pressable>
               </View>
@@ -865,7 +1027,15 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 {infoRow('Timeout', '120 seconds')}
               </View>
 
-              <PrimaryButton label="Start pairing" onPress={runWifi} disabled={ssid.trim().length === 0} />
+              {preflightBanner()}
+
+              <PrimaryButton
+                label={checking ? 'Checking…' : 'Start pairing'}
+                onPress={() => {
+                  void runWifi();
+                }}
+                disabled={ssid.trim().length === 0 || checking}
+              />
               <View style={{ height: 10 }} />
               <GhostButton label="Back to Wi-Fi details" onPress={() => setStep('intro')} />
             </>
@@ -878,15 +1048,22 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 Searching for Walrus…
               </Text>
               <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 10 }}>
-                Keep the device powered on and near this phone.{'\n'}Tuya BLE scan is running now.
+                Make sure Bluetooth is on and the device is in pairing mode.{'\n'}It should appear here automatically.
               </Text>
               <View style={{ alignSelf: 'stretch', marginTop: 30, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
-                {infoRow('Pairing mode', 'Bluetooth + Wi-Fi', true)}
-                {infoRow('Network', ssid || '-')}
+                {infoRow('Discovery', 'Bluetooth', true)}
                 {infoRow('Timeout', '120 seconds')}
               </View>
               <View style={{ alignSelf: 'stretch', marginTop: 20 }}>
                 <GhostButton label="Cancel" onPress={cancelPairing} />
+              </View>
+              {/* Escape hatch: thiết bị Wi-Fi thuần (không BLE) không tự hiện → nhập Wi-Fi thủ công (EZ/AP). */}
+              <View style={{ alignItems: 'center', marginTop: 16 }}>
+                <Pressable onPress={() => { cancelPairing(); setStep('intro'); }} hitSlop={8}>
+                  <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 13 }}>
+                    Add manually with Wi-Fi
+                  </Text>
+                </Pressable>
               </View>
             </View>
           )}
@@ -910,13 +1087,29 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 </View>
                 {infoRow('Device ID', found.mac || found.uuid)}
                 {infoRow('Signal', 'Strong', true)}
-                {infoRow('Network', ssid || '-')}
+                {infoRow('Type', deviceNeedsWifi(found) ? 'Wi-Fi + Bluetooth' : 'Bluetooth', true)}
                 {infoRow('Status', 'Ready', true)}
               </View>
 
-              <PrimaryButton label="Connect to this device" onPress={connectFound} />
+              {/* Combo (Wi-Fi+BLE) → hỏi Wi-Fi SAU khi chạm (đúng flow user muốn). BLE thuần → bỏ qua, pair thẳng. */}
+              {deviceNeedsWifi(found) ? (
+                <>
+                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 }}>
+                    Enter the 2.4GHz Wi-Fi this device should join.
+                  </Text>
+                  {wifiCard()}
+                </>
+              ) : null}
+
+              <PrimaryButton
+                label="Connect to this device"
+                onPress={() => {
+                  void connectFound();
+                }}
+                disabled={deviceNeedsWifi(found) && ssid.trim().length === 0}
+              />
               <View style={{ alignItems: 'center', marginTop: 16 }}>
-                <Pressable onPress={startSearch} hitSlop={8}>
+                <Pressable onPress={startAutoScan} hitSlop={8}>
                   <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13 }}>Search again</Text>
                 </Pressable>
               </View>
@@ -1022,12 +1215,34 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
               <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 28, marginBottom: 10 }}>
                 Pairing failed.
               </Text>
-              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, lineHeight: 20, marginBottom: 28 }}>
+              {/* selectable → user long-press copy được thẳng mã lỗi mà không cần mở Share sheet. */}
+              <Text
+                selectable
+                style={{ fontFamily: F.body, color: C.muted, fontSize: 13, lineHeight: 20, marginBottom: stepError ? 14 : 24 }}
+              >
                 {errMsg}
               </Text>
+
+              {/* Lỗi SDK báo giữa chừng - thường cụ thể hơn error cuối (vd không join được Wi-Fi). */}
+              {stepError ? (
+                <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 14, marginBottom: 24 }}>
+                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 2, marginBottom: 8 }}>
+                    SDK REPORTED
+                  </Text>
+                  <Text selectable style={{ fontFamily: F.body, color: C.white, fontSize: 12, lineHeight: 18 }}>
+                    {stepError}
+                  </Text>
+                </View>
+              ) : null}
+
               <PrimaryButton label="Try again" onPress={() => setStep('intro')} />
               <View style={{ height: 10 }} />
+              <GhostButton label="Copy diagnostics" onPress={shareDiagnostics} />
+              <View style={{ height: 10 }} />
               <GhostButton label="Back" onPress={() => navigate('device-list', { homeId })} />
+              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, lineHeight: 17, marginTop: 16 }}>
+                Diagnostics include the pairing steps and error codes - no passwords.
+              </Text>
             </>
           )}
         </ScrollView>

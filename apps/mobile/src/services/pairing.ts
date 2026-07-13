@@ -1,5 +1,6 @@
 // Adapter pairing: dùng lib Tuya nếu native có mặt; nếu KHÔNG → mock (simulate token/scan/pair) để
 // luồng UI test được trong Metro chưa build native. Cùng pattern require try/catch như services/tuya.ts.
+import { logPairing } from './pairingLog';
 export type PairedDevice = {
   devId: string;
   name: string;
@@ -15,8 +16,23 @@ export type BleScanItem = {
   mac: string;
   address: string;
   deviceType: number;
+  /** Combo (Wi-Fi + BLE) → phải nhập Wi-Fi khi pair. BLE thuần → pair thẳng. Native tính (iOS bleType / Android configType). */
+  isCombo?: boolean;
+  bleType?: number; // iOS raw
+  configType?: string; // Android raw
+  providerName?: string; // Android raw
 };
-export type PairingProgress = { step: string; dataJson?: string };
+export type PairingProgress = {
+  /** iOS: `device_found|device_registered|device_initialized|device_timeout|device_state_error`.
+   *  Android: chuỗi `onStep()` nguyên văn. ⚠️ timeout/state_error là LỖI, không phải tiến trình. */
+  step: string;
+  dataJson?: string;
+  /** iOS: SDK báo lỗi ngay trong callback tiến trình (vd thiết bị không join được Wi-Fi). */
+  errorCode?: string;
+  errorMessage?: string;
+  errorDomain?: string;
+  devId?: string;
+};
 export type Subscription = { remove(): void };
 
 let lib: any = null;
@@ -48,18 +64,56 @@ const MOCK_BLE: BleScanItem = {
   mac: '00:11:22:33:44:55',
   address: '',
   deviceType: 0,
+  isCombo: true, // giả lập thiết bị combo (Wi-Fi) → luồng nhập Wi-Fi sau khi chạm
+  bleType: 4, // ThingSmartBLETypeBLEWifi
+  configType: 'config_type_wifi',
 };
 function emitMockProgress(step: string) {
   mockProgressCbs.forEach((cb) => cb({ step }));
 }
 
+/** Step báo LỖI, không phải tiến trình → UI không được nhích checklist. */
+export function isFailureStep(step: string): boolean {
+  const s = step.toLowerCase();
+  return s.includes('timeout') || s.includes('time_out') || s.includes('error') || s.includes('fail');
+}
+
+// iOS ThingSmartBLEType (int) cần Wi-Fi: BLEWifi(4) BLEWifiSecurity(6) BLEWifiPlugPlay(7) BLELTESecurity(9)
+// BLEWifiPriorBLE(11). Bảng route từ sample chính chủ.
+const COMBO_BLE_TYPES = new Set([4, 6, 7, 9, 11]);
+
+/**
+ * Thiết bị (từ BLE scan) có cần nhập Wi-Fi khi pair không (= combo Wi-Fi+BLE)?
+ * Ưu tiên cờ `isCombo` native đã tính; fallback suy từ raw (iOS bleType / Android configType).
+ * KHÔNG rõ → mặc định `true`: đa số thiết bị Tuya Wi-Fi là combo, và hỏi Wi-Fi thừa an toàn hơn thiếu.
+ */
+export function deviceNeedsWifi(item: Pick<BleScanItem, 'isCombo' | 'bleType' | 'configType'>): boolean {
+  if (typeof item.isCombo === 'boolean') return item.isCombo;
+  if (typeof item.bleType === 'number' && item.bleType > 0) return COMBO_BLE_TYPES.has(item.bleType);
+  if (typeof item.configType === 'string' && item.configType) {
+    return item.configType.toLowerCase().includes('wifi');
+  }
+  return true;
+}
+
 // --- Events ---
 export function onPairingProgress(cb: (e: PairingProgress) => void): Subscription {
+  // Bọc callback để MỌI event của SDK đều vào log chẩn đoán (kể cả khi UI bỏ qua nó).
+  const wrapped = (e: PairingProgress) => {
+    logPairing('sdk.step', {
+      step: e.step,
+      errorCode: e.errorCode,
+      errorMessage: e.errorMessage,
+      errorDomain: e.errorDomain,
+      devId: e.devId,
+    });
+    cb(e);
+  };
   if (pairingAvailable) {
-    return lib.onPairingProgress(cb);
+    return lib.onPairingProgress(wrapped);
   }
-  mockProgressCbs.add(cb);
-  return { remove: () => mockProgressCbs.delete(cb) };
+  mockProgressCbs.add(wrapped);
+  return { remove: () => mockProgressCbs.delete(wrapped) };
 }
 
 export function onBleScan(cb: (e: BleScanItem) => void): Subscription {
@@ -90,6 +144,8 @@ export async function pairWifi(
   password: string,
   timeoutSec = 120
 ): Promise<PairedDevice> {
+  // `password` được redact trong pairingLog (chỉ giữ độ dài) - đủ để phân biệt "quên nhập" vs "sai".
+  logPairing('wifi.start', { mode, ssid, password, homeId, timeoutSec, native: pairingAvailable });
   if (!pairingAvailable) {
     emitMockProgress('device_find');
     await delay(900);
@@ -97,7 +153,14 @@ export async function pairWifi(
     await delay(400);
     return MOCK_DEVICE;
   }
-  return lib.Tuya.startWifiPairingAuto(homeId, mode, ssid, password, timeoutSec);
+  try {
+    const dev: PairedDevice = await lib.Tuya.startWifiPairingAuto(homeId, mode, ssid, password, timeoutSec);
+    logPairing('wifi.success', { devId: dev.devId, name: dev.name, productId: dev.productId });
+    return dev;
+  } catch (e) {
+    logPairing('wifi.error', { ...errorDetail(e) });
+    throw e;
+  }
 }
 
 export function stopWifi(): void {
@@ -125,6 +188,7 @@ export async function pairBleWifi(
   password: string,
   timeoutSec = 120
 ): Promise<PairedDevice> {
+  logPairing('blewifi.start', { uuid, ssid, password, homeId, timeoutSec, native: pairingAvailable });
   if (!pairingAvailable) {
     emitMockProgress('ble_connect');
     await delay(900);
@@ -132,11 +196,49 @@ export async function pairBleWifi(
     await delay(400);
     return MOCK_DEVICE;
   }
-  return lib.Tuya.startBleWifiPairing(homeId, uuid, ssid, password, timeoutSec);
+  try {
+    const dev: PairedDevice = await lib.Tuya.startBleWifiPairing(homeId, uuid, ssid, password, timeoutSec);
+    logPairing('blewifi.success', { devId: dev.devId, name: dev.name });
+    return dev;
+  } catch (e) {
+    logPairing('blewifi.error', { ...errorDetail(e) });
+    throw e;
+  }
 }
 
 export function stopBleWifi(uuid: string): void {
   if (pairingAvailable) lib.Tuya.stopBleWifiPairing(uuid);
+}
+
+// --- BLE thuần (không cần Wi-Fi) - cho thiết bị bleType BLE/BLEPlus/BLESecurity/... khi chạm ở luồng discovery ---
+export async function pairBle(
+  homeId: number,
+  item: Pick<BleScanItem, 'uuid' | 'productId' | 'address' | 'deviceType'>,
+  timeoutSec = 120
+): Promise<PairedDevice> {
+  logPairing('ble.start', { uuid: item.uuid, homeId, timeoutSec, native: pairingAvailable });
+  if (!pairingAvailable) {
+    emitMockProgress('ble_connect');
+    await delay(900);
+    emitMockProgress('device_bind_success');
+    await delay(400);
+    return MOCK_DEVICE;
+  }
+  try {
+    const dev: PairedDevice = await lib.Tuya.startBlePairing(
+      homeId,
+      item.uuid,
+      item.productId ?? '',
+      item.address ?? '',
+      item.deviceType ?? 0,
+      timeoutSec
+    );
+    logPairing('ble.success', { devId: dev.devId, name: dev.name });
+    return dev;
+  } catch (e) {
+    logPairing('ble.error', { ...errorDetail(e) });
+    throw e;
+  }
 }
 
 // --- Đặt tên thiết bị sau khi pair (bước confirm cuối, chuẩn SmartLife). Native vắng → no-op. ---
@@ -145,9 +247,13 @@ export async function renameDevice(devId: string, name: string): Promise<void> {
   await lib.Tuya.renameDevice(devId, name);
 }
 
-// Map các "step" kỹ thuật từ onPairingProgress → nhãn tiếng Việt kiểu SmartLife (searching→found→…).
+// Map các "step" kỹ thuật từ onPairingProgress → nhãn kiểu SmartLife (searching→found→…).
+// ⚠️ Nhánh LỖI phải đứng TRƯỚC: iOS gửi `device_timeout` (ThingActivatorStep = 4) qua đúng kênh tiến trình
+// này. Bản cũ để nó rơi vào nhánh mặc định 'Pairing…' → UI báo "đang chạy" trong khi đã timeout.
 export function pairingStepLabel(step: string): string {
   const s = step.toLowerCase();
+  if (s.includes('timeout') || s.includes('time_out')) return 'Pairing timed out';
+  if (s.includes('error') || s.includes('fail')) return 'Pairing error';
   if (s.includes('start')) return 'Starting…';
   if (s.includes('scan') || s.includes('find')) return 'Searching for device…';
   if (s.includes('found') || s.includes('discover')) return 'Device found';
@@ -159,15 +265,55 @@ export function pairingStepLabel(step: string): string {
   return 'Pairing…';
 }
 
-// --- Error mô tả (dùng TuyaErrors của lib nếu có) ---
-export function describeError(e: any): string {
-  const code = e?.code ?? e?.userInfo?.code;
-  if (pairingAvailable && lib.TuyaErrors && code != null) {
+// --- Error mô tả ---
+// Native LUÔN reject theo shape { code, message, domain } (ios/Common/TuyaReject.h + common/TuyaReject.kt):
+//   - code   : mã Tuya THẬT (vd '-55' = token hết hạn); chỉ là literal ('pairing_error', 'ble_scan_required')
+//              khi SDK không trả mã nào.
+//   - message: mô tả nguyên văn của SDK.
+//   - domain : 'sdk' | 'cloud' | 'network' - nằm trong `userInfo` (cả 2 nền tảng).
+//
+// QUY TẮC: KHÔNG BAO GIỜ nuốt `message`. `TuyaErrors.describe()` chỉ là diễn giải THÊM, và chỉ áp dụng
+// cho mã SỐ (nó tra bảng; mã phi-số luôn rơi vào category 'unknown' → "Unknown error.").
+// Bug cũ: describeError() trả thẳng TuyaErrors.describe('pairing_error') → "[sdk:pairing_error] Unknown error."
+// (xem dev-workflow/m1-fix-wifi-pairing/).
+const NUMERIC_CODE = /^-?\d+$/;
+
+export type TuyaErrorDetail = {
+  /** mã Tuya thật, hoặc literal khi SDK không cho mã. Rỗng nếu error không có code. */
+  code: string;
+  domain: string;
+  /** message nguyên văn từ native. Rỗng nếu không có. */
+  message: string;
+  /** diễn giải từ bảng TuyaErrors - CHỈ có với mã số. Đã bao gồm tiền tố "[domain:code]". */
+  explain: string;
+};
+
+/** Bóc error native thành các trường rời - dùng cho log chẩn đoán + hiển thị. */
+export function errorDetail(e: any): TuyaErrorDetail {
+  const rawCode = e?.code ?? e?.userInfo?.code;
+  const code = rawCode == null ? '' : String(rawCode).trim();
+  const rawDomain = e?.userInfo?.domain;
+  const domain = typeof rawDomain === 'string' && rawDomain ? rawDomain : 'sdk';
+  const message = typeof e?.message === 'string' ? e.message.trim() : '';
+
+  let explain = '';
+  // Mã phi-số KHÔNG được đẩy vào classify() - đó chính là nguồn gốc "Unknown error.".
+  if (NUMERIC_CODE.test(code) && lib?.TuyaErrors) {
     try {
-      return lib.TuyaErrors.describe(code);
+      explain = lib.TuyaErrors.describe(code, domain);
     } catch {
-      /* fallthrough */
+      explain = '';
     }
   }
-  return e?.message ?? String(e);
+  return { code, domain, message, explain };
+}
+
+export function describeError(e: any): string {
+  const { code, domain, message, explain } = errorDetail(e);
+  // Ưu tiên message native - đó là thứ SDK thật sự nói. Mã lỗi gắn kèm để chẩn đoán/báo lỗi.
+  if (message) return code ? `${message} [${domain}:${code}]` : message;
+  // explain đã tự mang tiền tố "[domain:code]" → không nối thêm.
+  if (explain) return explain;
+  if (code) return `Pairing failed. [${domain}:${code}]`;
+  return typeof e === 'string' && e ? e : 'Pairing failed.';
 }
