@@ -13,7 +13,7 @@ import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getMessages, deleteMessages, type AppMessage } from '../services/messages';
-import { setLastReadNow } from '../services/notificationsRead';
+import { markRead } from '../services/notificationsRead';
 
 type Props = { navigate: Navigate; state: AppState; uid?: string; onRead?: () => void };
 
@@ -32,9 +32,9 @@ export default function NotificationsScreen({ navigate, state, uid, onRead }: Pr
       else setLoading(true);
       setErr('');
       try {
-        const page = await getMessages(uid ?? ''); // đọc lastReadAt CŨ → dấu chưa-đọc hiện đúng lần này
+        const page = await getMessages(uid ?? ''); // read-set CŨ → dấu chưa-đọc hiện đúng lần này
         setItems(page.list);
-        await setLastReadNow(); // rồi mới đánh dấu đã đọc → badge về 0
+        await markRead(uid ?? '', page.list.map((m) => m.id)); // rồi đánh dấu id đang hiển thị = đã đọc → badge 0
         onRead?.();
       } catch (e: any) {
         setErr(e?.message ?? 'Could not load notifications');

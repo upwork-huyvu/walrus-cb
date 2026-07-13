@@ -40,20 +40,25 @@ export class NotificationRouterService {
       `Gửi thông báo qua provider=${p.name} (${input.all ? 'ALL' : `${input.uids?.length ?? 0} uid`})`,
     );
     const outcome = await p.send(input);
-    // Ghi lịch sử CHỈ khi FCM (tuya đã vào Tuya Message Center → app đọc thẳng, tránh trùng) và CHỈ cho
-    // uid THẬT SỰ nhận được (deliveredUids) → không ghi noti trượt (không token). Best-effort: lỗi ghi
-    // log KHÔNG được làm hỏng send đã hoàn tất (tránh admin retry gửi trùng / cron gửi lại spam).
-    if (p.name === 'fcm' && outcome.deliveredUids?.length) {
-      try {
-        await this.log.record(outcome.deliveredUids, {
-          title: input.title,
-          body: input.body,
-          provider: p.name,
-        });
-      } catch (e) {
-        this.logger.warn(
-          `Ghi lịch sử thông báo lỗi (đã gửi xong): ${e instanceof Error ? e.message : String(e)}`,
-        );
+    // Ghi lịch sử CHỈ khi FCM (tuya đã vào Tuya Message Center → app đọc thẳng, tránh trùng).
+    // DURABLE (m1-fix-notifications B4): ghi cho MỌI uid ĐƯỢC NHẮM (input.uids) - KỂ CẢ chưa có token sống
+    // lúc gửi → user mở app sau vẫn thấy noti trong lịch sử (không phụ thuộc timing đăng ký token).
+    // Case all=true: không liệt kê được uid đích → chỉ ghi được uid thật sự nhận (deliveredUids).
+    // Best-effort: lỗi ghi log KHÔNG được làm hỏng send đã hoàn tất.
+    if (p.name === 'fcm') {
+      const uidsToLog = input.uids?.length ? input.uids : (outcome.deliveredUids ?? []);
+      if (uidsToLog.length) {
+        try {
+          await this.log.record(uidsToLog, {
+            title: input.title,
+            body: input.body,
+            provider: p.name,
+          });
+        } catch (e) {
+          this.logger.warn(
+            `Ghi lịch sử thông báo lỗi (đã gửi xong): ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
       }
     }
     return outcome;
