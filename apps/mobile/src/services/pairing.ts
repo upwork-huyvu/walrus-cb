@@ -117,11 +117,23 @@ export function onPairingProgress(cb: (e: PairingProgress) => void): Subscriptio
 }
 
 export function onBleScan(cb: (e: BleScanItem) => void): Subscription {
+  // Log MỌI thiết bị BLE scan thấy → diagnostics soi được scan có bắt được gì không (auto-scan trống = ?).
+  const wrapped = (e: BleScanItem) => {
+    logPairing('sdk.blescan', {
+      uuid: e.uuid,
+      mac: e.mac,
+      name: e.name,
+      productId: e.productId,
+      bleType: e.bleType,
+      isCombo: e.isCombo,
+    });
+    cb(e);
+  };
   if (pairingAvailable) {
-    return lib.onBleScan(cb);
+    return lib.onBleScan(wrapped);
   }
-  mockBleCbs.add(cb);
-  return { remove: () => mockBleCbs.delete(cb) };
+  mockBleCbs.add(wrapped);
+  return { remove: () => mockBleCbs.delete(wrapped) };
 }
 
 // --- Home ---
