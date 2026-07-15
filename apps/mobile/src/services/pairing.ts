@@ -102,6 +102,10 @@ export function onPairingProgress(cb: (e: PairingProgress) => void): Subscriptio
   const wrapped = (e: PairingProgress) => {
     logPairing('sdk.step', {
       step: e.step,
+      // `dataJson` là chỗ native nhét chi tiết của các step KHÔNG phải lỗi (vd
+      // `sdk.security_configs_skipped` mang lý do bỏ qua) - thiếu nó thì diagnostics chỉ thấy tên
+      // step trơ trọi, không truy được vì sao.
+      dataJson: e.dataJson,
       errorCode: e.errorCode,
       errorMessage: e.errorMessage,
       errorDomain: e.errorDomain,

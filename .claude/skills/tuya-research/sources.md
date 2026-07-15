@@ -68,7 +68,11 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | Email register/login (sendVerifyCodeWithUserName, loginWithEmail) | ✅ https://developer.tuya.com/en/docs/app-development/useremail?id=Ka6a99luv3tr1 |
 | Home Information Management (createHome, role==2 owner) | ✅ https://developer.tuya.com/en/docs/app-development/familyrelations?id=Ka6ki8h2c2yo5 |
 | Wi-Fi EZ Mode (getActivatorToken 10min, ActivatorBuilder TY_EZ) | ✅ https://developer.tuya.com/en/docs/app-development/quick-connection-mode?id=Kaixju76a5iq9 |
-| Wi-Fi AP Mode | 🔗 https://developer.tuya.com/en/docs/app-development/hotspot-mode?id=Kceugwuabayha |
+| Wi-Fi AP Mode (**Android** - `TY_AP`; **"SDK tự động nối hotspot của thiết bị"**) | ✅ https://developer.tuya.com/en/docs/app-development/hotspot-mode?id=Kaixk6wxla1oy |
+| **AP Mode (iOS)** - `ThingActivatorModeAP`, `startConfigWiFi:...regInfo:timeout:`; **AP legacy KHÔNG cần entitlement** (Hotspot capability + `ThingSmartHotspotCredentialKit` chỉ cho **AP Plus**) → note [tuya-ios-ap-mode-pairing.md](../../../docs/research/tuya-ios-ap-mode-pairing.md) | ✅ https://developer.tuya.com/en/docs/app-development/iOS-network-host?id=Kaixw35qn5d1l |
+| Wi-Fi AP Mode (iOS) - "chỉ đổi param đầu thành `ThingActivatorModeAP`"; ssid/password là **của router** | ✅ https://developer.tuya.com/en/docs/app-development/activator_wifiAp_ios?id=Kcy2tw5udfv32 |
+| **Wi-Fi EZ Mode (iOS)** - "**we recommend that you use the AP mode instead**" (iOS 14.5+); multicast entitlement | ✅ https://developer.tuya.com/en/docs/app-development/iOS-network-ez?id=Kaixvcn8gy8o0 |
+| **SmartLife user manual** - bước user-facing: hotspot **"starting with `SmartLife`"**, đèn AP **chậm** / EZ **nhanh**, "must be connected to a 2.4 GHz Wi-Fi network" | ✅ https://developer.tuya.com/en/docs/iot/user-manual-for-tuya-smart-v3177?id=K9obrofrfk4sk |
 | Device Pairing (iOS, ThingSmartActivator) | ✅ https://developer.tuya.com/en/docs/app-development/activator?id=Ka5cgmlzpfig4 |
 | Bluetooth LE pairing (Android, startLeScan + BleActivatorBean) | ✅ https://developer.tuya.com/en/docs/app-development/android-bluetooth-ble?id=Karv7r2ju4c21 |
 | Bluetooth Pairing (combo) | 🔗 https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z |
