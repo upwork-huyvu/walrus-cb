@@ -94,6 +94,9 @@ const SCAN_TIMEOUT_MS = 120_000;
 // 3 bước hiển thị ở màn Connecting (design): map tiến trình pairing thật vào checklist.
 const CONNECT_STEPS = ['Authenticating', 'Syncing settings', 'Finalizing'];
 
+/** Giây → "m:ss" cho đếm ngược timeout. */
+const fmtCountdown = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
 export default function PairingScreen({ navigate, state, homeId }: Props) {
   const C = useTheme();
   // homeId tường minh từ Device List (đã qua home-gate). Fallback ensureHome chỉ khi vào pairing trực tiếp.
@@ -122,6 +125,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const [wifiScanError, setWifiScanError] = useState('');
   const [preflight, setPreflight] = useState<PreflightIssue[]>([]);
   const [checking, setChecking] = useState(false);
+  /** Số giây còn lại trước khi scan/pair timeout - hiển thị đếm ngược ở màn radar. */
+  const [scanSecondsLeft, setScanSecondsLeft] = useState(0);
   const [activePairMode, setActivePairMode] = useState('');
   const [found, setFound] = useState<BleScanItem | null>(null);
   const [connectIdx, setConnectIdx] = useState(0); // bước active trong CONNECT_STEPS
@@ -137,6 +142,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const scrollRef = useRef<ScrollView>(null);
   const connectPulse = useRef(new Animated.Value(0)).current;
   const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Epoch ms khi scan/pair sẽ timeout - nguồn cho đếm ngược (đọc trong interval, chính xác khi re-scan). */
+  const scanDeadlineRef = useRef(0);
   const opRef = useRef(0);
   const foundRef = useRef<BleScanItem | null>(null);
   const stepRef = useRef<Step>('intro');
@@ -184,6 +191,17 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   useEffect(() => {
     setPreflight([]);
   }, [ssid, modeId]);
+
+  // Đếm ngược timeout khi đang quét/pair. Đọc deadline từ ref mỗi tick → chính xác cả khi re-scan giữ
+  // nguyên step 'searching'. Interval tự dọn khi rời màn searching.
+  useEffect(() => {
+    if (step !== 'searching') return undefined;
+    const tick = () =>
+      setScanSecondsLeft(Math.max(0, Math.ceil((scanDeadlineRef.current - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [step]);
 
   useEffect(() => {
     subs.current = [
@@ -376,6 +394,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       })();
     }
 
+    scanDeadlineRef.current = Date.now() + SCAN_TIMEOUT_MS;
+    setScanSecondsLeft(Math.ceil(SCAN_TIMEOUT_MS / 1000));
     scanTimerRef.current = setTimeout(() => {
       scanTimerRef.current = null;
       if (opRef.current === op && stepRef.current === 'searching') {
@@ -542,12 +562,6 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     return 'Weak';
   };
 
-  const scrollToWifiInput = (y: number) => {
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ y, animated: true });
-    }, 120);
-  };
-
   /** Cảnh báo riêng của mode trên ô Wi-Fi (AP: "đây là Wi-Fi nhà, không phải hotspot SmartLife"). */
   const wifiNotice = () => {
     if (!mode.wifiNotice) return null;
@@ -583,7 +597,6 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       <TextInput
         value={password}
         onChangeText={setPassword}
-        onFocus={() => scrollToWifiInput(360)}
         placeholder={placeholder}
         placeholderTextColor={C.muted}
         secureTextEntry={!showPassword}
@@ -715,7 +728,6 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
               <TextInput
                 value={ssid}
                 onChangeText={setSsid}
-                onFocus={() => scrollToWifiInput(280)}
                 placeholder="…or type the network name"
                 placeholderTextColor={C.muted}
                 autoCapitalize="none"
@@ -790,7 +802,6 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
             testID="wifi-manual-ssid"
             value={ssid}
             onChangeText={setSsid}
-            onFocus={() => scrollToWifiInput(280)}
             placeholder="Your 2.4GHz Wi-Fi name"
             placeholderTextColor={C.muted}
             autoCapitalize="none"
@@ -1099,9 +1110,12 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {blipPopup()}
+      {/* iOS: KHÔNG dùng KAV padding - để ScrollView tự inset + cuộn input focus vào tầm nhìn qua
+          `automaticallyAdjustKeyboardInsets` (hợp New Arch/Fabric). Dùng cả hai sẽ đẩy content lên GẤP ĐÔI.
+          Android: adjustResize (AndroidManifest) tự resize window + cuộn input focus → cũng khỏi cần KAV. */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={undefined}
         keyboardVerticalOffset={0}
       >
         <SafeAreaView style={{ flex: 1 }}>
@@ -1125,6 +1139,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
             flexGrow: 1,
             justifyContent: step === 'intro' || step === 'error' ? 'flex-start' : 'center',
           }}
+          // iOS 13+: tự đẩy content khi bàn phím hiện + giữ input đang focus trong tầm nhìn (không nhảy Y cứng).
+          automaticallyAdjustKeyboardInsets
           keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           keyboardShouldPersistTaps="handled"
         >
@@ -1216,10 +1232,25 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                 </View>
               )}
 
+              {/* Đếm ngược timeout - to, dễ thấy; đỏ khi ≤15s để user biết sắp hết giờ. */}
+              {!permIssue && (
+                <Text
+                  style={{
+                    fontFamily: F.headline,
+                    color: scanSecondsLeft <= 15 ? '#E5484D' : C.ochre,
+                    fontSize: 30,
+                    marginTop: 18,
+                    fontVariant: ['tabular-nums'],
+                  }}
+                >
+                  {fmtCountdown(scanSecondsLeft)}
+                </Text>
+              )}
+
               <View style={{ alignSelf: 'stretch', marginTop: 24, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16 }}>
                 {infoRow('Mode', mode.label, true)}
                 {infoRow('Looking over', channelLabel(mode.channel), true)}
-                {infoRow('Timeout', '120 seconds')}
+                {infoRow('Time left', permIssue ? '—' : fmtCountdown(scanSecondsLeft))}
               </View>
 
               <View style={{ alignSelf: 'stretch', marginTop: 20 }}>
