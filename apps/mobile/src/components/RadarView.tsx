@@ -4,9 +4,14 @@
 //
 // Vị trí blip do `radarModel.blipPosition()` quyết định (hash tất định) - KHÔNG tính ở đây, vì
 // component re-render liên tục theo event scan; tính vị trí trong render = blip nhảy loạn.
+//
+// ⚠️ TIA QUÉT: xoay bằng <Animated.View> (transform rotate) quanh TÂM của chính view, KHÔNG xoay
+// <G> của react-native-svg bằng style.transform. Lý do: react-native-svg BỎ QUA originX/originY khi
+// transform đến từ `style` ⇒ nó pivot quanh góc (0,0) ⇒ sóng lệch khỏi tâm. View transform pivot
+// quanh tâm mặc định + chạy được NATIVE DRIVER (mượt hơn).
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, Text, View } from 'react-native';
-import Svg, { Circle, Defs, G, Path, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
 import { F, useTheme } from '../theme';
 import type { Blip } from '../services/radarModel';
 
@@ -17,8 +22,6 @@ type Props = {
   /** Tia quét chỉ xoay khi đang quét; dừng lại lúc đã pair xong/lỗi. */
   sweeping?: boolean;
 };
-
-const AnimatedG = Animated.createAnimatedComponent(G);
 
 /** Toạ độ pixel của blip từ (angle, radius) chuẩn hoá. y xuống theo hệ toạ độ màn hình. */
 function blipXY(blip: Blip, cx: number, cy: number, maxR: number) {
@@ -47,8 +50,7 @@ export default function RadarView({ blips, onPressBlip, size = 260, sweeping = t
         toValue: 1,
         duration: 2600,
         easing: Easing.linear,
-        // Tia quét là <G> của react-native-svg - KHÔNG chạy được native driver.
-        useNativeDriver: false,
+        useNativeDriver: true, // xoay <View> → native driver OK
       }),
     );
     loop.start();
@@ -57,7 +59,7 @@ export default function RadarView({ blips, onPressBlip, size = 260, sweeping = t
 
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
-  // Hình quạt 60° cho tia quét, gốc ở tâm.
+  // Hình quạt 60° cho tia quét, gốc ở tâm (cx,cy) của SVG size×size.
   const sweepPath = (() => {
     const r = maxR;
     const a0 = -Math.PI / 6;
@@ -71,40 +73,31 @@ export default function RadarView({ blips, onPressBlip, size = 260, sweeping = t
 
   return (
     <View style={{ width: size, height: size, alignSelf: 'center' }}>
-      <Svg width={size} height={size}>
-        <Defs>
-          <RadialGradient id="sweepFade" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor={C.ochre} stopOpacity={0.42} />
-            <Stop offset="100%" stopColor={C.ochre} stopOpacity={0} />
-          </RadialGradient>
-        </Defs>
-
-        {/* Vòng đồng tâm */}
+      {/* Vòng đồng tâm + tâm (tĩnh) */}
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
         {[0.34, 0.62, 1].map((f) => (
-          <Circle
-            key={f}
-            cx={cx}
-            cy={cy}
-            r={maxR * f}
-            stroke={C.border}
-            strokeWidth={1}
-            fill="none"
-          />
+          <Circle key={f} cx={cx} cy={cy} r={maxR * f} stroke={C.border} strokeWidth={1} fill="none" />
         ))}
         <Circle cx={cx} cy={cy} r={3} fill={C.ochre} />
-
-        {/* Tia quét */}
-        {sweeping && (
-          <AnimatedG
-            // @ts-expect-error - react-native-svg nhận string transform qua Animated, type chưa phủ.
-            style={{ transform: [{ rotate }] }}
-            originX={cx}
-            originY={cy}
-          >
-            <Path d={sweepPath} fill="url(#sweepFade)" />
-          </AnimatedG>
-        )}
       </Svg>
+
+      {/* Tia quét: SVG riêng trong Animated.View, xoay quanh TÂM view (= tâm radar) → không lệch. */}
+      {sweeping && (
+        <Animated.View
+          pointerEvents="none"
+          style={{ position: 'absolute', width: size, height: size, transform: [{ rotate }] }}
+        >
+          <Svg width={size} height={size}>
+            <Defs>
+              <RadialGradient id="sweepFade" cx="50%" cy="50%" r="50%">
+                <Stop offset="0%" stopColor={C.ochre} stopOpacity={0.42} />
+                <Stop offset="100%" stopColor={C.ochre} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Path d={sweepPath} fill="url(#sweepFade)" />
+          </Svg>
+        </Animated.View>
+      )}
 
       {/* Blip nằm ngoài <Svg> để dùng Pressable thật của RN (vùng chạm đáng tin hơn SVG onPress). */}
       {blips.map((blip) => {
