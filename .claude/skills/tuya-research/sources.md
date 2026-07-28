@@ -145,6 +145,32 @@ KL: Tuya KHÔNG cho backend verify session app-đã-login → tự dựng lớp 
 | Login with UID (`loginOrRegisterWithUid` - backend-của-bạn làm IdP) | ✅ https://developer.tuya.com/en/docs/app-development/useruid?id=Ka6a99lybyr0k |
 | Authentication Method (OAuth token exchange params) | 🔗 https://developer.tuya.com/en/docs/iot/authentication-method?id=Ka49gbaxjygox |
 
+## DP / device-control deep pages confirmed ✅ (2026-07-24)
+Note: [docs/research/tuya-icebath-dp-mapping.md](../../../docs/research/tuya-icebath-dp-mapping.md)
+KL: raw DP = **hex string chẵn chữ số** (KHÔNG base64) trên cả 2 nền tảng · value hiển thị =
+raw / 10^scale · **DP id 1–100 là của Tuya, custom bắt đầu từ 101** ⇒ code custom không có
+spec công khai, phải thực nghiệm.
+| Topic | URL |
+|---|---|
+| Device Control (iOS) - mã hoá dps theo kiểu, raw=hex chẵn, `publishDps` signature | ✅ https://developer.tuya.com/en/docs/app-development/iOS-device-control?id=Kaiyeu0xukcuc |
+| Device Control (Android) - như trên; `onDpUpdate` mới là xác nhận thật (URL Tuya gõ nhầm "andoird") | ✅ https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y |
+| Function Definition - DP 1–100 của Tuya, **custom từ 101** | ✅ https://developer.tuya.com/en/docs/iot/product-function-definition?id=K9tp155s4th6b |
+| Function Definition - kiểu dữ liệu & `scale` 0..3 (luỹ thừa 10) | ✅ https://developer.tuya.com/en/docs/iot/11?id=K9tp116dmo6br |
+| Device DP Parser (iOS) - `ThingSmartDpParser` render/validate theo schema | 🔗 https://developer.tuya.com/en/docs/app-development/ios_device_control?id=Kcxopr96vsl0f |
+| Cộng đồng: cold plunge chuẩn dùng category `ktkzq` (`temp_set`/`temp_current`) | ✅ https://github.com/tuya/tuya-home-assistant/issues/1001 |
+
+## Cloud device-control endpoints confirmed ✅ (2026-07-25)
+Note: [docs/research/tuya-cloud-device-control.md](../../../docs/research/tuya-cloud-device-control.md)
+KL: điều khiển server-side qua `code` (không phải dpId) · **Raw DP qua Cloud = BASE64** (App SDK=hex) ·
+`values` trong specification là **chuỗi JSON lồng** · `result:true` ≠ thiết bị đã đổi.
+| Topic | URL |
+|---|---|
+| Device Control overview (functions/specifications/status/commands) | ✅ https://developer.tuya.com/en/docs/cloud/device-control?id=K95zu01ksols7 |
+| Get status of a single device (`GET /v1.0/devices/{id}/status`) | ✅ https://developer.tuya.com/en/docs/cloud/1ef1a3044b?id=Kconf2usgnfwo |
+| Get specifications & properties (`functions[]`/`status[]`, type+values) | ✅ https://developer.tuya.com/en/docs/cloud/68c2e82f73?id=Kag2ybtxwlb9w |
+| Send commands (`POST /v1.0/devices/{id}/commands`) | ✅ https://developer.tuya.com/en/docs/cloud/e2512fb901?id=Kag2yag3tiqn5 |
+| Get the instruction set of the device (code để gửi) | 🔗 https://developer.tuya.com/en/docs/cloud/3ac29198c9?id=Kag2ybepz3arq |
+
 ## How to find a deep page you don't have
 `WebSearch` with `allowed_domains: ["developer.tuya.com"]`, e.g.
 `tuya home sdk android device pairing EZ mode token`, or
