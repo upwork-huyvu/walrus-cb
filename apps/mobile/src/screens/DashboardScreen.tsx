@@ -23,12 +23,13 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   const C = useTheme();
   const DARK_ON_GOLD = '#0A0A0F'; // icon trên nền vàng active
 
-  // Mở từ Device List: kết nối lại khi đổi sang thiết bị khác, HOẶC cùng thiết bị nhưng đã bị
-  // disconnect trước đó ("Hide device") - nếu không, mở lại đúng bồn cũ sẽ kẹt ở màn rỗng.
+  // Mở Device Detail là LUÔN đọc lại snapshot thật (online + DP), không dựa vào state cũ.
+  // Vì sao KHÔNG guard theo (devId !== state.devId || !deviceConnected): devId đã persist nên khớp
+  // sẵn, còn `deviceConnected` mặc định TRUE do state khởi tạo mock (status:'online') ⇒ guard thành
+  // false ⇒ connect bị bỏ ⇒ màn detail đứng nguyên mock (online 12°/6°) dù máy đang offline.
+  // connectReqRef trong useAppState đã chống race nên gọi lại mỗi lần mở là an toàn.
   useEffect(() => {
-    if (devId && (devId !== state.devId || !state.deviceConnected)) {
-      void state.connectDevice(devId);
-    }
+    if (devId) void state.connectDevice(devId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devId]);
 

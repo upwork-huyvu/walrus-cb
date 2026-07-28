@@ -6,10 +6,20 @@ import { isMockDevId } from '../config/mock';
 import {
   parseDeviceDps,
   buildTempDps,
-  buildLightDps,
-  buildPurifyDps,
-  buildFreezeDps,
+  buildBoolDps,
+  resolveDpMap,
+  setDpMap,
+  getDpMap,
+  setDpCodes,
+  getCodeById,
+  resolveDpKinds,
+  setDpKinds,
+  getDpKinds,
+  cacheRawDps,
+  getRawDp,
+  type DpFn,
 } from './dp';
+import { logDeviceSnapshot, logDeviceReadAttempt, logDpUpdate } from './deviceLog';
 import { parseTempRange, type TempRange } from './deviceSchema';
 import { describeTuyaError } from './tuyaError';
 import {
@@ -50,10 +60,13 @@ export type DeviceSnapshot = {
   currentTemp: number | null;
   targetTemp: number | null;
   lightOn: boolean;
-  purifyOn?: boolean; // optional: DP placeholder - thiết bị thật có thể chưa expose
+  // optional = thiết bị KHÔNG có DP tương ứng (đã resolve theo code thật, không đoán nữa).
+  purifyOn?: boolean;
   freezeOn?: boolean;
+  powerOn?: boolean; // DP nguồn (vd setting_pwr)
+  fault?: number; //    DP fault dạng bitmap; 0 = bình thường
   isOnline: boolean; // LAN hoặc cloud (DeviceBean.getIsOnline)
-  tempRange: TempRange; // ràng buộc target temp từ schema thiết bị
+  tempRange: TempRange; // ràng buộc target temp từ chính thiết bị
 };
 // Patch realtime: chỉ các field thay đổi (onDeviceStatus mang isOnline? + dpsJson?).
 export type DevicePatch = {
@@ -62,6 +75,8 @@ export type DevicePatch = {
   lightOn?: boolean;
   purifyOn?: boolean;
   freezeOn?: boolean;
+  powerOn?: boolean;
+  fault?: number;
   isOnline?: boolean;
 };
 export type Subscription = { remove(): void };
@@ -103,19 +118,92 @@ export async function initSdk(): Promise<boolean> {
  * - native có + devId có nhưng lib throw (đọc thật thất bại) → **rethrow** để caller hiện state `error`.
  */
 export async function readDevice(devId: string): Promise<DeviceSnapshot> {
+  // Log TRƯỚC mọi early-return: nếu bail sang mock thì vẫn biết devId/native/lý do (khỏi tưởng log hỏng).
+  logDeviceReadAttempt(devId, tuyaAvailable, isMockDevId(devId));
   if (shouldMock(devId)) return mockRead(devId);
   // timeout để không kẹt 'connecting'/loading nếu native treo (audit M-2).
   const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Device read');
-  const d = parseDeviceDps(snap?.dpsJson ?? '{}');
+  // Map DP theo code THẬT của thiết bị; nhớ lại để publish/realtime dùng.
+  const map = resolveDpMap(snap?.dpCodesJson ?? '');
+  const kinds = resolveDpKinds(map, snap?.schemaJson ?? ''); // biết DP nào kiểu raw để decode hex
+  setDpMap(devId, map);
+  setDpKinds(devId, kinds);
+  setDpCodes(devId, snap?.dpCodesJson ?? ''); // dpId→code, để log realtime đọc được
+  cacheRawDps(devId, snap?.dpsJson ?? '{}'); // giữ payload hex để ghi 1 slot mà không mất slot khác
+  logDeviceSnapshot(snap, map); // in dpId/code/value/schema ra log để đối chiếu DP thật
+  const d = parseDeviceDps(snap?.dpsJson ?? '{}', map, kinds);
   return {
     currentTemp: d.currentTemp,
     targetTemp: d.targetTemp,
     lightOn: d.lightOn ?? false,
     purifyOn: d.purifyOn ?? undefined,
     freezeOn: d.freezeOn ?? undefined,
+    powerOn: d.powerOn ?? undefined,
+    fault: d.fault ?? undefined,
     isOnline: snap?.isOnline ?? false,
-    tempRange: parseTempRange(snap?.schemaJson ?? ''),
+    // Biên thật ưu tiên DP raw `setting_temp_range`; không có thì rơi về schema DP target.
+    tempRange: parseTempRange(snap?.schemaJson ?? '', map, getRawDp(devId, map.tempRange)),
   };
+}
+
+/**
+ * CHẨN ĐOÁN (dev-only): đọc snapshot + in TOÀN BỘ chi tiết 1 thiết bị (DP/schema/device model).
+ * Khác `readDevice`: KHÔNG throw, không trả gì - chỉ để log. Dùng khi muốn xem DP thật mà chưa
+ * cần mở màn device detail (readDevice chỉ chạy lúc vào Dashboard).
+ */
+export async function logDeviceDetail(devId: string): Promise<void> {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+  const mock = isMockDevId(devId);
+  if (!tuyaAvailable || !devId || mock) {
+    logDeviceReadAttempt(devId, tuyaAvailable, mock); // nói rõ vì sao không đọc được thiết bị thật
+    return;
+  }
+  try {
+    const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Device read');
+    // Cache đủ bộ y như readDevice: log realtime sau đó mới hiện được code, và lần ghi slot đầu
+    // tiên không cần chờ mở Dashboard.
+    const map = resolveDpMap(snap?.dpCodesJson ?? '');
+    setDpMap(devId, map);
+    setDpKinds(devId, resolveDpKinds(map, snap?.schemaJson ?? ''));
+    setDpCodes(devId, snap?.dpCodesJson ?? '');
+    cacheRawDps(devId, snap?.dpsJson ?? '{}');
+    logDeviceSnapshot(snap, map);
+  } catch (e) {
+    devLogError(`logDeviceDetail(${devId})`, e);
+  }
+}
+
+/** Dump chi tiết nhiều thiết bị - TUẦN TỰ để log không bị đan xen; bỏ id trùng (mergePairedDevice). */
+export async function logDeviceDetails(devIds: string[]): Promise<void> {
+  if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+  for (const id of new Set(devIds)) await logDeviceDetail(id);
+}
+
+/**
+ * Đọc online LIVE của từng thiết bị qua `isDeviceOnline` (CÙNG nguồn Dashboard dùng - model
+ * per-device). Vì sao cần: màn danh sách lấy online từ SNAPSHOT của home (`home.deviceList`),
+ * trên iOS bản này dễ bị cũ ⇒ list hiện OFFLINE trong khi mở máy ra lại ONLINE. Patch lại bằng
+ * chính `isDeviceOnline` nên list luôn khớp trạng thái thật.
+ * Trả `{devId: online}`; bỏ qua mock / native vắng / lỗi (giữ nguyên giá trị cũ của list).
+ */
+export async function refreshDevicesOnline(devIds: string[]): Promise<Record<string, boolean>> {
+  const out: Record<string, boolean> = {};
+  if (!tuyaAvailable || typeof lib.Tuya.isDeviceOnline !== 'function') return out;
+  await Promise.all(
+    [...new Set(devIds)].map(async (id) => {
+      if (!id || isMockDevId(id)) return;
+      try {
+        out[id] = await withTimeout<boolean>(
+          lib.Tuya.isDeviceOnline(id),
+          READ_TIMEOUT_MS,
+          'Device online',
+        );
+      } catch (e) {
+        devLogError(`isDeviceOnline(${id})`, e); // không nuốt im lặng, nhưng không chặn cả list
+      }
+    }),
+  );
+  return out;
 }
 
 /**
@@ -129,11 +217,18 @@ export async function setTargetTemp(devId: string, temp: number): Promise<SetRes
     mockSetTarget(devId, temp);
     return { ok: true };
   }
+  const map = getDpMap(devId);
+  // DP target có thể là kiểu `raw` (mảng hex nhiều slot) → truyền payload hiện tại để ghi đè ĐÚNG 1 slot.
+  const dps = buildTempDps(temp, map, getRawDp(devId, map.targetTemp), getDpKinds(devId));
+  if (dps == null) {
+    // Thiếu DP hoặc payload raw hỏng → KHÔNG publish (ghi bừa vào DP lạ nguy hiểm hơn là báo lỗi).
+    return { ok: false, error: 'This device has no target-temperature control.' };
+  }
   try {
     if (typeof lib.Tuya.publishDpsAwaitAck === 'function') {
-      await lib.Tuya.publishDpsAwaitAck(devId, buildTempDps(temp), 0); // 0 → timeout mặc định native
+      await lib.Tuya.publishDpsAwaitAck(devId, dps, 0); // 0 → timeout mặc định native
     } else {
-      await lib.Tuya.publishDps(devId, buildTempDps(temp));
+      await lib.Tuya.publishDps(devId, dps);
     }
     return { ok: true };
   } catch (e) {
@@ -144,14 +239,18 @@ export async function setTargetTemp(devId: string, temp: number): Promise<SetRes
 
 async function publishBool(
   devId: string,
+  fn: DpFn,
   where: string,
-  dpsJson: string,
+  on: boolean,
   applyMock: () => void,
 ): Promise<SetResult> {
   if (shouldMock(devId)) {
     applyMock();
     return { ok: true };
   }
+  // Thiết bị không khai báo DP này → báo lỗi, TUYỆT ĐỐI không publish sang dp id đoán bừa.
+  const dpsJson = buildBoolDps(fn, on, getDpMap(devId));
+  if (dpsJson == null) return { ok: false, error: `This device has no ${fn} control.` };
   try {
     await lib.Tuya.publishDps(devId, dpsJson);
     return { ok: true };
@@ -161,14 +260,19 @@ async function publishBool(
   }
 }
 
+// Dùng map ĐÃ RESOLVE của thiết bị (readDevice set). Chưa đọc snapshot ⇒ map rỗng ⇒ từ chối publish.
 export const setLight = (devId: string, on: boolean): Promise<SetResult> =>
-  publishBool(devId, 'setLight', buildLightDps(on), () => mockSetLight(devId, on));
+  publishBool(devId, 'light', 'setLight', on, () => mockSetLight(devId, on));
 
 export const setPurify = (devId: string, on: boolean): Promise<SetResult> =>
-  publishBool(devId, 'setPurify', buildPurifyDps(on), () => mockSetPurify(devId, on));
+  publishBool(devId, 'purify', 'setPurify', on, () => mockSetPurify(devId, on));
 
 export const setFreeze = (devId: string, on: boolean): Promise<SetResult> =>
-  publishBool(devId, 'setFreeze', buildFreezeDps(on), () => mockSetFreeze(devId, on));
+  publishBool(devId, 'freeze', 'setFreeze', on, () => mockSetFreeze(devId, on));
+
+/** Công tắc nguồn thiết bị (vd DP `setting_pwr`). Mock chưa có khái niệm nguồn → coi như ok. */
+export const setPower = (devId: string, on: boolean): Promise<SetResult> =>
+  publishBool(devId, 'power', 'setPower', on, () => {});
 
 /** Lắng nghe realtime DP của thiết bị (onDeviceStatus). Mock → giả lập trôi nhiệt độ. */
 export function listenDevice(devId: string, onPatch: (p: DevicePatch) => void): Subscription {
@@ -181,12 +285,18 @@ export function listenDevice(devId: string, onPatch: (p: DevicePatch) => void): 
       // event mang cả online/offline lẫn DP update → forward cả hai.
       if (e.isOnline != null) patch.isOnline = e.isOnline;
       if (e.dpsJson) {
-        const d = parseDeviceDps(e.dpsJson);
+        // Log MỌI DP đổi kèm code: đây là cách duy nhất chốt nghĩa các DP custom (setting_clr,
+        // setting_4…) và vị trí slot của setting_temp - thao tác trên Smart Life rồi đọc log.
+        logDpUpdate(devId, e.dpsJson, getCodeById(devId));
+        cacheRawDps(devId, e.dpsJson); // payload hex mới nhất, cho lần ghi slot kế tiếp
+        const d = parseDeviceDps(e.dpsJson, getDpMap(devId), getDpKinds(devId));
         if (d.currentTemp != null) patch.currentTemp = d.currentTemp;
         if (d.targetTemp != null) patch.targetTemp = d.targetTemp;
         if (d.lightOn != null) patch.lightOn = d.lightOn;
         if (d.purifyOn != null) patch.purifyOn = d.purifyOn;
         if (d.freezeOn != null) patch.freezeOn = d.freezeOn;
+        if (d.powerOn != null) patch.powerOn = d.powerOn;
+        if (d.fault != null) patch.fault = d.fault;
       }
       // bỏ qua event rỗng (không field nào)
       if (Object.keys(patch).length === 0) return;

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   Image,
   Pressable,
@@ -25,6 +26,14 @@ export default function HomeScreen({ state, navigate, userName, onSignOut }: Pro
 
   const { level, pointsInLevel, pointsNeeded } = getLevelFromPoints(state.ritualPoints);
   const progressPct = (pointsInLevel / pointsNeeded) * 100;
+
+  // Vào Home là đọc lại online live (Home không tự connect như Dashboard) ⇒ khỏi kẹt trạng thái cũ.
+  // Chạy 1 lần mỗi lần mở Home (screen remount theo navigation). KHÔNG để refreshOnline vào deps:
+  // nó tạo mới mỗi render → sẽ lặp vô hạn gọi native.
+  useEffect(() => {
+    void state.refreshOnline();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>

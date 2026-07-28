@@ -93,9 +93,11 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
     case 'connectError':
       return { ...state, status: 'error', loading: false, error: action.error };
 
-    case 'statusChanged':
+    case 'statusChanged': {
       if (state.status === 'idle') return state; // chưa kết nối → bỏ qua
-      return { ...state, status: action.isOnline ? 'online' : 'offline' };
+      const next: ConnStatus = action.isOnline ? 'online' : 'offline';
+      return next === state.status ? state : { ...state, status: next }; // không đổi → giữ nguyên ref
+    }
 
     case 'dpPatch': {
       // Diff trước khi tạo state mới (audit M-3): không đổi gì → trả CÙNG ref → useReducer bỏ re-render.
