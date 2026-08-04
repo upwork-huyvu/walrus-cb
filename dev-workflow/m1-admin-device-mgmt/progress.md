@@ -38,6 +38,7 @@ Cần backend chạy (local/deploy) + admin trỏ tới.
 
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
+| 2026-07-28 | DEV B7-tool | ✅ | Công cụ verify B7 (dev-only, **qua App SDK** - KHÔNG Cloud/backend): mobile `services/deviceSdkTest.ts` (wrap `lib.Tuya.getDeviceSnapshot/getDps/isDeviceOnline/isCloudConnected/getWifiSignal/queryDp/publishDps/publishDpsAwaitAck` + realtime `onDeviceStatus`) + `DeviceTestScreen` (đọc state + publishDps dps-JSON keyed dpId/raw=hex + Listen realtime). Entry: nút ⚗ ở màn detail (truyền đúng devId) + MeScreen, cả hai `__DEV__`. mobile jest 296. ⚠️ Bản Cloud-passthrough hôm trước đã GỠ (hiểu nhầm - user muốn SDK). |
 | 2026-07-28 | DEV B4+B5+B6 | ✅ | Admin: nav Devices, `/devices` phẳng, `/devices/[id]` + DeviceControlPanel (target ± / 3 toggle / confirm dialog / chặn offline) + server action; cột Control ở user detail. tsc0/eslint0/next build ✓ |
 | 2026-07-28 | DEV B3 | ✅ | DevicesModule: service (listAll/getDevice/sendCommand) + controller `admin/devices` (AdminAuthGuard) + DTO; wire app.module. jest **25** (devices), full backend **101**, build 0, eslint 0 |
 | 2026-07-28 | DEV B2 | ✅ | device-dp.ts: codec base64↔word16, resolveMap theo code, decodeStatus, buildCommands (thiếu DP→throw). jest **18** với payload thật bồn. tsc0/eslint0 |

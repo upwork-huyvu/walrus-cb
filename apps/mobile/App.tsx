@@ -34,6 +34,7 @@ import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import ReminderScreen from './src/screens/ReminderScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import HelpScreen from './src/screens/HelpScreen';
+import DeviceTestScreen from './src/screens/DeviceTestScreen';
 import BottomTabBar, { type TabKey } from './src/components/BottomTabBar';
 import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
@@ -158,7 +159,7 @@ export default function App() {
       unsubRefresh();
       unsubTap();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Sau splash + đã biết trạng thái → route MỘT lần:
@@ -332,6 +333,9 @@ export default function App() {
       break;
     case 'help':
       currentScreen = <HelpScreen navigate={navigate} state={state} />;
+      break;
+    case 'device-test':
+      currentScreen = <DeviceTestScreen navigate={navigate} state={state} devId={activeDevId} />;
       break;
     case 'home-management':
       currentScreen = <HomeManagementScreen navigate={navigate} state={state} homeId={homeId} />;

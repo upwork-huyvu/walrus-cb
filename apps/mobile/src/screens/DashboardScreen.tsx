@@ -244,6 +244,18 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
                   <Text style={{ fontFamily: F.body, color: C.white, fontSize: 14 }}>Progress</Text>
                 </Pressable>
               </View>
+
+              {/* DEV-only: mở màn test raw Tuya Cloud endpoints của ĐÚNG thiết bị đang xem. */}
+              {typeof __DEV__ !== 'undefined' && __DEV__ ? (
+                <Pressable
+                  onPress={() => navigate('device-test', { devId: devId || state.devId })}
+                  style={{ marginTop: 20, paddingVertical: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 1 }}>
+                    ⚗ Device API test (dev)
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             // Chưa pair → mời sang luồng pairing
