@@ -7,6 +7,7 @@ import {
   setLight as tuyaSetLight,
   setPurify as tuyaSetPurify,
   setFreeze as tuyaSetFreeze,
+  setPower as tuyaSetPower,
   listenDevice,
   refreshDevicesOnline,
 } from '../services/tuya';
@@ -146,7 +147,15 @@ export function useAppState() {
     dispatch({ type: 'disconnect' });
   };
 
-  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert đèn.
+  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert.
+  const togglePower = () => {
+    const next = !device.powerOn;
+    dispatch({ type: 'dpPatch', patch: { powerOn: next } });
+    void tuyaSetPower(devId, next).then((res) => {
+      if (!res.ok) dispatch({ type: 'dpPatch', patch: { powerOn: !next } });
+    });
+  };
+
   const toggleLight = () => {
     const next = !device.lightOn;
     dispatch({ type: 'dpPatch', patch: { lightOn: next } });
@@ -199,9 +208,11 @@ export function useAppState() {
     devId,
     currentTemp: device.currentTemp,
     targetTemp: device.targetTemp,
+    powerOn: device.powerOn,
     lightOn: device.lightOn,
     purifyOn: device.purifyOn,
     freezeOn: device.freezeOn,
+    caps: device.caps,
     connStatus: device.status,
     deviceLoading: device.loading,
     deviceError: device.error,
@@ -210,6 +221,7 @@ export function useAppState() {
     connectDevice,
     disconnectDevice,
     refreshOnline,
+    togglePower,
     toggleLight,
     togglePurify,
     toggleFreeze,

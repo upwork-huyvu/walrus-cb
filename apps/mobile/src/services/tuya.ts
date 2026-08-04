@@ -56,6 +56,9 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 
 const READ_TIMEOUT_MS = 8000;
 
+/** Chức năng nào thiết bị có DP → UI ẩn nút không tồn tại (khớp code thật của thiết bị). */
+export type DeviceCaps = { power: boolean; light: boolean; purify: boolean };
+
 export type DeviceSnapshot = {
   currentTemp: number | null;
   targetTemp: number | null;
@@ -65,6 +68,7 @@ export type DeviceSnapshot = {
   freezeOn?: boolean;
   powerOn?: boolean; // DP nguồn (vd setting_pwr)
   fault?: number; //    DP fault dạng bitmap; 0 = bình thường
+  caps: DeviceCaps; //  DP nào thiết bị có (power/light/purify) - để ẩn nút không có
   isOnline: boolean; // LAN hoặc cloud (DeviceBean.getIsOnline)
   tempRange: TempRange; // ràng buộc target temp từ chính thiết bị
 };
@@ -140,6 +144,8 @@ export async function readDevice(devId: string): Promise<DeviceSnapshot> {
     freezeOn: d.freezeOn ?? undefined,
     powerOn: d.powerOn ?? undefined,
     fault: d.fault ?? undefined,
+    // Capability = DP nào thiết bị THẬT khai (đã resolve theo code) → UI ẩn nút không có.
+    caps: { power: !!map.power, light: !!map.light, purify: !!map.purify },
     isOnline: snap?.isOnline ?? false,
     // Biên thật ưu tiên DP raw `setting_temp_range`; không có thì rơi về schema DP target.
     tempRange: parseTempRange(snap?.schemaJson ?? '', map, getRawDp(devId, map.tempRange)),

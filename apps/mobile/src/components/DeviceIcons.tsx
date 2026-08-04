@@ -3,6 +3,21 @@ import Svg, { Circle, G, Line, Path } from 'react-native-svg';
 
 type IconProps = { size?: number; color: string };
 
+/** Nguồn (power - vòng tròn hở + gạch đứng). */
+export function PowerIcon({ size = 26, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7.5 6.5a7 7 0 1 0 9 0"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+      <Line x1={12} y1={3} x2={12} y2={12} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 /** Đèn (bulb outline). */
 export function BulbIcon({ size = 26, color }: IconProps) {
   return (
