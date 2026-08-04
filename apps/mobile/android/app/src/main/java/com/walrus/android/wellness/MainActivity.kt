@@ -1,4 +1,4 @@
-package com.walrus.wellnesscb
+package com.walrus.android.wellness
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
