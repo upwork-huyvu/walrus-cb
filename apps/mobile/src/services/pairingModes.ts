@@ -12,9 +12,13 @@
 //    để số ít là có chủ đích: để mảng là mời người sau nhét thêm kênh rồi vô tình dựng lại đúng
 //    cái thiết kế song song đã bỏ.
 //
-// 2. **iOS không có EZ.** iOS 14.5+ cần entitlement `com.apple.developer.networking.multicast`
-//    (Apple chưa duyệt cho app này). Tuya nói thẳng: "For iOS 14.5 and later, we recommend that
-//    you use the AP mode instead of the Wi-Fi EZ mode."
+// 2. **iOS CÓ EZ kể từ khi Apple duyệt multicast entitlement (2026-08-07).** iOS 14.5+ chặn gói
+//    broadcast/multicast tuỳ biến nếu thiếu `com.apple.developer.networking.multicast`, mà EZ chạy
+//    đúng bằng cơ chế đó. Entitlement đã được duyệt và khai trong `CoolBathMobile.entitlements`
+//    ⇒ EZ là mode mặc định trên CẢ HAI nền tảng, giống Smart Life.
+//    ⚠️ Entitlement chỉ có tác dụng khi provisioning profile chứa quyền đó - profile cũ sẽ làm
+//    Xcode FAIL LÚC KÝ (không phải lỗi runtime), nên nếu build được thì quyền chắc chắn đã vào.
+//    Khác biệt còn lại giữa 2 nền: iOS không liệt kê được Wi-Fi và không đọc được băng tần.
 //
 // 3. **AP: CẤM tự điền mạng đang kết nối** (`prefillCurrentWifi: false`) - nhưng **QUÉT thì được**.
 //    Đây là hai thứ KHÁC NHAU, bản trước gộp nhầm làm một rồi cấm cả hai:
@@ -64,21 +68,31 @@ export type PairingModeSpec = {
 
 // Đèn báo: EZ nháy NHANH, AP nháy CHẬM (nguyên văn SmartLife user manual). Đây là bước vật lý đầu
 // tiên và cũng là thứ user hay làm sai nhất → luôn để bước 1.
-const MODE_EZ: PairingModeSpec = {
-  id: 'ez',
-  label: 'Wi-Fi (EZ)',
-  hint: 'Indicator blinking quickly',
-  channel: 'ez',
-  wifiInput: 'dropdown',
-  // EZ: máy đang ở CHÍNH mạng cần truyền cho thiết bị → tự điền là đúng, đỡ cho user một bước.
-  prefillCurrentWifi: true,
-  steps: [
-    'Reset Walrus until its Wi-Fi indicator is blinking QUICKLY.',
-    'Keep this phone on your 2.4GHz Wi-Fi. Walrus cannot join a 5GHz network.',
-    'Pick that network below and enter its password.',
-    'Tap Start searching, then stay near Walrus until it appears on the radar.',
-  ],
-};
+function modeEz(platform: PairingPlatform): PairingModeSpec {
+  // Android quét được danh sách mạng → dropdown. iOS không có API liệt kê Wi-Fi → gõ tay, GIỐNG AP.
+  // Nhưng khác AP ở chỗ vẫn tự điền được (xem `prefillCurrentWifi` ngay dưới).
+  const pickNetworkStep =
+    platform === 'android'
+      ? 'Pick that network below and enter its password.'
+      : 'Confirm the Wi-Fi name below - it is filled in for you - and enter its password.';
+  return {
+    id: 'ez',
+    label: 'Wi-Fi (EZ)',
+    hint: 'Indicator blinking quickly',
+    channel: 'ez',
+    wifiInput: platform === 'android' ? 'dropdown' : 'manual',
+    // EZ: máy đang ở CHÍNH mạng cần truyền cho thiết bị → tự điền là đúng, đỡ cho user một bước.
+    // Đúng trên cả iOS: `com.apple.developer.networking.wifi-info` cho phép đọc SSID đang nối, và ở
+    // EZ thì mạng đang nối CHÍNH LÀ mạng cần truyền - không dính bẫy hotspot như AP (ràng buộc #3).
+    prefillCurrentWifi: true,
+    steps: [
+      'Reset Walrus until its Wi-Fi indicator is blinking QUICKLY.',
+      'Keep this phone on your 2.4GHz Wi-Fi. Walrus cannot join a 5GHz network.',
+      pickNetworkStep,
+      'Tap Start searching, then stay near Walrus until it appears on the radar.',
+    ],
+  };
+}
 
 const MODE_BLE: PairingModeSpec = {
   id: 'ble',
@@ -136,15 +150,15 @@ function modeAp(platform: PairingPlatform): PairingModeSpec {
 }
 
 /**
- * Danh sách mode cho dropdown, theo nền tảng. Thứ tự = thứ tự client chốt (2026-07-16):
- * Android EZ · AP · BLE — iOS AP · BLE. Phần tử ĐẦU là mặc định.
+ * Danh sách mode cho dropdown, theo nền tảng. Phần tử ĐẦU là mặc định.
+ * Từ 2026-08-07 (Apple duyệt multicast entitlement) thứ tự GIỐNG NHAU ở cả hai nền:
+ * EZ · AP · BLE. Trước đó iOS chỉ có AP · BLE - xem ràng buộc #2.
  */
 export function pairingModesFor(platform: PairingPlatform): PairingModeSpec[] {
-  if (platform === 'ios') return [modeAp(platform), MODE_BLE]; // iOS không có EZ - ràng buộc #2
-  return [MODE_EZ, modeAp(platform), MODE_BLE];
+  return [modeEz(platform), modeAp(platform), MODE_BLE];
 }
 
-/** Mode mặc định = phần tử đầu danh sách (Android EZ · iOS AP). */
+/** Mode mặc định = phần tử đầu danh sách (EZ trên cả iOS lẫn Android). */
 export function defaultPairingMode(platform: PairingPlatform): PairingModeId {
   return pairingModesFor(platform)[0].id;
 }
@@ -152,8 +166,9 @@ export function defaultPairingMode(platform: PairingPlatform): PairingModeId {
 export function getPairingMode(id: PairingModeId, platform: PairingPlatform): PairingModeSpec {
   const list = pairingModesFor(platform);
   const found = list.find((m) => m.id === id);
-  // Không ném lỗi: id lạ, hoặc id hợp lệ nhưng không có trên nền tảng này (vd 'ez' trên iOS - state
-  // cũ, deep-link) → lùi về mode mặc định. Không đáng làm sập màn pairing.
+  // Không ném lỗi: id lạ (state cũ, deep-link) → lùi về mode mặc định. Không đáng làm sập màn
+  // pairing. Hiện cả 3 mode đều có trên cả 2 nền, nhưng giữ fallback để nền tảng nào bỏ bớt mode
+  // sau này cũng không phải sửa chỗ gọi.
   return found ?? list[0];
 }
 

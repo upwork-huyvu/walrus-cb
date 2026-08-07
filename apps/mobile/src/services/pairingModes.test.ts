@@ -11,8 +11,8 @@ describe('danh sách mode theo nền tảng (AC4) - KHÔNG có auto', () => {
     expect(pairingModesFor('android').map((m) => m.id)).toEqual(['ez', 'ap', 'ble']);
   });
 
-  it('iOS: đúng 2 mode (AP → BLE) - EZ không chạy được vì thiếu entitlement multicast', () => {
-    expect(pairingModesFor('ios').map((m) => m.id)).toEqual(['ap', 'ble']);
+  it('iOS: cũng 3 mode, cùng thứ tự - Apple đã duyệt multicast entitlement nên EZ chạy được', () => {
+    expect(pairingModesFor('ios').map((m) => m.id)).toEqual(['ez', 'ap', 'ble']);
   });
 
   it('mode `auto` đã bị bỏ hẳn khỏi cả 2 nền tảng', () => {
@@ -21,13 +21,14 @@ describe('danh sách mode theo nền tảng (AC4) - KHÔNG có auto', () => {
     }
   });
 
-  it('default = phần tử đầu: Android EZ, iOS AP', () => {
+  it('default = phần tử đầu = EZ trên CẢ HAI nền (iOS giống Android)', () => {
     expect(defaultPairingMode('android')).toBe('ez');
-    expect(defaultPairingMode('ios')).toBe('ap');
+    expect(defaultPairingMode('ios')).toBe('ez');
   });
 
-  it('chọn "ez" trên iOS (state cũ/deep-link) → lùi về AP, không sập màn', () => {
-    expect(getPairingMode('ez' as any, 'ios').id).toBe('ap');
+  it('id lạ (state cũ/deep-link) → lùi về mode mặc định, không sập màn', () => {
+    expect(getPairingMode('auto' as any, 'ios').id).toBe('ez');
+    expect(getPairingMode('auto' as any, 'android').id).toBe('ez');
   });
 });
 
@@ -57,8 +58,16 @@ describe('wifiInput - quét hay gõ tay, quyết định bởi NỀN TẢNG có 
     expect(getPairingMode('ap', 'android').wifiInput).toBe('dropdown');
   });
 
-  it('iOS không có API liệt kê Wi-Fi → AP gõ tay', () => {
+  it('iOS không có API liệt kê Wi-Fi → CẢ EZ lẫn AP đều gõ tay', () => {
     expect(getPairingMode('ap', 'ios').wifiInput).toBe('manual');
+    expect(getPairingMode('ez', 'ios').wifiInput).toBe('manual');
+  });
+
+  // Gõ tay ≠ không tự điền. iOS đọc được SSID đang nối (entitlement wifi-info), và ở EZ thì mạng
+  // đang nối CHÍNH LÀ mạng cần truyền → vẫn prefill được, khác hẳn AP.
+  it('iOS EZ: gõ tay nhưng VẪN tự điền; iOS AP: gõ tay và KHÔNG tự điền', () => {
+    expect(getPairingMode('ez', 'ios').prefillCurrentWifi).toBe(true);
+    expect(getPairingMode('ap', 'ios').prefillCurrentWifi).toBe(false);
   });
 
   it('BLE → none (không cần Wi-Fi)', () => {

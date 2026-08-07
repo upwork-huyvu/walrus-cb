@@ -4,8 +4,12 @@
 // TRƯỚC khi bấm Start - bắt chúng ở đây tiết kiệm cho user 2 phút và một cú fail khó hiểu.
 //
 // Nguồn: docs/research/tuya-wifi-ez-pairing-failure.md
-//   - iOS 14.5+ KHÔNG gửi được gói EZ nếu app thiếu entitlement `com.apple.developer.networking.multicast`
-//     (Apple phải duyệt). Tuya khuyến nghị dùng AP mode thay thế.
+//   - iOS 14.5+ KHÔNG gửi được gói EZ nếu app thiếu entitlement `com.apple.developer.networking.multicast`.
+//     Apple ĐÃ duyệt (2026-08-07) và entitlement nằm trong `CoolBathMobile.entitlements` ⇒ EZ chạy được
+//     trên iOS. Không cảnh báo về entitlement nữa: thiếu quyền thì Xcode fail lúc KÝ chứ không fail lúc
+//     chạy, nên app đang chạy được nghĩa là quyền đã có - cảnh báo chỉ tổ đuổi user khỏi mode mặc định.
+//   - Cái iOS VẪN có thể vướng là quyền **Local Network**: user bấm Deny một lần thì iOS không hỏi lại,
+//     và EZ sẽ im lặng không tới đâu → cảnh báo cái đó thay vì cảnh báo entitlement.
 //   - Wi-Fi EZ chỉ chạy trên 2.4GHz; AP mode thì hỗ trợ cả router 2.4+5GHz.
 import { Platform } from 'react-native';
 import { getCurrentWifiBand, wifiBandAvailable } from './wifiScanner';
@@ -15,7 +19,7 @@ export type PreflightCode =
   | 'ssid_empty'
   | 'band_5ghz'
   | 'band_unknown'
-  | 'ios_ez_multicast';
+  | 'ios_ez_local_network';
 
 export type PreflightIssue = {
   code: PreflightCode;
@@ -47,14 +51,14 @@ export async function preflightPairing(input: PreflightInput): Promise<Preflight
     });
   }
 
-  // AP mode né được cả entitlement lẫn 5GHz → không cần check băng tần.
+  // AP mode né được cả 5GHz lẫn quyền mạng nội bộ → không cần check băng tần.
   if (input.mode === 'EZ') {
     if (platform === 'ios') {
       issues.push({
-        code: 'ios_ez_multicast',
+        code: 'ios_ez_local_network',
         severity: 'warn',
         message:
-          'On iOS 14.5+, EZ mode needs Apple’s multicast entitlement and usually fails without it. Use AP mode instead.',
+          'If pairing never finds Walrus, check Settings → Walrus → Local Network is on. iOS only asks once.',
       });
     }
 

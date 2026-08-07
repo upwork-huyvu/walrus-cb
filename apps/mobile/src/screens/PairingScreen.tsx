@@ -101,8 +101,9 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const C = useTheme();
   // homeId tường minh từ Device List (đã qua home-gate). Fallback ensureHome chỉ khi vào pairing trực tiếp.
   const resolveHomeId = async () => homeId ?? (await ensureHome());
-  // Mode mặc định: Android EZ · iOS AP (client chốt 2026-07-16). Cả hai đều cần Wi-Fi ⇒ luôn vào
-  // 'intro' trước; chỉ khi user tự chọn BLE mới có đường vào thẳng radar.
+  // Mode mặc định: EZ trên CẢ HAI nền, kể từ khi Apple duyệt multicast entitlement (2026-08-07) -
+  // trước đó iOS phải mặc định AP. EZ cần Wi-Fi ⇒ luôn vào 'intro' trước; chỉ khi user tự chọn BLE
+  // mới có đường vào thẳng radar. Nguồn sự thật là `pairingModes.ts`, đừng hardcode lại ở đây.
   const [modeId, setModeId] = useState<PairingModeId>(defaultPairingMode(PLATFORM));
   const mode = getPairingMode(modeId, PLATFORM);
   const needsWifi = mode.wifiInput !== 'none';

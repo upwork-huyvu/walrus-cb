@@ -48,16 +48,24 @@ describe('preflightPairing - chặn sớm thay vì chạy 120s rồi báo lỗi 
     expect(codes(issues)).not.toContain('band_unknown');
   });
 
-  it('EZ trên iOS → cảnh báo entitlement multicast + không đọc được băng tần (nói thật, không giả vờ)', async () => {
+  it('EZ trên iOS → nhắc Local Network + không đọc được băng tần (nói thật, không giả vờ)', async () => {
     const p = load({ band: 'unknown', frequency: 0, bandAvailable: false });
     const issues = await p.preflightPairing({ mode: 'EZ', ssid: 'Can March', platform: 'ios' });
 
-    expect(codes(issues)).toEqual(expect.arrayContaining(['ios_ez_multicast', 'band_unknown']));
-    // Cảnh báo thôi - không chặn, vì có thể entitlement đã được Apple duyệt trong bản build này.
+    expect(codes(issues)).toEqual(expect.arrayContaining(['ios_ez_local_network', 'band_unknown']));
+    // Chỉ cảnh báo, KHÔNG chặn: EZ giờ là mode mặc định trên iOS, chặn nó là chặn luồng chính.
     expect(p.hasBlocker(issues)).toBe(false);
   });
 
-  it('AP mode bỏ qua hết check băng tần/entitlement (nó không dùng multicast)', async () => {
+  // Entitlement multicast đã được Apple duyệt → không còn cảnh báo nào bảo user tránh EZ trên iOS.
+  it('không còn cảnh báo multicast đuổi user sang AP', async () => {
+    const p = load({ band: 'unknown', frequency: 0, bandAvailable: false });
+    const issues = await p.preflightPairing({ mode: 'EZ', ssid: 'Can March', platform: 'ios' });
+    expect(codes(issues)).not.toContain('ios_ez_multicast');
+    expect(issues.map((i: any) => i.message).join(' ')).not.toMatch(/Use AP mode instead/i);
+  });
+
+  it('AP mode bỏ qua hết check băng tần/quyền mạng (nó không dùng multicast)', async () => {
     const p = load({ band: '5GHz', frequency: 5180, bandAvailable: false });
     const issues = await p.preflightPairing({ mode: 'AP', ssid: 'Can March', platform: 'ios' });
     expect(issues).toHaveLength(0);
