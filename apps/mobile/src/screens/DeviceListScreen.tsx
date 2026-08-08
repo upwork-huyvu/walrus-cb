@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,6 +14,7 @@ import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getHomeDeviceList, type HomeDevice } from '../services/home';
+import { logDeviceDetails, refreshDevicesOnline } from '../services/tuya';
 import { BathIcon } from '../components/DeviceIcons';
 
 type Props = {
@@ -33,6 +34,8 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState('');
+  // Chống race: mỗi lần load tăng token; kết quả async (list + online) cũ hơn thì bỏ.
+  const loadTokenRef = useRef(0);
 
   const mergePairedDevice = useCallback(
     (list: HomeDevice[]) => {
@@ -54,9 +57,24 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
         setRefreshing(false);
         return;
       }
+      const token = ++loadTokenRef.current;
       try {
-        setDevices(mergePairedDevice(await getHomeDeviceList(homeId)));
+        const list = mergePairedDevice(await getHomeDeviceList(homeId));
+        if (token !== loadTokenRef.current) return; // đã có load mới hơn → bỏ kết quả cũ
+        setDevices(list);
+        // Chẩn đoán (dev-only, fire-and-forget): dump DP/schema/device model của TỪNG thiết bị ngay
+        // khi list load - khỏi phải mở device detail mới thấy (readDevice chỉ chạy ở Dashboard).
+        void logDeviceDetails(list.map((d) => d.devId));
+        // Patch online LIVE per-device: list lấy online từ snapshot home (iOS dễ stale) ⇒ hiện
+        // OFFLINE dù máy đang online. isDeviceOnline đọc cùng nguồn Dashboard nên list khớp thật.
+        void refreshDevicesOnline(list.map((d) => d.devId)).then((online) => {
+          if (token !== loadTokenRef.current || Object.keys(online).length === 0) return;
+          setDevices((prev) =>
+            prev.map((d) => (d.devId in online ? { ...d, isOnline: online[d.devId] } : d)),
+          );
+        });
       } catch (e: any) {
+        if (token !== loadTokenRef.current) return;
         setDevices(mergePairedDevice([]));
         setErr(e?.message ?? 'Could not load devices');
       } finally {

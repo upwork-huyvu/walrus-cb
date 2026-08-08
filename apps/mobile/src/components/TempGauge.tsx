@@ -3,7 +3,7 @@
 import { Text, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 import { F, useTheme } from '../theme';
-import type { TempRange } from '../services/deviceSchema';
+import { formatTemp, type TempRange } from '../services/deviceSchema';
 
 // Dải hiển thị của gauge: từ min schema tới nhiệt độ nước thường (20°C) - thuần thị giác.
 const VISUAL_MAX = 20;
@@ -40,10 +40,13 @@ export default function TempGauge({ current, target, pending = false, range, siz
   const cx = size / 2;
   const cy = size / 2;
 
-  const lo = range.min;
+  // State giữ RAW; gauge tính & hiển thị theo ĐƠN VỊ HIỂN THỊ (÷10^scale) - VISUAL_MAX là °C hiển thị.
+  const f = Math.pow(10, range.scale);
+  const curDisp = current == null ? null : current / f;
+  const lo = range.min / f;
   const hi = Math.max(VISUAL_MAX, lo + 1);
   const frac =
-    current == null ? 0 : Math.min(1, Math.max(0, (current - lo) / (hi - lo)));
+    curDisp == null ? 0 : Math.min(1, Math.max(0, (curDisp - lo) / (hi - lo)));
   const endDeg = START + SWEEP * frac;
   const tickIn = point(cx, cy, r - stroke / 2 - 5, endDeg);
   const tickOut = point(cx, cy, r + stroke / 2 + 5, endDeg);
@@ -100,7 +103,7 @@ export default function TempGauge({ current, target, pending = false, range, siz
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
           <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 84, lineHeight: 96 }}>
-            {current == null ? '-' : Math.round(current)}
+            {curDisp == null ? '-' : curDisp.toFixed(range.scale > 0 ? range.scale : 0)}
           </Text>
           <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 30, marginTop: 14 }}>
             °
@@ -108,7 +111,7 @@ export default function TempGauge({ current, target, pending = false, range, siz
         </View>
         <Text style={{ fontFamily: F.body, fontSize: 15, opacity: pending ? 0.6 : 1 }}>
           <Text style={{ color: C.muted }}>Target </Text>
-          <Text style={{ color: C.ochre }}>{target == null ? '-' : `${target}°C`}</Text>
+          <Text style={{ color: C.ochre }}>{formatTemp(target, range)}</Text>
         </Text>
       </View>
     </View>

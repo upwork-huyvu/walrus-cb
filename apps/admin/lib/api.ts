@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 
 const TOKEN_COOKIE = 'admin_token';
 
@@ -42,4 +42,21 @@ export async function apiGet<T>(path: string): Promise<T> {
     throw new Error(`API error ${res.status}: ${path}`);
   }
   return (await res.json()) as T;
+}
+
+/**
+ * Provider gửi thông báo đang bật (backend `NOTIFICATION_PROVIDER`).
+ * - Auth-fail (401/403): `apiGet` gọi `redirect('/login')` → `unstable_rethrow` để redirect THỰC SỰ chạy
+ *   (KHÔNG nuốt) → session hết hạn bị đá về login, không âm thầm giả làm chế độ khác.
+ * - Lỗi khác (mạng/5xx): fallback **'fcm'** (provider dự án đang dùng) - không chặn render trang.
+ * Trước đây các trang tự `try/catch { default 'tuya' }` → nuốt cả redirect → hết hạn vẫn hiện "Tuya".
+ */
+export async function getActiveProvider(): Promise<string> {
+  try {
+    const p = await apiGet<{ provider?: string }>('/notifications/provider');
+    return p.provider || 'fcm';
+  } catch (e) {
+    unstable_rethrow(e); // re-throw NEXT_REDIRECT/notFound; chỉ nuốt lỗi data thật
+    return 'fcm';
+  }
 }

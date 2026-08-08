@@ -8,6 +8,7 @@ import { logout } from '@/lib/auth';
 // Shell dashboard dùng chung (sidebar royal). Active item qua usePathname.
 const NAV = [
   { href: '/users', label: 'Tuya users', ico: '❄' },
+  { href: '/devices', label: 'Devices', ico: '❅' },
   { href: '/admins', label: 'Admins', ico: '⚜' },
   { href: '/notifications', label: 'Send notifications', ico: '✉' },
   { href: '/notifications/templates', label: 'Templates', ico: '▤' },

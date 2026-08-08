@@ -1,12 +1,15 @@
-// "Env" cấu hình mock thiết bị (RN CLI không đọc .env nếu không thêm native lib -
-// dự án dùng pattern config TS như config/google.ts; đổi cờ ở ĐÂY rồi reload Metro).
+// Cấu hình mock thiết bị. Cờ bật/tắt đọc từ .env (MOCK_DEVICES) qua react-native-dotenv,
+// xem babel.config.js. Đổi giá trị ở apps/mobile/.env rồi restart Metro --reset-cache.
 //
 // MOCK_DEVICES là LỚP PHỦ CHỈ ĐỂ TEST UI - KHÔNG thay thế/tắt SDK Tuya:
 //   - true  → SDK vẫn init + login/home/pairing + thiết bị THẬT chạy bình thường qua SDK;
 //             chỉ CHÈN THÊM các bồn giả (MOCK_DEVICE_LIST) vào device list và mock riêng
 //             phần điều khiển/realtime CỦA CHÚNG (bồn thật vẫn điều khiển qua SDK).
 //   - false → không có bồn giả; chỉ fallback mock khi native vắng (chạy Metro-only).
-export const MOCK_DEVICES = true;
+// Env trả về string; thiếu key / khác 'true' → tắt (default an toàn cho prod).
+import { MOCK_DEVICES as ENV_MOCK_DEVICES } from '@env';
+
+export const MOCK_DEVICES = String(ENV_MOCK_DEVICES).trim().toLowerCase() === 'true';
 
 // Seed 1 bồn giả: field HomeDevice (devId/name/productId/isOnline/iconUrl) + state ban đầu cho
 // mockDevice.ts (mỗi bồn có nhiệt độ / công tắc riêng → mở bồn nào thấy state bồn đó).

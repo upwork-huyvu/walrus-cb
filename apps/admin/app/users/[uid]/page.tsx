@@ -149,6 +149,7 @@ export default async function UserDetailPage({
               <th>Status snapshot</th>
               <th>Paired</th>
               <th>Last update</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -187,6 +188,9 @@ export default async function UserDetailPage({
                 </td>
                 <td>{fmtEpoch(d.create_time)}</td>
                 <td>{fmtEpoch(d.update_time, true)}</td>
+                <td>
+                  <Link href={`/devices/${d.id}`}>Control</Link>
+                </td>
               </tr>
             ))}
           </tbody>

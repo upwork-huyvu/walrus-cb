@@ -1,4 +1,4 @@
-package com.walrus.wellnesscb
+package com.walrus.android.wellness
 
 import android.app.Application
 import com.facebook.react.PackageList

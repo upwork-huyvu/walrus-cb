@@ -17,6 +17,31 @@ try {
 
 export const wifiScanAvailable = Platform.OS === 'android' && wifiLib != null;
 export const currentWifiAvailable = (Platform.OS === 'android' || Platform.OS === 'ios') && wifiLib != null;
+/** ⚠️ `getFrequency()` của react-native-wifi-reborn là **Android only** (xem lib/types/index.d.ts,
+ *  vùng "#region Android only"). Trên iOS KHÔNG có cách nào đọc băng tần → chỉ cảnh báo được. */
+export const wifiBandAvailable = Platform.OS === 'android' && wifiLib != null;
+
+export type WifiBand = '2.4GHz' | '5GHz' | '6GHz' | 'unknown';
+
+/** Băng tần theo tần số (MHz). Wi-Fi EZ của Tuya chỉ chạy trên 2.4GHz. */
+export function bandOfFrequency(mhz: number): WifiBand {
+  if (mhz >= 2400 && mhz < 2500) return '2.4GHz';
+  if (mhz >= 4900 && mhz < 5900) return '5GHz';
+  if (mhz >= 5925 && mhz <= 7125) return '6GHz';
+  return 'unknown';
+}
+
+/** Băng tần của mạng ĐANG kết nối. iOS / lib vắng → `unknown` (không đoán bừa). */
+export async function getCurrentWifiBand(): Promise<{ band: WifiBand; frequency: number }> {
+  if (!wifiBandAvailable) return { band: 'unknown', frequency: 0 };
+  try {
+    const frequency = Number(await wifiLib.getFrequency());
+    if (!Number.isFinite(frequency) || frequency <= 0) return { band: 'unknown', frequency: 0 };
+    return { band: bandOfFrequency(frequency), frequency };
+  } catch {
+    return { band: 'unknown', frequency: 0 };
+  }
+}
 
 async function ensureAndroidLocationPermission(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
@@ -60,14 +85,53 @@ export async function scanWifiNetworks(): Promise<ScannedWifi[]> {
   return [...bySsid.values()].sort((a, b) => b.level - a.level);
 }
 
-export async function getCurrentWifiSsid(): Promise<string | null> {
-  if (!currentWifiAvailable) return null;
-  try {
-    const ssid = await wifiLib.getCurrentWifiSSID();
-    return cleanSsid(ssid) || null;
-  } catch {
-    return null;
+// Kết quả detect SSID hiện tại - có lý do để UI hiện message đúng (denied/simulator/không đọc được).
+export type CurrentWifiResult =
+  | { ok: true; ssid: string }
+  | { ok: false; reason: 'unsupported' | 'permission' | 'not-found' | 'error'; message: string };
+
+// Đọc SSID wifi đang kết nối. iOS: native tự bật prompt xin quyền Location khi chưa hỏi (notDetermined),
+// nên gọi hàm này = vừa xin quyền vừa đọc. Trả reason để phân biệt: chưa cấp quyền vs máy không đọc được
+// (điển hình: iOS Simulator luôn nil vì không có wifi hardware).
+export async function detectCurrentWifi(): Promise<CurrentWifiResult> {
+  if (!currentWifiAvailable) {
+    return {
+      ok: false,
+      reason: 'unsupported',
+      message:
+        Platform.OS === 'ios'
+          ? 'Wi-Fi name detection needs a real device (not the simulator). Enter it manually.'
+          : 'Wi-Fi detection is not available on this device. Enter it manually.',
+    };
   }
+  try {
+    const ssid = cleanSsid(await wifiLib.getCurrentWifiSSID());
+    if (ssid) return { ok: true, ssid };
+    return {
+      ok: false,
+      reason: 'not-found',
+      message:
+        Platform.OS === 'ios'
+          ? 'Could not read the Wi-Fi name (simulator or hidden network?). Enter it manually.'
+          : 'Could not read the current Wi-Fi name. Enter it manually.',
+    };
+  } catch (e: any) {
+    const code = String(e?.code ?? e?.message ?? e);
+    if (code.includes('LocationPermission')) {
+      return {
+        ok: false,
+        reason: 'permission',
+        message: 'Allow Location to auto-fill the Wi-Fi name (Settings → Privacy → Location Services).',
+      };
+    }
+    return { ok: false, reason: 'error', message: 'Could not detect the Wi-Fi network. Enter it manually.' };
+  }
+}
+
+// Phiên bản "im lặng" cho prefill lúc mở màn: chỉ lấy SSID nếu đọc được, lỗi/không có → null (không báo).
+export async function getCurrentWifiSsid(): Promise<string | null> {
+  const res = await detectCurrentWifi();
+  return res.ok ? res.ssid : null;
 }
 
 export function describeWifiScanError(e: any): string {

@@ -230,11 +230,18 @@ export async function displayNotification(msg: RemoteMessage): Promise<void> {
   }
 }
 
-/** Noti tới khi app FOREGROUND → hiện bằng Notifee. Trả hàm huỷ. */
-export function onForegroundMessage(): () => void {
+/**
+ * Noti tới khi app FOREGROUND → hiện bằng Notifee + báo `onReceive` để app refresh badge unread.
+ * (Trước đây chỉ hiện Notifee → badge Account không nhảy khi nhận push lúc app mở - m1-fix-notifications #3.)
+ * Trả hàm huỷ.
+ */
+export function onForegroundMessage(onReceive?: () => void): () => void {
   if (!pushAvailable) return () => {};
   try {
-    return messagingLib().onMessage((msg: RemoteMessage) => void displayNotification(msg));
+    return messagingLib().onMessage((msg: RemoteMessage) => {
+      void displayNotification(msg);
+      onReceive?.();
+    });
   } catch (e) {
     devWarn('onForegroundMessage', e);
     return () => {};

@@ -88,9 +88,11 @@ export function mockRead(devId: string): DeviceSnapshot {
   return {
     currentTemp: s.currentTemp,
     targetTemp: s.targetTemp,
+    powerOn: true,
     lightOn: s.lightOn,
     purifyOn: s.purifyOn,
     freezeOn: s.freezeOn,
+    caps: { power: true, light: true, purify: true }, // mock: hiện đủ nút để test UI
     isOnline: s.isOnline,
     tempRange: DEFAULT_TEMP_RANGE,
   };

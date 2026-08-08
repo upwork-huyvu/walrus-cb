@@ -4,19 +4,26 @@ import { DEFAULT_TEMP_RANGE, clampToRange, type TempRange } from '../services/de
 
 export type ConnStatus = 'idle' | 'connecting' | 'online' | 'offline' | 'error';
 
+/** Chức năng nào thiết bị THẬT có DP (để ẩn nút không tồn tại). Thiếu snapshot → coi như có (mock). */
+export type DeviceCaps = { power: boolean; light: boolean; purify: boolean };
+
 export type DeviceState = {
   status: ConnStatus;
   loading: boolean; // đang đọc snapshot
   error: string | null;
   currentTemp: number | null;
   targetTemp: number | null;
+  powerOn: boolean; // nguồn (setting_pwr)
   lightOn: boolean;
-  purifyOn: boolean; // lọc/ozone (lá)
-  freezeOn: boolean; // làm lạnh (chiller)
+  purifyOn: boolean; // lọc/khử trùng (setting_clr)
+  freezeOn: boolean; // (giữ cho tương thích; thiết bị g0cv1c KHÔNG có DP này)
+  caps: DeviceCaps; // DP nào thiết bị có → UI ẩn nút không có
   pendingTarget: number | null; // target đang chờ ack (optimistic chưa confirm)
   prevTarget: number | null; // target trước khi optimistic (để revert nếu timeout)
   tempRange: TempRange;
 };
+
+const ALL_CAPS: DeviceCaps = { power: true, light: true, purify: true };
 
 // Mặc định: coi như đã có thiết bị (mock) - giữ UX cũ của UI clone (online, 12°C/6°C).
 export const initialDeviceState: DeviceState = {
@@ -25,9 +32,11 @@ export const initialDeviceState: DeviceState = {
   error: null,
   currentTemp: 12,
   targetTemp: 6,
+  powerOn: true,
   lightOn: false,
   purifyOn: false,
   freezeOn: true,
+  caps: ALL_CAPS,
   pendingTarget: null,
   prevTarget: null,
   tempRange: DEFAULT_TEMP_RANGE,
@@ -37,8 +46,10 @@ export type Snapshot = {
   currentTemp: number | null;
   targetTemp: number | null;
   lightOn: boolean;
-  purifyOn?: boolean; // optional: DP placeholder - thiết bị thật có thể chưa expose
+  purifyOn?: boolean; // optional: thiết bị thật có thể chưa expose
   freezeOn?: boolean;
+  powerOn?: boolean;
+  caps?: DeviceCaps; // thiếu → coi như có tất (mock/legacy)
   isOnline: boolean;
   tempRange: TempRange;
 };
@@ -46,6 +57,7 @@ export type Snapshot = {
 export type DpPatch = {
   currentTemp?: number | null;
   targetTemp?: number | null;
+  powerOn?: boolean;
   lightOn?: boolean;
   purifyOn?: boolean;
   freezeOn?: boolean;
@@ -80,10 +92,12 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
         currentTemp: s.currentTemp,
         targetTemp: s.targetTemp,
         lightOn: s.lightOn,
-        // Snapshot thiếu DP purify/freeze (thiết bị thật chưa expose) → default FALSE, KHÔNG kế thừa
-        // giá trị của bồn mở trước đó (tránh rò state giữa các bồn).
+        // Snapshot thiếu DP power/purify/freeze (thiết bị thật chưa expose) → default FALSE, KHÔNG kế
+        // thừa giá trị của bồn mở trước đó (tránh rò state giữa các bồn).
+        powerOn: s.powerOn ?? false,
         purifyOn: s.purifyOn ?? false,
         freezeOn: s.freezeOn ?? false,
+        caps: s.caps ?? ALL_CAPS,
         tempRange: s.tempRange,
         pendingTarget: null,
         prevTarget: null,
@@ -93,9 +107,11 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
     case 'connectError':
       return { ...state, status: 'error', loading: false, error: action.error };
 
-    case 'statusChanged':
+    case 'statusChanged': {
       if (state.status === 'idle') return state; // chưa kết nối → bỏ qua
-      return { ...state, status: action.isOnline ? 'online' : 'offline' };
+      const next: ConnStatus = action.isOnline ? 'online' : 'offline';
+      return next === state.status ? state : { ...state, status: next }; // không đổi → giữ nguyên ref
+    }
 
     case 'dpPatch': {
       // Diff trước khi tạo state mới (audit M-3): không đổi gì → trả CÙNG ref → useReducer bỏ re-render.
@@ -104,6 +120,10 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
       let changed = false;
       if (p.currentTemp !== undefined && p.currentTemp !== state.currentTemp) {
         next.currentTemp = p.currentTemp;
+        changed = true;
+      }
+      if (p.powerOn !== undefined && p.powerOn !== state.powerOn) {
+        next.powerOn = p.powerOn;
         changed = true;
       }
       if (p.lightOn !== undefined && p.lightOn !== state.lightOn) {

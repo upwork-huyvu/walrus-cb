@@ -52,6 +52,27 @@ describe('deviceMachine - kết nối / loading / error (AC2, AC3)', () => {
     expect(s.freezeOn).toBe(false);
   });
 
+  it('connectOk: nạp powerOn + caps (ẩn nút không có DP); thiếu caps → coi như có tất', () => {
+    const s = deviceReducer(initialDeviceState, {
+      type: 'connectOk',
+      snapshot: snap({ powerOn: true, caps: { power: true, light: true, purify: false } }),
+    });
+    expect(s.powerOn).toBe(true);
+    expect(s.caps).toEqual({ power: true, light: true, purify: false });
+    // thiếu caps trong snapshot → ALL_CAPS (mock/legacy)
+    const s2 = deviceReducer(initialDeviceState, { type: 'connectOk', snapshot: snap() });
+    expect(s2.caps).toEqual({ power: true, light: true, purify: true });
+    expect(s2.powerOn).toBe(false); // thiếu powerOn → false
+  });
+
+  it('dpPatch: powerOn cập nhật; không đổi → giữ ref', () => {
+    const base = { ...initialDeviceState, powerOn: false };
+    const on = deviceReducer(base, { type: 'dpPatch', patch: { powerOn: true } });
+    expect(on.powerOn).toBe(true);
+    const same = deviceReducer(on, { type: 'dpPatch', patch: { powerOn: true } });
+    expect(same).toBe(on); // no-op → cùng ref
+  });
+
   it('connectOk: snapshot CÓ purify/freeze → nạp đúng giá trị bồn hiện tại', () => {
     const s = deviceReducer(initialDeviceState, {
       type: 'connectOk',

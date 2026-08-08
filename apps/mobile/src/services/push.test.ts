@@ -32,12 +32,14 @@ function load(opts: LoadOpts = {}) {
   const deleteToken = opts.deleteToken ?? jest.fn().mockResolvedValue(undefined);
   const registerDeviceForRemoteMessages =
     opts.registerDeviceForRemoteMessages ?? jest.fn().mockResolvedValue(undefined);
+  const onMessage = jest.fn((_h?: (msg: any) => void) => () => {}); // lưu handler foreground để test gọi tay
   const messagingFn = jest.fn(() => ({
     requestPermission: opts.requestPermission ?? jest.fn().mockResolvedValue(1),
     getToken: opts.getToken ?? jest.fn().mockResolvedValue('fcm-tok'),
     getAPNSToken: opts.getAPNSToken ?? jest.fn().mockResolvedValue('apns-tok'),
     registerDeviceForRemoteMessages,
     onTokenRefresh: jest.fn(() => () => {}),
+    onMessage,
     deleteToken,
   }));
   jest.doMock('@react-native-firebase/messaging', () =>
@@ -61,8 +63,35 @@ function load(opts: LoadOpts = {}) {
     registerDeviceForRemoteMessages,
     registerPushToken,
     unregisterPushToken,
+    onMessage,
   };
 }
+
+describe('onForegroundMessage → refresh badge (#3)', () => {
+  it('nhận push foreground → gọi onReceive (để refresh badge unread)', () => {
+    const { push, onMessage } = load();
+    const onReceive = jest.fn();
+    push.onForegroundMessage(onReceive);
+    // Lấy handler mà push đăng ký với messaging.onMessage rồi bắn 1 message giả.
+    const handler = onMessage.mock.calls[0]?.[0] as (msg: any) => void;
+    handler({ notification: { title: 'Hi', body: 'body' }, data: {} });
+    expect(onReceive).toHaveBeenCalledTimes(1);
+  });
+
+  it('không truyền onReceive → vẫn không nổ (chỉ hiện notifee)', () => {
+    const { push, onMessage } = load();
+    push.onForegroundMessage();
+    const handler = onMessage.mock.calls[0]?.[0] as (msg: any) => void;
+    expect(() => handler({ notification: { title: 'x' } })).not.toThrow();
+  });
+
+  it('native vắng → no-op, không đăng ký onMessage', () => {
+    const { push, onMessage } = load({ available: false });
+    const unsub = push.onForegroundMessage(jest.fn());
+    expect(typeof unsub).toBe('function');
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+});
 
 describe('routeFromData (thuần)', () => {
   const { push } = load();

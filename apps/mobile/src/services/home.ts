@@ -3,6 +3,7 @@
 //
 // KHÔNG auto-create home ngầm: việc tạo home do màn Create Home gọi `createHome` tường minh (xem home-gate).
 import { MOCK_DEVICES, MOCK_DEVICE_LIST } from '../config/mock';
+import { logHomeDevices } from './deviceLog';
 
 export type HomeInfo = {
   homeId: number;
@@ -103,7 +104,11 @@ function mockHomeDevices(): HomeDevice[] {
  *   để test UI - thiết bị thật vẫn hiển thị & điều khiển qua SDK. Native lỗi + mock bật → vẫn hiện mock.
  */
 export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
-  if (!homeAvailable) return MOCK_DEVICES ? mockHomeDevices() : [...mockDevices];
+  if (!homeAvailable) {
+    const fake = MOCK_DEVICES ? mockHomeDevices() : [...mockDevices];
+    logHomeDevices(homeId, fake); // native vắng → nói rõ đây là list GIẢ, không phải thiết bị thật
+    return fake;
+  }
   let real: HomeDevice[] = [];
   try {
     const list = await lib.Tuya.getHomeDeviceList(homeId);
@@ -111,5 +116,7 @@ export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
   } catch (e) {
     if (!MOCK_DEVICES) throw e; // prod: lỗi SDK phải nổi lên; dev mock: vẫn hiện bồn giả
   }
-  return MOCK_DEVICES ? [...real, ...mockHomeDevices()] : real;
+  const out = MOCK_DEVICES ? [...real, ...mockHomeDevices()] : real;
+  logHomeDevices(homeId, out); // thấy ngay home có thiết bị nào (kể cả pair bằng Smart Life)
+  return out;
 }

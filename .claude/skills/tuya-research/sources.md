@@ -68,7 +68,11 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | Email register/login (sendVerifyCodeWithUserName, loginWithEmail) | ✅ https://developer.tuya.com/en/docs/app-development/useremail?id=Ka6a99luv3tr1 |
 | Home Information Management (createHome, role==2 owner) | ✅ https://developer.tuya.com/en/docs/app-development/familyrelations?id=Ka6ki8h2c2yo5 |
 | Wi-Fi EZ Mode (getActivatorToken 10min, ActivatorBuilder TY_EZ) | ✅ https://developer.tuya.com/en/docs/app-development/quick-connection-mode?id=Kaixju76a5iq9 |
-| Wi-Fi AP Mode | 🔗 https://developer.tuya.com/en/docs/app-development/hotspot-mode?id=Kceugwuabayha |
+| Wi-Fi AP Mode (**Android** - `TY_AP`; **"SDK tự động nối hotspot của thiết bị"**) | ✅ https://developer.tuya.com/en/docs/app-development/hotspot-mode?id=Kaixk6wxla1oy |
+| **AP Mode (iOS)** - `ThingActivatorModeAP`, `startConfigWiFi:...regInfo:timeout:`; **AP legacy KHÔNG cần entitlement** (Hotspot capability + `ThingSmartHotspotCredentialKit` chỉ cho **AP Plus**) → note [tuya-ios-ap-mode-pairing.md](../../../docs/research/tuya-ios-ap-mode-pairing.md) | ✅ https://developer.tuya.com/en/docs/app-development/iOS-network-host?id=Kaixw35qn5d1l |
+| Wi-Fi AP Mode (iOS) - "chỉ đổi param đầu thành `ThingActivatorModeAP`"; ssid/password là **của router** | ✅ https://developer.tuya.com/en/docs/app-development/activator_wifiAp_ios?id=Kcy2tw5udfv32 |
+| **Wi-Fi EZ Mode (iOS)** - "**we recommend that you use the AP mode instead**" (iOS 14.5+); multicast entitlement | ✅ https://developer.tuya.com/en/docs/app-development/iOS-network-ez?id=Kaixvcn8gy8o0 |
+| **SmartLife user manual** - bước user-facing: hotspot **"starting with `SmartLife`"**, đèn AP **chậm** / EZ **nhanh**, "must be connected to a 2.4 GHz Wi-Fi network" | ✅ https://developer.tuya.com/en/docs/iot/user-manual-for-tuya-smart-v3177?id=K9obrofrfk4sk |
 | Device Pairing (iOS, ThingSmartActivator) | ✅ https://developer.tuya.com/en/docs/app-development/activator?id=Ka5cgmlzpfig4 |
 | Bluetooth LE pairing (Android, startLeScan + BleActivatorBean) | ✅ https://developer.tuya.com/en/docs/app-development/android-bluetooth-ble?id=Karv7r2ju4c21 |
 | Bluetooth Pairing (combo) | 🔗 https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z |
@@ -78,6 +82,45 @@ Note: [docs/research/tuya-m1-sdk-foundation.md](../../../docs/research/tuya-m1-s
 | Matter pairing (iOS, unified ThingSmartActivatorDiscovery) | ✅ https://developer.tuya.com/en/docs/app-development/activator_matter_ios?id=Kcy5lrzc7s20k |
 | SIG Mesh (iOS, ThingSmartBleMesh/ThingSmartSIGMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/sigmesh?id=Ka5vdjp2tlb23 |
 | Tuya Mesh (iOS, ThingSmartBleMesh/ThingBLEMeshManager) | ✅ https://developer.tuya.com/en/docs/app-development/mesh?id=Ka5vdjp3ikagz |
+
+## Wi-Fi EZ pairing failure / multicast entitlement confirmed ✅ (2026-07-10)
+Note: [docs/research/tuya-wifi-ez-pairing-failure.md](../../../docs/research/tuya-wifi-ez-pairing-failure.md)
+KL: **iOS 14.5+ bắt buộc entitlement `com.apple.developer.networking.multicast` mới gửi được gói EZ**
+(Apple duyệt 3-5 ngày). Tuya khuyến nghị **dùng AP mode thay EZ** trên iOS 14.5+. Android **không** thiếu
+`CHANGE_WIFI_MULTICAST_STATE` (AAR Tuya tự khai → merged manifest có sẵn).
+| Topic | URL |
+|---|---|
+| **Request Multicast Entitlement for Wi-Fi EZ** (form Apple, ports UDP 6666/6667 + TCP 6668, 3-5 workdays) | ✅ https://developer.tuya.com/en/docs/iot/oem-ez-privacy-apply?id=Kb8avep9c7wg6 |
+| **Wi-Fi EZ Mode (iOS)** - "Xcode 12.5 cannot send EZ packets on iOS 14.5+"; khuyến nghị AP mode | ✅ https://developer.tuya.com/en/docs/app-development/iOS-network-ez?id=Kceufaqgzx63j |
+| Wi-Fi AP Mode (TY_AP, hỗ trợ router 2.4+5GHz, timeout 100s) | ✅ https://developer.tuya.com/en/docs/app-development/hotspot-mode?id=Kceugwuabayha |
+| Device Pairing overview (Android) - EZ promiscuous vs AP STA→hotspot | ✅ https://developer.tuya.com/en/docs/app-development/wifinetwork?id=Ka6ki8lbwu82c |
+| Bluetooth Pairing - **trang DUY NHẤT liệt kê `<uses-permission>`** (chỉ cho BLE) | ✅ https://developer.tuya.com/en/docs/app-development/ble_activator?id=Kdljgsdlp1f7z |
+| Apple - Multicast Networking entitlement request form | ✅ https://developer.apple.com/contact/request/networking-multicast |
+
+> ⚠️ Doc Tuya **KHÔNG** liệt kê `<uses-permission>` cho Wi-Fi EZ ở bất kỳ trang Android nào (đã kiểm
+> Fast Integration + EZ + Device Pairing overview). Muốn biết permission thật → đọc **merged manifest**
+> (`app/build/intermediates/merged_manifests/.../AndroidManifest.xml`), đừng grep manifest nguồn.
+
+## Motion sensor / low-power device pairing confirmed ✅ (2026-07-10)
+Note: [docs/research/tuya-wifi-motion-sensor-pairing.md](../../../docs/research/tuya-wifi-motion-sensor-pairing.md)
+KL: **Motion sensor "Wi-Fi" thường thật ra là Zigbee sub-device (TS0202) → CẦN GATEWAY**, app mình chưa wire
+(`startSubDevicePairing` = not_implemented). Nếu là Wi-Fi low-power thật: **tự ngủ sau 3 phút**, phải giữ thức,
+iOS+EZ vẫn dính entitlement multicast → dùng AP.
+| Topic | URL |
+|---|---|
+| **PIR Motion Sensor = Zigbee sub-device** (TS0202, Profile 0x0104, cần gateway) | ✅ https://developer.tuya.com/en/docs/connect-subdevices-to-gateways/tuya-pir-sensor?id=K9ik6zvn49x5m |
+| **Wi-Fi Low-Power Device Solution** (auto-sleep 3 phút; EZ=đèn nhanh, AP=đèn chậm) | ✅ https://developer.tuya.com/en/docs/iot/wifi-module-mcu-development-overview?id=K9eor8kzjbrrn |
+| Product Troubleshooting (weak signal → thử EZ/compatibility/AP; gửi PID+video) | ✅ https://developer.tuya.com/en/docs/iot/product-troubleshooting-guide?id=K9s9rhio9x4xf |
+
+## "Auto Scan" device discovery - Tuya dùng gì confirmed ✅ (2026-07-10)
+Note: [docs/research/tuya-auto-scan-discovery.md](../../../docs/research/tuya-auto-scan-discovery.md)
+KL: Smart Life "Auto Scan" tìm thiết bị Wi-Fi chủ yếu bằng **BLE advertising** - thiết bị Wi-Fi đời mới là
+**combo (bleType có cờ Wifi)**: chạy Wi-Fi nhưng phát BLE beacon lúc pairing để bị dò ra. App mình ĐÃ có
+`startBleScan` (cùng cơ chế). Đường phụ: AP hotspot SSID `SmartLife-*` (iOS không quét Wi-Fi list được).
+| Topic | URL |
+|---|---|
+| SmartLife Auto Scan (cần quyền **Wi-Fi + Bluetooth**) | ✅ https://developer.tuya.com/en/docs/iot/user-manual-for-tuya-smart-v3177?id=K9obrofrfk4sk |
+| Bluetooth Devices - broadcast advertising, **combo (bleType includes Wifi)** | ✅ https://developer.tuya.com/en/docs/app-development/ble?id=Ka5vcxzbglphd |
 
 ## Cloud OpenAPI - App Push Notification (server→user) confirmed ✅ (2026-06-30)
 Note: [docs/research/tuya-cloud-app-push.md](../../../docs/research/tuya-cloud-app-push.md)
@@ -101,6 +144,32 @@ KL: Tuya KHÔNG cho backend verify session app-đã-login → tự dựng lớp 
 | OAuth 2.0 Authorization Flow (web-consent H5 → callback code → grant_type=2) | ✅ https://developer.tuya.com/en/docs/iot/authorization-code-page-usage?id=Kdkyz44dz6a7r |
 | Login with UID (`loginOrRegisterWithUid` - backend-của-bạn làm IdP) | ✅ https://developer.tuya.com/en/docs/app-development/useruid?id=Ka6a99lybyr0k |
 | Authentication Method (OAuth token exchange params) | 🔗 https://developer.tuya.com/en/docs/iot/authentication-method?id=Ka49gbaxjygox |
+
+## DP / device-control deep pages confirmed ✅ (2026-07-24)
+Note: [docs/research/tuya-icebath-dp-mapping.md](../../../docs/research/tuya-icebath-dp-mapping.md)
+KL: raw DP = **hex string chẵn chữ số** (KHÔNG base64) trên cả 2 nền tảng · value hiển thị =
+raw / 10^scale · **DP id 1–100 là của Tuya, custom bắt đầu từ 101** ⇒ code custom không có
+spec công khai, phải thực nghiệm.
+| Topic | URL |
+|---|---|
+| Device Control (iOS) - mã hoá dps theo kiểu, raw=hex chẵn, `publishDps` signature | ✅ https://developer.tuya.com/en/docs/app-development/iOS-device-control?id=Kaiyeu0xukcuc |
+| Device Control (Android) - như trên; `onDpUpdate` mới là xác nhận thật (URL Tuya gõ nhầm "andoird") | ✅ https://developer.tuya.com/en/docs/app-development/andoird_device_control?id=Kaixh4pfm8f0y |
+| Function Definition - DP 1–100 của Tuya, **custom từ 101** | ✅ https://developer.tuya.com/en/docs/iot/product-function-definition?id=K9tp155s4th6b |
+| Function Definition - kiểu dữ liệu & `scale` 0..3 (luỹ thừa 10) | ✅ https://developer.tuya.com/en/docs/iot/11?id=K9tp116dmo6br |
+| Device DP Parser (iOS) - `ThingSmartDpParser` render/validate theo schema | 🔗 https://developer.tuya.com/en/docs/app-development/ios_device_control?id=Kcxopr96vsl0f |
+| Cộng đồng: cold plunge chuẩn dùng category `ktkzq` (`temp_set`/`temp_current`) | ✅ https://github.com/tuya/tuya-home-assistant/issues/1001 |
+
+## Cloud device-control endpoints confirmed ✅ (2026-07-25)
+Note: [docs/research/tuya-cloud-device-control.md](../../../docs/research/tuya-cloud-device-control.md)
+KL: điều khiển server-side qua `code` (không phải dpId) · **Raw DP qua Cloud = BASE64** (App SDK=hex) ·
+`values` trong specification là **chuỗi JSON lồng** · `result:true` ≠ thiết bị đã đổi.
+| Topic | URL |
+|---|---|
+| Device Control overview (functions/specifications/status/commands) | ✅ https://developer.tuya.com/en/docs/cloud/device-control?id=K95zu01ksols7 |
+| Get status of a single device (`GET /v1.0/devices/{id}/status`) | ✅ https://developer.tuya.com/en/docs/cloud/1ef1a3044b?id=Kconf2usgnfwo |
+| Get specifications & properties (`functions[]`/`status[]`, type+values) | ✅ https://developer.tuya.com/en/docs/cloud/68c2e82f73?id=Kag2ybtxwlb9w |
+| Send commands (`POST /v1.0/devices/{id}/commands`) | ✅ https://developer.tuya.com/en/docs/cloud/e2512fb901?id=Kag2yag3tiqn5 |
+| Get the instruction set of the device (code để gửi) | 🔗 https://developer.tuya.com/en/docs/cloud/3ac29198c9?id=Kag2ybepz3arq |
 
 ## How to find a deep page you don't have
 `WebSearch` with `allowed_domains: ["developer.tuya.com"]`, e.g.

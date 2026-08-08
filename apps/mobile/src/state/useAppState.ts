@@ -7,7 +7,9 @@ import {
   setLight as tuyaSetLight,
   setPurify as tuyaSetPurify,
   setFreeze as tuyaSetFreeze,
+  setPower as tuyaSetPower,
   listenDevice,
+  refreshDevicesOnline,
 } from '../services/tuya';
 import { clampToRange } from '../services/deviceSchema';
 import { describeTuyaError } from '../services/tuyaError';
@@ -131,11 +133,29 @@ export function useAppState() {
     void connectDevice();
   };
 
+  // Làm mới CHỈ trạng thái online (không đọc lại cả snapshot ⇒ không nháy 'connecting', không nặng).
+  // Vì sao cần: HomeScreen chỉ HIỂN THỊ connStatus, không tự connect. connStatus chỉ được set khi mở
+  // Dashboard, nên Home dễ kẹt ở giá trị cũ (offline) trong khi máy đang online. Đọc lại bằng
+  // isDeviceOnline - ĐÚNG nguồn Dashboard đọc - rồi patch qua statusChanged để Home khớp thật.
+  const refreshOnline = async () => {
+    if (!devId) return;
+    const online = await refreshDevicesOnline([devId]);
+    if (devId in online) dispatch({ type: 'statusChanged', isOnline: online[devId] });
+  };
+
   const disconnectDevice = () => {
     dispatch({ type: 'disconnect' });
   };
 
-  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert đèn.
+  // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert.
+  const togglePower = () => {
+    const next = !device.powerOn;
+    dispatch({ type: 'dpPatch', patch: { powerOn: next } });
+    void tuyaSetPower(devId, next).then((res) => {
+      if (!res.ok) dispatch({ type: 'dpPatch', patch: { powerOn: !next } });
+    });
+  };
+
   const toggleLight = () => {
     const next = !device.lightOn;
     dispatch({ type: 'dpPatch', patch: { lightOn: next } });
@@ -188,9 +208,11 @@ export function useAppState() {
     devId,
     currentTemp: device.currentTemp,
     targetTemp: device.targetTemp,
+    powerOn: device.powerOn,
     lightOn: device.lightOn,
     purifyOn: device.purifyOn,
     freezeOn: device.freezeOn,
+    caps: device.caps,
     connStatus: device.status,
     deviceLoading: device.loading,
     deviceError: device.error,
@@ -198,6 +220,8 @@ export function useAppState() {
     pendingTarget: device.pendingTarget,
     connectDevice,
     disconnectDevice,
+    refreshOnline,
+    togglePower,
     toggleLight,
     togglePurify,
     toggleFreeze,

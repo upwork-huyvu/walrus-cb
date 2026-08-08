@@ -7,7 +7,7 @@ import StatusPill from '../components/StatusPill';
 import TempGauge from '../components/TempGauge';
 import CleaningPanel from '../components/CleaningPanel';
 import FilterReminderCard from '../components/FilterReminderCard';
-import { BulbIcon, LeafIcon, SnowIcon } from '../components/DeviceIcons';
+import { PowerIcon, BulbIcon, LeafIcon } from '../components/DeviceIcons';
 
 type Props = {
   state: AppState;
@@ -23,18 +23,26 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   const C = useTheme();
   const DARK_ON_GOLD = '#0A0A0F'; // icon trên nền vàng active
 
-  // Mở từ Device List: kết nối lại khi đổi sang thiết bị khác, HOẶC cùng thiết bị nhưng đã bị
-  // disconnect trước đó ("Hide device") - nếu không, mở lại đúng bồn cũ sẽ kẹt ở màn rỗng.
+  // Mở Device Detail là LUÔN đọc lại snapshot thật (online + DP), không dựa vào state cũ.
+  // Vì sao KHÔNG guard theo (devId !== state.devId || !deviceConnected): devId đã persist nên khớp
+  // sẵn, còn `deviceConnected` mặc định TRUE do state khởi tạo mock (status:'online') ⇒ guard thành
+  // false ⇒ connect bị bỏ ⇒ màn detail đứng nguyên mock (online 12°/6°) dù máy đang offline.
+  // connectReqRef trong useAppState đã chống race nên gọi lại mỗi lần mở là an toàn.
   useEffect(() => {
-    if (devId && (devId !== state.devId || !state.deviceConnected)) {
-      void state.connectDevice(devId);
-    }
+    if (devId) void state.connectDevice(devId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devId]);
 
   const name = devName || 'Walrus';
-  // Chế độ hiển thị trên pill: đang làm lạnh → Chilling, không → Idle.
-  const mode = state.freezeOn ? 'Chilling' : 'Idle';
+  // Pill mode: có nguồn (đang chạy) → Chilling, tắt → Idle. (Thiết bị không có DP freeze riêng;
+  // Power = setting_pwr chính là on/off của máy làm lạnh.)
+  const mode = state.powerOn ? 'Chilling' : 'Idle';
+
+  // Target hiển thị: state giữ RAW → chia scale (÷10^scale). "°" là glyph riêng bên cạnh.
+  const rawTarget = state.pendingTarget ?? state.targetTemp;
+  const scale = state.tempRange.scale;
+  const dispTarget =
+    rawTarget == null ? '-' : (rawTarget / Math.pow(10, scale)).toFixed(scale > 0 ? scale : 0);
 
   const menu = () => {
     Alert.alert(name, undefined, [
@@ -56,11 +64,13 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
     state.setTargetTemp(base + delta);
   };
 
+  // Công tắc theo CAPABILITY: chỉ hiện nút thiết bị có DP (Power/Light/Disinfection).
+  // Bồn g0cv1c KHÔNG có DP làm-lạnh riêng → không render freeze.
   const toggles = [
-    { key: 'light', on: state.lightOn, onPress: state.toggleLight, Icon: BulbIcon },
-    { key: 'purify', on: state.purifyOn, onPress: state.togglePurify, Icon: LeafIcon },
-    { key: 'freeze', on: state.freezeOn, onPress: state.toggleFreeze, Icon: SnowIcon },
-  ] as const;
+    { key: 'power', has: state.caps.power, on: state.powerOn, onPress: state.togglePower, Icon: PowerIcon },
+    { key: 'light', has: state.caps.light, on: state.lightOn, onPress: state.toggleLight, Icon: BulbIcon },
+    { key: 'purify', has: state.caps.purify, on: state.purifyOn, onPress: state.togglePurify, Icon: LeafIcon },
+  ].filter((t) => t.has);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -154,7 +164,7 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
                   </Pressable>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', minWidth: 74, justifyContent: 'center' }}>
                     <Text style={{ fontFamily: F.headline, color: C.ochre, fontSize: 46, lineHeight: 54 }}>
-                      {state.pendingTarget ?? state.targetTemp ?? '-'}
+                      {dispTarget}
                     </Text>
                     <Text style={{ fontFamily: F.headline, color: C.ochre, fontSize: 20, marginTop: 6 }}>°</Text>
                   </View>
@@ -234,6 +244,18 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
                   <Text style={{ fontFamily: F.body, color: C.white, fontSize: 14 }}>Progress</Text>
                 </Pressable>
               </View>
+
+              {/* DEV-only: mở màn test raw Tuya Cloud endpoints của ĐÚNG thiết bị đang xem. */}
+              {typeof __DEV__ !== 'undefined' && __DEV__ ? (
+                <Pressable
+                  onPress={() => navigate('device-test', { devId: devId || state.devId })}
+                  style={{ marginTop: 20, paddingVertical: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 1 }}>
+                    ⚗ Device API test (dev)
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             // Chưa pair → mời sang luồng pairing

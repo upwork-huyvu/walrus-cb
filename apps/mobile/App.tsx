@@ -34,6 +34,7 @@ import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import ReminderScreen from './src/screens/ReminderScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import HelpScreen from './src/screens/HelpScreen';
+import DeviceTestScreen from './src/screens/DeviceTestScreen';
 import BottomTabBar, { type TabKey } from './src/components/BottomTabBar';
 import { useAuth } from './src/state/useAuth';
 import { onSessionExpired } from './src/services/auth';
@@ -107,6 +108,11 @@ export default function App() {
       .catch(() => {});
   }, [auth.user?.uid]);
 
+  // Ref luôn trỏ bản refreshUnread MỚI NHẤT - để push effect (deps []) gọi mà không bị stale closure
+  // (nếu capture lúc mount thì uid còn undefined → nhận push không refresh được). m1-fix-notifications #3.
+  const refreshUnreadRef = useRef(refreshUnread);
+  refreshUnreadRef.current = refreshUnread;
+
   useEffect(() => {
     refreshUnread();
   }, [refreshUnread]);
@@ -138,7 +144,8 @@ export default function App() {
   // (background/quit) + re-register với Tuya khi FCM token đổi.
   useEffect(() => {
     void ensureNotificationChannel();
-    const unsubForeground = onForegroundMessage();
+    // Nhận push lúc app FOREGROUND → hiện Notifee + refresh badge Account ngay (#3).
+    const unsubForeground = onForegroundMessage(() => refreshUnreadRef.current());
     const unsubRefresh = listenTokenRefresh();
     const unsubTap = onNotificationTap((route) =>
       navigate(route.screen as ScreenName, route.params as Record<string, unknown>),
@@ -152,7 +159,7 @@ export default function App() {
       unsubRefresh();
       unsubTap();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Sau splash + đã biết trạng thái → route MỘT lần:
@@ -326,6 +333,9 @@ export default function App() {
       break;
     case 'help':
       currentScreen = <HelpScreen navigate={navigate} state={state} />;
+      break;
+    case 'device-test':
+      currentScreen = <DeviceTestScreen navigate={navigate} state={state} devId={activeDevId} />;
       break;
     case 'home-management':
       currentScreen = <HomeManagementScreen navigate={navigate} state={state} homeId={homeId} />;

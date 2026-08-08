@@ -5,7 +5,9 @@
 // provider=fcm  → hiện Tuya center + FCM log (đúng nhánh 2 "combine cả 2").
 // Native vắng (Metro dev) → Tuya mock; FCM vẫn gọi backend nếu có PUSH_API_KEY + uid.
 import { API_BASE_URL, PUSH_API_KEY } from '../config/api';
-import { getLastReadAt } from './notificationsRead';
+import { getReadState, markRead } from './notificationsRead';
+import { parseWhen } from '../lib/time';
+import { notifDiag } from './notifDiag'; // B1 DIAGNOSTIC - gỡ sau
 
 export type AppMessage = {
   id: string;
@@ -29,11 +31,9 @@ export const messagesAvailable: boolean = lib != null && lib.Tuya != null;
 
 const CAP = 50; // số bản ghi tối đa mỗi nguồn (đủ cho lịch sử thông báo cá nhân)
 
-// '2026-07-01 09:00' hoặc ISO → epoch ms (0 nếu không parse được).
-function whenToTs(s: string): number {
-  const t = new Date(s).getTime();
-  return Number.isNaN(t) ? 0 : t;
-}
+// '2026-07-01 09:00' (dấu cách - Tuya) hoặc ISO (FCM) → epoch ms. Dùng parseWhen (an toàn Hermes;
+// `new Date("2026-07-01 09:00")` trả NaN trên Hermes → phải ghép tường minh). Xem lib/time.ts.
+const whenToTs = parseWhen;
 
 // ISO → 'YYYY-MM-DD HH:mm' (giờ local) cho khớp format Tuya.
 function fmtLocal(iso: string): string {
@@ -90,15 +90,24 @@ async function getTuyaMessages(offset: number, limit: number): Promise<MessagePa
 
 /** Lịch sử FCM từ backend (/me/notifications). Chưa cấu hình key / chưa đăng nhập → rỗng. */
 async function getFcmHistory(uid: string): Promise<AppMessage[]> {
-  if (!PUSH_API_KEY || !uid) return [];
+  // B1 DIAGNOSTIC: #1 nghi FCM-history rỗng vì key/uid/config. Log điều kiện vào + kết quả.
+  notifDiag('fcm.enter', { apiKeySet: !!PUSH_API_KEY, uidSet: !!uid, base: API_BASE_URL });
+  if (!PUSH_API_KEY || !uid) {
+    notifDiag('fcm.skip', { reason: !PUSH_API_KEY ? 'PUSH_API_KEY rỗng' : 'uid rỗng' }); // B1
+    return [];
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/me/notifications?offset=0&limit=${CAP}`, {
       headers: { 'x-api-key': PUSH_API_KEY, 'x-tuya-uid': uid },
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      notifDiag('fcm.httpError', { status: res.status }); // B1 - 401 = sai key; 5xx = backend
+      return [];
+    }
     const data = (await res.json()) as {
       list?: Array<{ id: string; title: string; content: string; dateTime: string }>;
     };
+    notifDiag('fcm.ok', { status: res.status, count: (data.list ?? []).length }); // B1
     return (data.list ?? []).map((r) => ({
       id: `fcm-${r.id}`,
       msgType: 'notification',
@@ -108,33 +117,53 @@ async function getFcmHistory(uid: string): Promise<AppMessage[]> {
       ts: whenToTs(r.dateTime),
       hasNotRead: false, // đặt ở mergeMessages theo lastReadAt
     }));
-  } catch {
+  } catch (e) {
+    notifDiag('fcm.fetchError', { err: String(e) }); // B1 - mạng / JSON
     return [];
   }
 }
 
 /**
- * Gộp Tuya + FCM (thuần, test được). Read-state ĐỒNG NHẤT theo lastReadAt (local): noti mới hơn mốc
- * "đã xem lần cuối" = chưa đọc - áp cho cả 2 nguồn, để badge tự về 0 khi mở màn Notifications (ta không
- * gọi Tuya markRead). Sort mới nhất trước theo ts.
+ * Gộp Tuya + FCM (thuần, test được). Read-state THEO TỪNG MESSAGE: 1 noti = chưa đọc ⟺ id KHÔNG nằm trong
+ * `readIds`. Không còn dựa `ts > lastReadAt` (giòn vì parse Hermes) - áp đồng nhất cho cả 2 nguồn.
+ * Sort mới nhất trước theo ts.
  */
-export function mergeMessages(tuya: AppMessage[], fcm: AppMessage[], lastReadAt: number): AppMessage[] {
+export function mergeMessages(tuya: AppMessage[], fcm: AppMessage[], readIds: Set<string>): AppMessage[] {
   return [...tuya, ...fcm]
-    .map((m) => ({ ...m, hasNotRead: m.ts > lastReadAt }))
+    .map((m) => ({ ...m, hasNotRead: !readIds.has(m.id) }))
     .sort((a, b) => b.ts - a.ts);
 }
 
 /** Danh sách thông báo đã GỘP của user hiện tại (Tuya + FCM), mới nhất trước. */
 export async function getMessages(uid: string): Promise<MessagePage> {
-  const [tuya, fcm, lastReadAt] = await Promise.all([
+  const [tuya, fcm, readState] = await Promise.all([
     getTuyaMessages(0, CAP),
     getFcmHistory(uid),
-    getLastReadAt(),
+    getReadState(uid),
   ]);
-  return { list: mergeMessages(tuya.list, fcm, lastReadAt), hasMore: false };
+  const all = [...tuya.list, ...fcm];
+  let readIds = readState.ids;
+  // Migration v1→v2 (user chốt): lần đầu chạy bản mới → coi MỌI noti hiện có là ĐÃ ĐỌC (badge không nổ 1 lần).
+  if (!readState.initialized) {
+    const ids = all.map((m) => m.id);
+    await markRead(uid, ids);
+    readIds = new Set([...readIds, ...ids]);
+    notifDiag('migrate.v1_to_v2', { uid, markedRead: ids.length });
+  }
+  const list = mergeMessages(tuya.list, fcm, readIds);
+  // B1 DIAGNOSTIC: chốt #1 (nguồn nào rỗng) + #2 (item "mới" là FCM hay Tuya, ts=0 do parse?).
+  notifDiag('getMessages', {
+    tuyaCount: tuya.list.length,
+    fcmCount: fcm.length,
+    readCount: readIds.size,
+    initialized: readState.initialized,
+    unread: list.filter((m) => m.hasNotRead).length,
+    sample: list.slice(0, 6).map((m) => ({ id: m.id, type: m.msgType, ts: m.ts, unread: m.hasNotRead })),
+  });
+  return { list, hasMore: false };
 }
 
-/** Số thông báo CHƯA ĐỌC (Tuya hasNotRead + FCM mới hơn lastReadAt). */
+/** Số thông báo CHƯA ĐỌC (id không nằm trong read-set của user). */
 export async function getUnreadCount(uid: string): Promise<number> {
   const { list } = await getMessages(uid);
   return list.reduce((n, m) => n + (m.hasNotRead ? 1 : 0), 0);

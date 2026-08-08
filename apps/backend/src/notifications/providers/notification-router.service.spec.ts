@@ -44,7 +44,7 @@ describe('NotificationRouterService (chọn provider theo NOTIFICATION_PROVIDER)
 
   const input = { title: 'T', body: 'B', uids: ['u1'] };
 
-  it('provider=fcm → gọi FcmProvider + GHI lịch sử theo deliveredUids, KHÔNG gọi Tuya', async () => {
+  it('provider=fcm → gọi FcmProvider + GHI lịch sử theo uid NHẮM, KHÔNG gọi Tuya', async () => {
     configGet.mockReturnValue('fcm');
     const r = await router.send(input);
     expect(fcmSend).toHaveBeenCalledWith(input);
@@ -57,20 +57,34 @@ describe('NotificationRouterService (chọn provider theo NOTIFICATION_PROVIDER)
     );
   });
 
-  it('fcm: CHỈ log uid thật sự nhận (deliveredUids), bỏ uid gửi trượt', async () => {
+  it('DURABLE: log MỌI uid được nhắm (input.uids) KỂ CẢ uid gửi trượt (chưa có token)', async () => {
     configGet.mockReturnValue('fcm');
     fcmSend.mockResolvedValue(outcome('fcm', ['u1'])); // gửi u1,u2 nhưng chỉ u1 nhận
     await router.send({ title: 'T', body: 'B', uids: ['u1', 'u2'] });
     expect(recordFn).toHaveBeenCalledWith(
-      ['u1'],
+      ['u1', 'u2'], // ghi CẢ u2 (trượt) → user mở app sau vẫn thấy
       expect.objectContaining({ provider: 'fcm' }),
     );
   });
 
-  it('fcm: không ai nhận (deliveredUids rỗng) → KHÔNG ghi log', async () => {
+  it('DURABLE: không ai nhận (deliveredUids rỗng) nhưng có uid nhắm → VẪN ghi log', async () => {
     configGet.mockReturnValue('fcm');
     fcmSend.mockResolvedValue(outcome('fcm', []));
     await router.send(input);
+    expect(recordFn).toHaveBeenCalledWith(['u1'], expect.objectContaining({ provider: 'fcm' }));
+  });
+
+  it('fcm all=true (không uids đích) → fallback ghi deliveredUids', async () => {
+    configGet.mockReturnValue('fcm');
+    fcmSend.mockResolvedValue(outcome('fcm', ['ux', 'uy']));
+    await router.send({ title: 'T', body: 'B', all: true });
+    expect(recordFn).toHaveBeenCalledWith(['ux', 'uy'], expect.objectContaining({ provider: 'fcm' }));
+  });
+
+  it('fcm all=true + không ai nhận → không ghi (không có uid nào để ghi)', async () => {
+    configGet.mockReturnValue('fcm');
+    fcmSend.mockResolvedValue(outcome('fcm', []));
+    await router.send({ title: 'T', body: 'B', all: true });
     expect(recordFn).not.toHaveBeenCalled();
   });
 

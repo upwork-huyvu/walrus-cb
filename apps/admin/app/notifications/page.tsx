@@ -1,5 +1,6 @@
+import { unstable_rethrow } from 'next/navigation';
 import SendPushForm, { type Recipient } from '@/components/SendPushForm';
-import { apiGet } from '@/lib/api';
+import { apiGet, getActiveProvider } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,18 +29,12 @@ export default async function NotificationsPage() {
       username: x.username ?? x.nick_name,
       avatar: x.avatar,
     }));
-  } catch {
-    // ignore
+  } catch (e) {
+    unstable_rethrow(e); // auth-fail → /login; lỗi khác → recipients rỗng (vẫn nhập uid tay được)
   }
 
-  // Provider gửi đang bật (cấu hình ENV backend NOTIFICATION_PROVIDER).
-  let provider = 'tuya';
-  try {
-    const p = await apiGet<{ provider?: string }>('/notifications/provider');
-    if (p.provider) provider = p.provider;
-  } catch {
-    // ignore - mặc định hiển thị tuya
-  }
+  // Provider gửi đang bật (backend NOTIFICATION_PROVIDER). Fallback 'fcm'; auth-fail → /login.
+  const provider = await getActiveProvider();
 
   return (
     <main>

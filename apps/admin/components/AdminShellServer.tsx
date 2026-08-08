@@ -1,16 +1,11 @@
 import { type ReactNode } from 'react';
 import AdminShell from './AdminShell';
-import { apiGet } from '@/lib/api';
+import { getActiveProvider } from '@/lib/api';
 
 // Server wrapper: fetch NOTIFICATION_PROVIDER 1 lần → ẩn mục Templates khỏi sidebar khi dùng FCM
 // (template là Tuya-only). Dùng chung cho mọi layout admin để nav nhất quán.
+// getActiveProvider: auth-fail → redirect /login (KHÔNG nuốt); lỗi khác → fallback 'fcm'.
 export default async function AdminShellServer({ children }: { children: ReactNode }) {
-  let provider = 'tuya';
-  try {
-    const p = await apiGet<{ provider?: string }>('/notifications/provider');
-    if (p.provider) provider = p.provider;
-  } catch {
-    // ignore - mặc định hiện Templates
-  }
+  const provider = await getActiveProvider();
   return <AdminShell hideTemplates={provider === 'fcm'}>{children}</AdminShell>;
 }
