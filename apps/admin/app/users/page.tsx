@@ -1,22 +1,8 @@
-import Link from 'next/link';
 import { apiGet } from '@/lib/api';
-import { countryLabel, fmtEpoch, initialOf } from '@/lib/format';
-import DeleteUserRowButton from '@/components/DeleteUserRowButton';
+import { countryLabel } from '@/lib/format';
+import UsersBrowser, { type Stat, type UserRow } from '@/components/UsersBrowser';
 
 export const dynamic = 'force-dynamic';
-
-type UserRow = {
-  uid: string;
-  username?: string;
-  email?: string;
-  mobile?: string;
-  country_code?: string;
-  create_time?: number;
-  // backend enrich từ endpoint detail của Tuya (list gốc không có)
-  nick_name?: string;
-  avatar?: string;
-  business?: { deviceCount?: number };
-};
 
 type ListResponse = {
   list: UserRow[];
@@ -26,114 +12,99 @@ type ListResponse = {
   page_size: number;
 };
 
-const PAGE_SIZE = 20;
+const DEFAULT_SIZE = 10;
+const THIRTY_DAYS = 30 * 24 * 3600;
+
+/** Epoch Tuya lúc giây lúc mili-giây → luôn quy về giây để so sánh khoảng thời gian. */
+function toSeconds(t?: number): number | null {
+  if (!t) return null;
+  return t > 1e12 ? Math.floor(t / 1000) : t;
+}
+
+/**
+ * Đếm user đăng ký trong 30 ngày gần nhất. Tách khỏi thân component vì `Date.now()` không thuần -
+ * gọi thẳng trong render bị rule react-hooks/purity chặn, dù ở Server Component `force-dynamic`
+ * thì đọc giờ hiện tại là hợp lệ.
+ */
+function countRecent(rows: { create_time?: number }[]): number {
+  const nowSec = Math.floor(Date.now() / 1000);
+  return rows.filter((u) => {
+    const t = toSeconds(u.create_time);
+    return t != null && nowSec - t <= THIRTY_DAYS;
+  }).length;
+}
 
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; size?: string }>;
 }) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page ?? '1') || 1);
-  const data = await apiGet<ListResponse>(
-    `/users?page_no=${page}&page_size=${PAGE_SIZE}`,
+  const size = Math.min(100, Math.max(1, Number(sp.size ?? DEFAULT_SIZE) || DEFAULT_SIZE));
+
+  // KHÔNG truyền `username` sang backend: tham số đó của Tuya là tra khớp CHÍNH XÁC và trả
+  // `code=2006 user not exist` khi trượt → backend hoá 500. Lọc làm ở client (xem UsersBrowser).
+  const data = await apiGet<ListResponse>(`/users?page_no=${page}&page_size=${size}`);
+  const rows = data.list ?? [];
+
+  // ⚠️ Thẻ thống kê tính trên TRANG HIỆN TẠI, trừ "Total users" lấy từ `total` của API. Tuya không
+  // có endpoint tổng hợp; cộng hết mọi trang thì mỗi lần mở trang phải quét toàn bộ user.
+  const totalDevices = rows.reduce((n, u) => n + (u.business?.deviceCount ?? 0), 0);
+  const countries = new Set(
+    rows.map((u) => u.country_code).filter((c): c is string => Boolean(c)),
   );
+  // Đúng 1 nước → hiện tên nước thay cho dòng phụ chung chung (bỏ emoji cờ, giữ phần chữ).
+  const onlyCountry =
+    countries.size === 1 ? countryLabel([...countries][0])?.replace(/^\S+\s/, '') : null;
+
+  const stats: Stat[] = [
+    {
+      key: 'users',
+      label: 'Total users',
+      value: data.total ?? rows.length,
+      hint: 'All Tuya users',
+      icon: 'users',
+      tone: 'gold',
+    },
+    {
+      key: 'devices',
+      label: 'Total devices',
+      value: totalDevices,
+      hint: 'Connected devices',
+      icon: 'device',
+      tone: 'green',
+    },
+    {
+      key: 'recent',
+      label: 'Recently registered',
+      value: countRecent(rows),
+      hint: 'In the last 30 days',
+      icon: 'calendar',
+      tone: 'violet',
+    },
+    {
+      key: 'countries',
+      label: 'Countries',
+      value: countries.size,
+      hint: onlyCountry ?? 'Across all users',
+      icon: 'globe',
+      tone: 'blue',
+    },
+  ];
 
   return (
-    <main>
-      <div style={{ marginBottom: 16 }}>
-        <h1 className="page-title">Tuya users</h1>
-        <p className="page-sub">
-          Source: Tuya Cloud (end users registered via the app) · merged with business data from Supabase
-        </p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Contact</th>
-            <th>Country</th>
-            <th>Registered</th>
-            <th className="num">Devices</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.list.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="muted">
-                No Tuya users yet - check that the backend is running and TUYA_APP_SCHEMA / Tuya Cloud creds are set.
-              </td>
-            </tr>
-          ) : (
-            data.list.map((u) => {
-              const account = u.username ?? u.email ?? u.mobile ?? 'No name';
-              const contact = u.email ?? u.mobile;
-              const deviceCount = u.business?.deviceCount ?? 0;
-              return (
-                <tr key={u.uid}>
-                  <td>
-                    <div className="user-cell">
-                      <span className="avatar">
-                        {u.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={u.avatar} alt="" />
-                        ) : (
-                          initialOf(account)
-                        )}
-                      </span>
-                      <div>
-                        <div className="cell-main">
-                          <Link href={`/users/${u.uid}`}>{account}</Link>
-                        </div>
-                        <div className="cell-sub" title={u.uid}>
-                          {u.uid}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>{contact ?? <span className="muted">-</span>}</td>
-                  <td title={u.country_code ? `+${u.country_code}` : undefined}>
-                    {countryLabel(u.country_code) ?? (
-                      <span className="muted">-</span>
-                    )}
-                  </td>
-                  <td>{fmtEpoch(u.create_time)}</td>
-                  <td className="num">
-                    {deviceCount > 0 ? (
-                      <span className="badge gold">{deviceCount}</span>
-                    ) : (
-                      <span className="muted">0</span>
-                    )}
-                  </td>
-                  <td>
-                    <span style={{ display: 'inline-flex', gap: 12, alignItems: 'center' }}>
-                      <Link href={`/users/${u.uid}`}>Details</Link>
-                      <DeleteUserRowButton uid={u.uid} name={account} />
-                    </span>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-
-      <div className="pager">
-        {page > 1 ? (
-          <Link href={`/users?page=${page - 1}`}>← Prev</Link>
-        ) : (
-          <span className="muted">← Prev</span>
-        )}
-        <span className="muted">Page {page}</span>
-        {data.has_more ? (
-          <Link href={`/users?page=${page + 1}`}>Next →</Link>
-        ) : (
-          <span className="muted">Next →</span>
-        )}
-        <span className="muted">· Total {data.total}</span>
-      </div>
+    <main className="page-wide">
+      {/* Header + stats + bảng đều nằm trong UsersBrowser: ô tìm kiếm ở header phải chung state
+          với bảng mà nó lọc, nên cả cụm buộc phải ở cùng một cây Client Component. */}
+      <UsersBrowser
+        rows={rows}
+        page={page}
+        size={size}
+        total={data.total ?? rows.length}
+        hasMore={Boolean(data.has_more)}
+        stats={stats}
+      />
     </main>
   );
 }
