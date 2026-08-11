@@ -80,6 +80,7 @@ export default async function DashboardPage() {
       </section>
 
       <section className="table-card">
+        <div className="table-scroll">
         <table className="data-table">
           <thead>
             <tr>
@@ -108,6 +109,7 @@ export default async function DashboardPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </section>
     </main>
   );

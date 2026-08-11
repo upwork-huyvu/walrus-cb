@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import OnlineChip from '@/components/OnlineChip';
+import { IconEye } from '@/components/Icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,15 +24,19 @@ export default async function DevicesPage() {
   const devices = await apiGet<DeviceRow[]>('/admin/devices').catch(() => null);
 
   return (
-    <main>
-      <div style={{ marginBottom: 16 }}>
-        <h1 className="page-title">Devices</h1>
-        <p className="page-sub">
-          All ice baths across every user · live status &amp; control via Tuya Cloud API
-        </p>
+    <main className="page-wide">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Devices</h1>
+          <p className="page-sub">
+            All ice baths across every user · live status &amp; control via Tuya Cloud API
+          </p>
+        </div>
       </div>
 
-      <table>
+      <section className="table-card">
+      <div className="table-scroll">
+        <table className="data-table">
         <thead>
           <tr>
             <th>Device</th>
@@ -39,19 +44,19 @@ export default async function DevicesPage() {
             <th>Status</th>
             <th className="num">Current</th>
             <th className="num">Target</th>
-            <th></th>
+            <th className="right">Actions</th>
           </tr>
         </thead>
         <tbody>
           {devices === null ? (
             <tr>
-              <td colSpan={6} className="muted">
+              <td colSpan={6} className="empty-cell">
                 Couldn&apos;t load devices - check that the backend is running and Tuya Cloud creds are set.
               </td>
             </tr>
           ) : devices.length === 0 ? (
             <tr>
-              <td colSpan={6} className="muted">
+              <td colSpan={6} className="empty-cell">
                 No devices found on any user account.
               </td>
             </tr>
@@ -74,14 +79,19 @@ export default async function DevicesPage() {
                 </td>
                 <td className="num">{fmtTemp(d.currentTemp)}</td>
                 <td className="num">{fmtTemp(d.targetTemp)}</td>
-                <td>
-                  <Link href={`/devices/${d.id}`}>Control</Link>
+                <td className="right">
+                  <Link href={`/devices/${d.id}`} className="btn btn-sm view-btn">
+                    <IconEye />
+                    Control
+                  </Link>
                 </td>
               </tr>
             ))
           )}
         </tbody>
       </table>
+        </div>
+      </section>
     </main>
   );
 }

@@ -171,6 +171,97 @@ export function IconChevronRight({ size = 16, className }: P) {
   );
 }
 
+export function IconMenu({ size = 20, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  );
+}
+
+export function IconClose({ size = 18, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+/** Mũi tên hai chiều cho tiêu đề cột sắp xếp được. */
+export function IconSort({ size = 13, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M8 9.5 12 5.5l4 4" />
+      <path d="M8 14.5 12 18.5l4-4" />
+    </svg>
+  );
+}
+
+export function IconTrash({ size = 15, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M4 6.5h16" />
+      <path d="M9.5 6.5V4.8a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3v1.7" />
+      <path d="M6.5 6.5 7.4 19a1.6 1.6 0 0 0 1.6 1.5h6a1.6 1.6 0 0 0 1.6-1.5l.9-12.5" />
+      <path d="M10.5 10.5v6M13.5 10.5v6" />
+    </svg>
+  );
+}
+
+export function IconMail({ size = 15, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <rect x="2.8" y="5" width="18.4" height="14" rx="2.2" />
+      <path d="m3.4 6.6 8.6 6 8.6-6" />
+    </svg>
+  );
+}
+
+export function IconClock({ size = 15, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <circle cx="12" cy="12" r="8.8" />
+      <path d="M12 6.8V12l3.4 2" />
+    </svg>
+  );
+}
+
+export function IconBox({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M12 2.8 20.5 7v10L12 21.2 3.5 17V7Z" />
+      <path d="M3.5 7 12 11.4 20.5 7" />
+      <path d="M12 11.4v9.8" />
+    </svg>
+  );
+}
+
+export function IconChart({ size = 16, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    </svg>
+  );
+}
+
+export function IconArrowLeft({ size = 15, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M20 12H4" />
+      <path d="m10 6-6 6 6 6" />
+    </svg>
+  );
+}
+
+export function IconArrowRight({ size = 15, className }: P) {
+  return (
+    <svg {...base(size)} className={className} aria-hidden>
+      <path d="M4 12h16" />
+      <path d="m14 6 6 6-6 6" />
+    </svg>
+  );
+}
+
 export function IconChevronDown({ size = 14, className }: P) {
   return (
     <svg {...base(size)} className={className} aria-hidden>

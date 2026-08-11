@@ -2,13 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { logout } from '@/lib/auth';
 import {
+  IconClose,
   IconDevice,
   IconGear,
   IconHome,
   IconLogout,
+  IconMenu,
   IconSend,
   IconShield,
   IconTemplate,
@@ -72,7 +74,32 @@ export default function AdminShell({
   children: ReactNode;
   hideTemplates?: boolean;
 }) {
-  const active = activeHref(usePathname());
+  const path = usePathname();
+  const active = activeHref(path);
+  const [open, setOpen] = useState(false);
+
+  // Đổi trang → đóng drawer. Không có cái này thì trên điện thoại bấm một mục xong menu vẫn che
+  // kín màn hình, phải bấm thêm lần nữa mới thấy nội dung.
+  //
+  // Chỉnh state NGAY TRONG RENDER thay vì trong useEffect: đây là pattern React khuyến nghị cho
+  // "state phái sinh từ prop", tránh cascading render mà rule react-hooks/set-state-in-effect
+  // cảnh báo - và drawer đóng ngay ở lần render đầu của trang mới, không chớp một nhịp.
+  const [syncedPath, setSyncedPath] = useState(path);
+  if (path !== syncedPath) {
+    setSyncedPath(path);
+    setOpen(false);
+  }
+
+  // Esc để đóng - drawer là lớp phủ toàn màn, phải có đường thoát bằng bàn phím.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   // provider=fcm → ẩn hẳn Templates (Tuya-only) khỏi UI.
   const groups = GROUPS.map((g) =>
     g.title === 'Notifications' && !hideTemplates
@@ -81,7 +108,26 @@ export default function AdminShell({
   );
 
   return (
-    <div className="shell">
+    <div className={`shell${open ? ' nav-open' : ''}`}>
+      {/* Thanh trên CHỈ hiện ở màn hẹp (CSS ẩn từ 900px trở lên) - desktop vẫn là sidebar gim. */}
+      <div className="mobile-bar">
+        <button
+          type="button"
+          className="icon-btn lg"
+          onClick={() => setOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={open}
+        >
+          <IconMenu />
+        </button>
+        <span className="mobile-brand">
+          <span className="mark">❄</span> Walrus <small>Admin</small>
+        </span>
+      </div>
+
+      {/* Nền mờ: bấm ra ngoài để đóng. aria-hidden vì đã có nút đóng thật trong drawer. */}
+      <div className="nav-backdrop" onClick={() => setOpen(false)} aria-hidden />
+
       <aside className="sidebar">
         <div className="sidebar-head">
           <span className="mark">❄</span>
@@ -89,6 +135,15 @@ export default function AdminShell({
             Walrus
             <small>Admin</small>
           </div>
+          {/* Nút đóng chỉ dùng ở chế độ drawer; desktop bị CSS ẩn. */}
+          <button
+            type="button"
+            className="icon-btn nav-close"
+            onClick={() => setOpen(false)}
+            aria-label="Close menu"
+          >
+            <IconClose />
+          </button>
         </div>
 
         <nav className="sidebar-nav">

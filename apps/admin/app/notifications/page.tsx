@@ -36,9 +36,12 @@ export default async function NotificationsPage() {
   // Provider gửi đang bật (backend NOTIFICATION_PROVIDER). Fallback 'fcm'; auth-fail → /login.
   const provider = await getActiveProvider();
 
+  // Cố ý KHÔNG dùng `page-wide` như các trang bảng: đây là form, và form trải 1320px thì nhãn
+  // với ô nhập cách nhau quá xa. Chỉ đồng bộ phần header (`page-head`); thân form đã tự bọc
+  // `.card`/`.panel` trong SendPushForm nên vẫn cùng ngôn ngữ thị giác với các trang khác.
   return (
     <main>
-      <div className="bar">
+      <div className="page-head">
         <div>
           <h1 className="page-title">Send notifications</h1>
           <p className="page-sub">

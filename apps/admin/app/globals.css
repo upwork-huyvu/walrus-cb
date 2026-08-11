@@ -810,3 +810,602 @@ main.page-wide {
     width: 100%;
   }
 }
+
+/* ===================================================================
+   User detail + device list (bản dựng theo mockup 2026-08-10)
+   =================================================================== */
+
+/* ---------- Avatar nhiều tông ---------- */
+/* Màu suy từ uid (avatarTone) → mỗi user một sắc cố định, dễ phân biệt khi lướt bảng. */
+.avatar.tone-a { background: rgba(212,175,55,.14); color: #d4af37; border-color: rgba(212,175,55,.35); }
+.avatar.tone-b { background: rgba(169,140,216,.16); color: #a98cd8; border-color: rgba(169,140,216,.38); }
+.avatar.tone-c { background: rgba(95,184,145,.16);  color: #5fb891; border-color: rgba(95,184,145,.38); }
+.avatar.tone-d { background: rgba(111,168,220,.16); color: #6fa8dc; border-color: rgba(111,168,220,.38); }
+.avatar.tone-e { background: rgba(229,105,91,.16);  color: #e5695b; border-color: rgba(229,105,91,.38); }
+.avatar.tone-f { background: rgba(224,169,74,.16);  color: #e0a94a; border-color: rgba(224,169,74,.38); }
+.avatar.xl {
+  width: 62px;
+  height: 62px;
+  font-size: 24px;
+  position: relative;
+}
+
+/* ---------- Chấm trạng thái ---------- */
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: none;
+}
+.dot.online { background: var(--success); }
+.dot.offline { background: var(--faint); }
+.avatar .dot {
+  position: absolute;
+  right: 1px;
+  bottom: 3px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--surface-2);
+}
+.status-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ---------- Dòng bảng bấm được ---------- */
+.row-link {
+  cursor: pointer;
+}
+.row-link:focus-visible {
+  outline: none;
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+/* ---------- Tiêu đề cột sắp xếp ---------- */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.th-sort:hover {
+  color: var(--fg);
+  border: none;
+}
+
+/* ---------- Nút Filter có nhãn ---------- */
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  background: var(--surface-2);
+}
+.filter-btn.on {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.count-chip {
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---------- Trang chi tiết: đầu trang ---------- */
+.detail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--gold);
+}
+.back-link:hover {
+  text-decoration: none;
+  opacity: 0.85;
+}
+.detail-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.hero-text {
+  min-width: 0;
+}
+.hero-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-name .page-title {
+  font-size: 25px;
+}
+.hero-uid {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.hero-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.hero-meta > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dotsep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+/* ---------- Lưới 2 cột của trang chi tiết ---------- */
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+.detail-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.panel-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-family: var(--font-sans, system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: 0;
+}
+.card-title svg {
+  color: var(--gold);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.card-head .card-title {
+  margin-bottom: 0;
+}
+.tuya-chip {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--ochre);
+  color: #0b0b0c;
+}
+
+/* ---------- Danh sách khoá/giá trị ---------- */
+.kv {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr;
+  gap: 0;
+  margin: 0;
+  font-size: 13.5px;
+}
+.kv dt,
+.kv dd {
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  margin: 0;
+}
+.kv dt {
+  color: var(--muted);
+}
+.kv dd {
+  text-align: right;
+  color: var(--fg);
+  word-break: break-word;
+}
+.kv dt:last-of-type,
+.kv dd:last-of-type {
+  border-bottom: none;
+}
+.kv-copy,
+.kv-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  width: 100%;
+}
+.kv-icon svg,
+.kv-copy svg {
+  color: var(--faint);
+  flex: none;
+}
+
+/* ---------- Danh sách số liệu (Summary / Tuya info) ---------- */
+.stat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13.5px;
+}
+.stat-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-list li:last-child {
+  border-bottom: none;
+}
+.stat-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+.stat-list span svg {
+  color: var(--faint);
+}
+.stat-list b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.stat-list b.small {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* ---------- Thẻ thiết bị trong trang chi tiết ---------- */
+.devices-block {
+  padding-bottom: 20px;
+}
+.device-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.device-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+.device-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  flex: none;
+}
+.device-thumb.sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+.device-body {
+  flex: 1;
+  min-width: 0;
+}
+.device-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.device-temps {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.temp-box {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.temp-label {
+  font-size: 10.5px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.temp-value {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+.temp-value.gold {
+  color: var(--gold);
+}
+.temp-value em,
+.temp-cell em {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.temp-cell {
+  font-weight: 600;
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+.temp-cell.gold {
+  color: var(--gold);
+}
+.mono-id {
+  font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  justify-content: flex-start;
+}
+
+/* ---------- Phân trang dạng số ---------- */
+.page-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.page-num:hover {
+  color: var(--fg);
+  border-color: var(--border);
+}
+.page-num.on {
+  border-color: var(--gold);
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+.page-gap {
+  color: var(--faint);
+  padding: 0 2px;
+}
+
+@media (max-width: 1100px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===================================================================
+   Responsive - dùng được trên điện thoại
+   Nguyên tắc: TRANG không bao giờ cuộn ngang. Bảng rộng thì cuộn TRONG khung của nó.
+   =================================================================== */
+
+/* Khung cuộn ngang cho bảng. Ở mọi kích thước: bảng vượt bề ngang thì cuộn tại chỗ, không đẩy
+   cả trang. `.table-foot` nằm NGOÀI khung này nên phần đếm/phân trang luôn thấy được. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll > .data-table {
+  min-width: 100%;
+}
+
+/* Thanh trên + drawer: mặc định ẩn, chỉ bật ở màn hẹp bên dưới. */
+.mobile-bar,
+.nav-backdrop,
+.nav-close {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* Sidebar rời khỏi dòng chảy, trượt vào từ trái. Desktop vẫn là `position: sticky` (gim) - chỉ
+     ở đây mới đổi sang `fixed`, nên yêu cầu "menu luôn gim" của bản desktop không bị ảnh hưởng. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    width: 272px;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: none;
+  }
+  .shell.nav-open .sidebar {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+  .shell.nav-open .nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 10px 14px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+  }
+  .mobile-brand {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--font-serif, Georgia, serif);
+    font-size: 17px;
+    color: var(--fg);
+  }
+  .mobile-brand .mark {
+    color: var(--gold);
+  }
+  .mobile-brand small {
+    font-family: var(--font-sans, system-ui, sans-serif);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .nav-close {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
+  /* Thanh trên là con của `.shell` (đang display:flex) → phải cho shell xuống cột, không thì
+     thanh trên nằm cạnh nội dung thay vì phía trên. */
+  .shell {
+    flex-direction: column;
+  }
+  .content {
+    width: 100%;
+  }
+
+  main,
+  main.page-wide {
+    padding: 18px 14px 36px;
+    max-width: 100%;
+  }
+  .page-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .toolbar {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .search {
+    min-width: 0;
+    flex: 1 1 200px;
+  }
+  .filter-pop {
+    right: auto;
+    left: 0;
+    width: min(320px, calc(100vw - 40px));
+  }
+
+  /* Chi tiết user: 2 cột → 1 cột, thẻ thiết bị xuống dòng gọn hơn. */
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .device-cards {
+    grid-template-columns: 1fr;
+  }
+  .device-card {
+    flex-wrap: wrap;
+  }
+  .device-temps {
+    width: 100%;
+  }
+  .temp-box {
+    flex: 1;
+  }
+  .detail-hero {
+    align-items: flex-start;
+  }
+  .hero-name .page-title {
+    font-size: 21px;
+  }
+
+  /* Chân bảng: đếm một dòng, phân trang một dòng - không ép chung một hàng chật. */
+  .table-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .pager-right {
+    flex-wrap: wrap;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+  .kv {
+    grid-template-columns: 1fr;
+  }
+  .kv dt {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .kv dd {
+    text-align: left;
+    padding-top: 3px;
+  }
+  .kv-copy,
+  .kv-icon {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .device-temps {
+    flex-direction: column;
+  }
+  .hero-meta {
+    font-size: 11.5px;
+  }
+}

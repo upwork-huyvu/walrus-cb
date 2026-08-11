@@ -12,6 +12,18 @@ export function displayName(u: NamedUser): string {
   return u.nick_name || u.username || u.email || u.mobile || 'No name';
 }
 
+/**
+ * Tông màu avatar suy từ uid → mỗi user một sắc cố định, không nhấp nháy giữa các lần render.
+ * Đặt ở đây (module thường) chứ KHÔNG ở trong component `'use client'`: Server Component không
+ * gọi được hàm export từ module client - Next coi nó là client reference và ném lỗi lúc render.
+ */
+const AVATAR_TONES = ['a', 'b', 'c', 'd', 'e', 'f'] as const;
+export function avatarTone(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AVATAR_TONES[h % AVATAR_TONES.length];
+}
+
 /** Chữ cái đầu cho avatar (bỏ qua placeholder thì trả '?'). */
 export function initialOf(name: string): string {
   const c = name.trim().charAt(0);

@@ -45,6 +45,7 @@ export default async function SettingsPage() {
       </div>
 
       <section className="table-card">
+        <div className="table-scroll">
         <table className="data-table">
           <thead>
             <tr>
@@ -64,6 +65,7 @@ export default async function SettingsPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </section>
     </main>
   );
