@@ -52,6 +52,26 @@ export type AdminDeviceDetail = DeviceModel & {
 };
 
 /**
+ * Thiết bị của MỘT user - đủ field cho màn "All devices" của admin.
+ * Khác `AdminDeviceListItem` ở chỗ không kèm owner (đã biết owner rồi) nhưng có thêm product
+ * name, time zone và mốc thời gian.
+ */
+export type AdminUserDeviceItem = {
+  id: string;
+  name: string;
+  online: boolean;
+  productId?: string;
+  productName?: string;
+  icon?: string;
+  currentTemp: number | null;
+  targetTemp: number | null;
+  timeZone?: string;
+  createTime?: number;
+  updateTime?: number;
+  activeTime?: number;
+};
+
+/**
  * Quản lý + điều khiển thiết bị cho admin QUA TUYA CLOUD OpenAPI (server→cloud).
  * KHÔNG dùng App SDK (client-only). Mọi lệnh raw đi qua codec base64 ở device-dp.ts.
  */
@@ -92,6 +112,34 @@ export class DevicesService {
       page += 1;
     }
     return out;
+  }
+
+  /**
+   * Thiết bị của một user cụ thể. Dùng lại `getUserDevices` (đã lược `local_key`) rồi decode
+   * nhiệt độ y như danh sách phẳng - KHÔNG duyệt toàn bộ user như `listAllDevices`, nên rẻ hơn
+   * hẳn khi chỉ cần xem thiết bị của một người.
+   */
+  async listByUser(uid: string): Promise<AdminUserDeviceItem[]> {
+    const devices = await this.users.getUserDevices(uid);
+    return (devices ?? [])
+      .filter((d) => Boolean(d.id))
+      .map((d) => {
+        const temps = this.decodeListTemps(d.status);
+        return {
+          id: d.id,
+          name: d.name ?? '',
+          online: !!d.online,
+          productId: d.product_id,
+          productName: d.product_name,
+          icon: d.icon,
+          currentTemp: temps.currentTemp,
+          targetTemp: temps.targetTemp,
+          timeZone: d.time_zone,
+          createTime: d.create_time,
+          updateTime: d.update_time,
+          activeTime: d.active_time,
+        };
+      });
   }
 
   /** Chi tiết 1 thiết bị: status + specification + online → model đã decode. */
