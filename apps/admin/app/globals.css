@@ -1409,3 +1409,95 @@ main.page-wide {
     font-size: 11.5px;
   }
 }
+
+/* ===================================================================
+   QA feedback 2026-08-18 - khoảng cách & trạng thái tải
+   =================================================================== */
+
+/* #1 Ô search + nút Filter dính sát bảng. `.page-head` đã có margin dưới, nhưng `.toolbar` thì
+   chưa → bảng ép ngay vào đáy toolbar. */
+.toolbar {
+  margin-bottom: 16px;
+}
+
+/* #2 + #4 Form gửi thông báo: `.card` chỉ có padding nên các khối con xếp sát nhau, và nút Send
+   dính luôn vào nội dung cuối. Cho form thành flex có gap → mọi khoảng cách đều đặn, không phải
+   rải margin thủ công từng chỗ. */
+form.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+/* Nhãn ↔ ô nhập: 6px quá chật với form dài. */
+form.card label {
+  gap: 9px;
+}
+/* Nút gửi tách hẳn khỏi phần nội dung phía trên. */
+form.card > button[type='submit'] {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+/* Nút × xoá nội dung ô tìm kiếm. */
+.clear-btn {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+/* ---------- Skeleton loader ---------- */
+/* Dùng cho `loading.tsx` của từng route. Next.js tự hiện khi Server Component đang fetch. */
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.28;
+  }
+}
+.sk {
+  background: var(--surface-3);
+  border-radius: 6px;
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+.sk-line {
+  height: 12px;
+}
+.sk-title {
+  height: 26px;
+  width: 220px;
+  border-radius: 8px;
+}
+.sk-sub {
+  height: 13px;
+  width: 340px;
+  max-width: 80%;
+  margin-top: 10px;
+}
+.sk-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex: none;
+}
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.sk-row:last-child {
+  border-bottom: none;
+}
+.sk-card {
+  height: 96px;
+  border-radius: 14px;
+}
+/* Người dùng bật "giảm chuyển động" → giữ khối xám tĩnh, vẫn thấy đang tải, không nhấp nháy. */
+@media (prefers-reduced-motion: reduce) {
+  .sk {
+    animation: none;
+  }
+}

@@ -13,11 +13,6 @@ type UserRow = {
 };
 type UserList = { list?: UserRow[] };
 
-const PROVIDER_LABEL: Record<string, string> = {
-  tuya: 'Tuya App Push',
-  fcm: 'Firebase (FCM)',
-};
-
 export default async function NotificationsPage() {
   // Users list as the multi-select source (ignore errors - manual UID entry still works).
   let recipients: Recipient[] = [];
@@ -48,9 +43,6 @@ export default async function NotificationsPage() {
             Enter a title + description → choose recipients (multiple users / all) → send.
           </p>
         </div>
-        <span className={`badge ${provider === 'fcm' ? 'success' : 'gold'}`} title="Configured via NOTIFICATION_PROVIDER (backend ENV)">
-          Sending via: {PROVIDER_LABEL[provider] ?? provider}
-        </span>
       </div>
 
       <SendPushForm recipients={recipients} provider={provider} />
