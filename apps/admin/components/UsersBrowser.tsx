@@ -1,9 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { avatarTone, fmtEpoch, initialOf } from '@/lib/format';
-import { IconChevronLeft, IconChevronRight, IconFilter, IconSearch, IconSort } from './Icons';
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconClose,
+  IconFilter,
+  IconSearch,
+  IconSort,
+  IconTrash,
+} from './Icons';
 
 const SIZES = [10, 20, 50, 100]; // Tuya chặn page_size ≤ 100 (ListUsersQueryDto)
 
@@ -82,6 +91,10 @@ export default function UsersBrowser({
           <h1 className="page-title">Tuya Users</h1>
           <p className="page-sub">Manage Tuya Cloud users</p>
         </div>
+        <Link href="/users/deleted" className="btn btn-sm view-btn">
+          <IconTrash />
+          Deleted users
+        </Link>
       </div>
 
       <div className="toolbar">
@@ -93,6 +106,17 @@ export default function UsersBrowser({
             placeholder="Search by nickname, email or UID..."
             aria-label="Search users"
           />
+          {q ? (
+            <button
+              type="button"
+              className="icon-btn clear-btn"
+              onClick={() => setQ('')}
+              aria-label="Clear search"
+              title="Clear search"
+            >
+              <IconClose size={15} />
+            </button>
+          ) : null}
         </div>
         <div className="filter-wrap">
           <button
