@@ -10,6 +10,7 @@ describe('UsersService.deleteUser (orchestration)', () => {
   const markDone = jest.fn();
   const markFailure = jest.fn();
   const listPending = jest.fn();
+  const listDeletedUids = jest.fn();
   const deleteMany = jest.fn();
   const configGet = jest.fn();
 
@@ -22,6 +23,7 @@ describe('UsersService.deleteUser (orchestration)', () => {
     markDone,
     markFailure,
     listPending,
+    listDeletedUids,
   } as unknown as DeleteJobsService;
   const config = { get: configGet } as unknown as AppConfigService;
 
@@ -30,6 +32,7 @@ describe('UsersService.deleteUser (orchestration)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     configGet.mockReturnValue('postgres://x'); // DATABASE_URL có → cleanup chạy
+    listDeletedUids.mockResolvedValue([]); // mặc định: thùng rác rỗng → listUsers không lọc ai
     service = new UsersService(tuya, prisma, jobs, config);
   });
 
@@ -118,6 +121,32 @@ describe('UsersService.deleteUser (orchestration)', () => {
       expect(res.list[0].avatar).toBe('https://img/x.png');
       expect(res.list[1].nick_name).toBeUndefined(); // lỗi detail không chặn list
       expect(res.total).toBe(2);
+    });
+
+    // Tuya `pre-delete` giữ user trong response suốt 7 ngày ân hạn → phải tự lọc, nếu không admin
+    // bấm xoá xong vẫn thấy y nguyên (đúng lỗi QA báo).
+    it('loại user đã yêu cầu xoá khỏi danh sách và trừ vào total', async () => {
+      listDeletedUids.mockResolvedValue(['u1']);
+      const svc = new UsersService(tuya, prisma, jobs, {
+        get: () => undefined,
+        require: () => 'schema-x',
+      } as unknown as AppConfigService);
+
+      tuyaRequest.mockImplementation((req: { path: string }) => {
+        if (req.path.includes('/users?') || req.path.includes('/apps/')) {
+          return Promise.resolve({
+            list: [{ uid: 'u1' }, { uid: 'u2' }],
+            total: 2,
+            has_more: false,
+          });
+        }
+        return Promise.reject(new Error('detail down'));
+      });
+
+      const res = await svc.listUsers({ page_no: 1, page_size: 20 });
+
+      expect(res.list.map((u) => u.uid)).toEqual(['u2']);
+      expect(res.total).toBe(1);
     });
   });
 

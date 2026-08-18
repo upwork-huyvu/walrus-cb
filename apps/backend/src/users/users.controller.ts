@@ -20,6 +20,16 @@ export class UsersController {
     return this.users.listUsers(query);
   }
 
+  /**
+   * Thùng rác - user đang trong ân hạn xoá của Tuya.
+   * Khai TRƯỚC `@Get(':uid')`: cả hai đều là đường dẫn 1 đoạn nên NestJS chọn theo THỨ TỰ khai
+   * báo; đặt sau thì `/users/deleted` sẽ bị nuốt thành `uid = "deleted"`.
+   */
+  @Get('deleted')
+  listDeleted() {
+    return this.users.listDeleted();
+  }
+
   @Get(':uid')
   detail(@Param('uid') uid: string) {
     return this.users.getUser(uid);
@@ -33,5 +43,11 @@ export class UsersController {
   @Delete(':uid')
   remove(@Param('uid') uid: string) {
     return this.users.deleteUser(uid);
+  }
+
+  /** Xoá VĨNH VIỄN từ thùng rác - bỏ qua ân hạn 7 ngày, không hoàn tác. */
+  @Delete(':uid/permanent')
+  purge(@Param('uid') uid: string) {
+    return this.users.purgeUser(uid);
   }
 }

@@ -30,6 +30,34 @@ export class DeleteJobsService {
     });
   }
 
+  /**
+   * uid của mọi user ĐÃ yêu cầu xoá (pre-delete đã gửi hoặc đang chờ retry).
+   * Dùng để loại khỏi danh sách chính - user đã bấm xoá thì không nên còn nằm chung với user sống.
+   * `failed` KHÔNG tính: pre-delete chưa từng tới Tuya nên user đó vẫn hoạt động bình thường.
+   */
+  async listDeletedUids(): Promise<string[]> {
+    const rows = await this.prisma.deleteJob.findMany({
+      where: { status: { in: ['pending', 'done'] } },
+      select: { tuyaUid: true },
+      distinct: ['tuyaUid'],
+    });
+    return rows.map((r) => r.tuyaUid);
+  }
+
+  /** Bản ghi thùng rác, mới nhất trước (1 dòng / uid). */
+  async listDeleted() {
+    return this.prisma.deleteJob.findMany({
+      where: { status: { in: ['pending', 'done'] } },
+      orderBy: { createdAt: 'desc' },
+      distinct: ['tuyaUid'],
+    });
+  }
+
+  /** Gỡ mọi job của uid - gọi sau khi đã xoá VĨNH VIỄN trên Tuya. */
+  removeByUid(tuyaUid: string) {
+    return this.prisma.deleteJob.deleteMany({ where: { tuyaUid } });
+  }
+
   listPending(limit = 20) {
     return this.prisma.deleteJob.findMany({
       where: { status: 'pending', attempts: { lt: MAX_DELETE_ATTEMPTS } },

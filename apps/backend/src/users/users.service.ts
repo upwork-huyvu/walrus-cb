@@ -41,7 +41,11 @@ export class UsersService {
       },
     });
 
-    const list = result.list ?? [];
+    // Loại user đã bấm xoá khỏi danh sách chính - chúng nằm ở "thùng rác" (`GET /users/deleted`).
+    // Tuya `pre-delete` có ân hạn 7 ngày nên user VẪN nằm trong response của Tuya suốt thời gian đó;
+    // không lọc thì admin bấm xoá xong vẫn thấy nguyên si, đúng cái khiến QA tưởng xoá hỏng.
+    const deletedUids = new Set(await this.jobs.listDeletedUids());
+    const list = (result.list ?? []).filter((u) => !deletedUids.has(u.uid));
     const uids = list.map((u) => u.uid);
     const [counts, infos] = await Promise.all([
       this.deviceCounts(uids),
@@ -54,7 +58,9 @@ export class UsersService {
         ...(infos.get(u.uid) ?? {}),
         business: { deviceCount: counts.get(u.uid) ?? 0 },
       })),
-      total: result.total ?? list.length,
+      // Trừ đi phần đã xoá để con số khớp với những gì thực sự hiển thị. Tuya vẫn đếm cả user
+      // đang trong ân hạn, nên dùng thẳng `result.total` sẽ luôn lớn hơn số dòng thấy được.
+      total: Math.max(0, (result.total ?? list.length) - deletedUids.size),
       has_more: result.has_more ?? false,
       page_no: query.page_no,
       page_size: query.page_size,
@@ -116,6 +122,59 @@ export class UsersService {
       void local_key;
       return rest;
     });
+  }
+
+  /**
+   * Thùng rác: user đã yêu cầu xoá, đang trong ân hạn 7 ngày của Tuya.
+   * Cố lấy thêm thông tin hiển thị (email/nickname) - user vẫn tồn tại trên Tuya cho tới khi hết
+   * hạn nên thường lấy được; nếu Tuya đã xoá thật rồi thì chỉ còn uid, và đó là trạng thái hợp lệ.
+   */
+  async listDeleted() {
+    const jobs = await this.jobs.listDeleted();
+    return Promise.all(
+      jobs.map(async (j) => {
+        const info = await this.tuya
+          .request<TuyaUserInfo>({
+            method: 'GET',
+            path: `/v1.0/users/${j.tuyaUid}/infos`,
+          })
+          .catch(() => null);
+        return {
+          uid: j.tuyaUid,
+          status: j.status,
+          deletedAt: j.createdAt,
+          lastError: j.lastError,
+          email: info?.email,
+          username: info?.username,
+          nickName: info?.nick_name,
+          avatar: info?.avatar,
+          stillOnTuya: info != null,
+        };
+      }),
+    );
+  }
+
+  /**
+   * Xoá VĨNH VIỄN (hard delete) - bỏ qua ân hạn, không hoàn tác được.
+   * Chỉ gọi từ thùng rác: user phải đã qua bước pre-delete trước đó.
+   * Tuya đã tự xoá sau 7 ngày (404/lỗi) vẫn coi là thành công - kết quả cuối cùng giống nhau,
+   * và bản ghi thùng rác phải được dọn thì admin mới hết thấy dòng chết.
+   */
+  async purgeUser(uid: string): Promise<{ uid: string; purged: true }> {
+    await this.tuya
+      .request<{ result?: boolean }>({
+        method: 'DELETE',
+        path: `/v1.0/iot-02/users/${uid}`,
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Hard delete ${uid}: ${message} - vẫn dọn bản ghi`);
+      });
+    if (this.config.get('DATABASE_URL')) {
+      await this.prisma.deviceMapping.deleteMany({ where: { tuyaUid: uid } });
+    }
+    await this.jobs.removeByUid(uid);
+    return { uid, purged: true };
   }
 
   /** Xoá user: Tuya pre-delete + xoá business data; ghi delete_jobs (retry nếu lỗi). */
