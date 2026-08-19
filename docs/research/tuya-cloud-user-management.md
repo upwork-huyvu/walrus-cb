@@ -12,7 +12,10 @@
 1. **List user của app:** `GET /v2.0/apps/{schema}/users` - cần **`schema`** (channel id của App SDK) + `page_no`, `page_size` (**0–100**); optional `start_time`/`end_time` (10 chữ số), `username`.
 2. **Chi tiết user:** `GET /v1.0/users/{uid}/infos`.
 3. **Pre-delete (khớp brief "Tuya pre-delete"):** `POST /v1.0/users/{uid}/actions/pre-delete` → boolean. **Huỷ tài khoản có ân hạn 7 ngày** (huỷ-pre-delete được trong 7 ngày; quá hạn → xoá thật).
-4. **Hard delete (tuỳ chọn):** `DELETE /v1.0/iot-02/users/{user_id}` → `{result: bool}`.
+4. **Undelete / huỷ pre-delete:** `POST /v1.0/users/{uid}/actions/cancel-delete` → boolean.
+   *"Undelete the user account within seven days after the pre-deletion operation."*
+   ([doc](https://developer.tuya.com/en/docs/cloud/7795856216?id=Kawfjiiunt8nm))
+5. **Hard delete (tuỳ chọn):** `DELETE /v1.0/iot-02/users/{user_id}` → `{result: bool}`.
 
 ## API chi tiết
 | Mục đích | Method + Path | Params | Trả về |
@@ -20,6 +23,7 @@
 | List users | `GET /v2.0/apps/{schema}/users` | path `schema`; query `page_no`, `page_size`(0–100), `start_time?`, `end_time?`, `username?` | `result`: list `{uid, username, email, mobile, country_code, create_time, update_time}` + `total`, `has_more` |
 | User info | `GET /v1.0/users/{uid}/infos` | path `uid` | `{uid, username, country_code, mobile, email, nick_name, avatar, create_time, update_time, user_properties[], time_zone_id, temp_unit}` |
 | Pre-delete | `POST /v1.0/users/{uid}/actions/pre-delete` | path `uid` | boolean (true=ok) |
+| **Undelete** | `POST /v1.0/users/{uid}/actions/cancel-delete` | path `uid` | boolean (true=ok) |
 | Delete (hard) | `DELETE /v1.0/iot-02/users/{user_id}` | path `user_id` | `{result: bool}` |
 
 > Tất cả ký **business-style** (client_id + access_token + t + nonce + stringToSign). `schema` = channel của App SDK (đặt ở env `TUYA_APP_SCHEMA`).
@@ -33,7 +37,10 @@
 ## Cạm bẫy / lưu ý
 - **`schema`** bắt buộc cho list - sai schema = không ra user. Để env.
 - **`page_size` tối đa 100** → phân trang bằng `has_more` + `page_no`.
-- **Pre-delete có ân hạn 7 ngày** → user "đã xoá" ở app ta nhưng Tuya vẫn giữ tới 7 ngày (huỷ được). UI admin nên hiểu điều này.
+- **Pre-delete có ân hạn 7 ngày** → user "đã xoá" ở app ta nhưng Tuya vẫn giữ tới 7 ngày. UI admin nên hiểu điều này.
+- ⚠️ **ĐÍNH CHÍNH (2026-08-19):** bản đầu của note này ghi "huỷ được" nhưng **không nêu endpoint**,
+  dẫn tới kết luận sai rằng không khôi phục được. Endpoint có thật: **`cancel-delete`** ở trên.
+  Bài học: ghi "làm được X" mà không kèm đường dẫn API thì lần sau người đọc coi như không có.
 - Endpoint theo **DC** (giống signing note) - Western Europe `openapi-weaz.tuyaeu.com`.
 - **Lệch pha 2 hệ thống**: nếu Tuya pre-delete OK mà Supabase lỗi (hoặc ngược lại) → `delete_jobs` retry để hội tụ.
 

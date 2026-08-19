@@ -171,7 +171,8 @@ Tuya caps `page_size` at 100.
 
 ![User detail](images/admin/04-user-detail.png)
 
-Top of the page: **← Back to users** and **Delete user**. Below sits the hero — avatar (with a
+Top of the page: **← Back to users** and **Delete user** — the first stage of a two-stage
+deletion, see [§5.6](#56-deleted-users--usersdeleted). Below sits the hero — avatar (with a
 green dot when the user has a tub online), name, uid with a copy button, and a meta line: country ·
 registration date · device count.
 
@@ -203,6 +204,33 @@ and the backend returns the whole list, so server-side paging would add a round 
 nothing.
 
 Temperatures render in **the unit the user chose** (`temp_unit`: 1 = °C, 2 = °F), not a hard-coded °C.
+
+---
+
+### 5.6 Deleted users — `/users/deleted`
+
+![Deleted users](images/admin/14-deleted-users.png)
+
+Deletion happens in two stages, because Tuya's `pre-delete` only *schedules* removal and keeps the
+account for a **seven-day grace period**.
+
+| Stage | Where | Calls | Reversible |
+|---|---|---|---|
+| 1 — Delete | Customer detail | `DELETE /users/{uid}` → Tuya `pre-delete` | ✅ within 7 days |
+| 2 — Delete forever | Deleted users | `DELETE /users/{uid}/permanent` → Tuya hard delete | ❌ never |
+| Restore | Deleted users | `POST /users/{uid}/restore` → Tuya `cancel-delete` | — |
+
+Stage 1 hides the account from the customer list — the backend filters any uid with a pending or
+done deletion job and subtracts them from the reported total. Without that filter the account stays
+visible for the whole grace period, which reads as "delete did not work".
+
+**Restore is only offered while Tuya still holds the account.** The order matters in the backend:
+Tuya's `cancel-delete` must succeed *before* the local job row is dropped. Reversed, a Tuya failure
+would put the account back in the admin list while Tuya still erases it on schedule — a half-restore
+nobody would notice until it vanished.
+
+The entry point is **Settings**, not the customer list: next to live customers it is too easy to
+open by accident during everyday work.
 
 ---
 

@@ -221,19 +221,34 @@ Press **← Back to user detail** to return.
 
 ## 8. Deleting a customer
 
-> 🔴 **THIS CANNOT BE UNDONE.** Deleting removes the customer's account and the data tied to it.
-> There is no undo button. Check the **customer ID**, not just the name — many accounts have very
-> similar names.
+Deleting happens in two stages, and the first one **can be undone**.
 
 1. Open the customer's page (click their row).
-2. Check the email and the customer ID.
+2. Check the email and the customer ID — many accounts have very similar names.
 3. Press **Delete user** at the top right and confirm.
 
-The dashboard returns to the list and the customer is gone.
+The customer disappears from the list straight away. They are **not gone yet**: the account moves
+into *Deleted users* and waits there for **seven days** before it is erased for good.
 
-> The delete button exists **only on the detail page**. It was deliberately removed from the list so
-> that you always pass through one more screen and have a chance to check — it stops mis-clicks on
-> the wrong row.
+### Getting a customer back
+
+![Deleted users](images/admin-guide/14-deleted-users.png)
+
+Go to **Settings → Deleted users** and press **Restore** on their row. The account returns to the
+customer list exactly as it was.
+
+> ⏳ Restore only works during the seven days. After that the account is erased automatically and
+> **cannot be recovered by anyone**.
+
+### Removing someone immediately
+
+On the same *Deleted users* page, **Delete forever** skips the remaining wait.
+
+> 🔴 **THIS CANNOT BE UNDONE.** There is no recovery afterwards, so use it only when you are certain.
+
+> The delete button exists **only on the customer's own page** — never in the list — so you always
+> pass through one more screen and have a chance to check. The *Deleted users* page lives under
+> Settings for the same reason: it is not something to stumble into while browsing customers.
 
 ---
 

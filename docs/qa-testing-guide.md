@@ -574,7 +574,11 @@ The main screen. Columns: **User** (picture, name, customer ID), **Email**, **De
 | ADM-42 | Copy buttons | Click the copy icons | Icon becomes a tick; the value is on the clipboard | P3 |
 | ADM-43 | All devices | Open a customer with tubs → *View all devices* | Nine-column table; the Name / Product / Status headers sort; search matches name, ID and product | P2 |
 | ADM-44 | Temperature unit follows the customer | A customer set to °F | Temperatures render in °F | P3 |
-| ADM-45 🔴 | **Delete a customer** | Use a throwaway account: open detail → Delete user → confirm | Returns to the list; the customer is gone. **Never run against a real customer** | P1 |
+| ADM-45 🔴 | **Delete a customer (stage 1)** | Use a throwaway account: open detail → Delete user → confirm | Returns to the list; the customer **disappears from it**. **Never run against a real customer** | P1 |
+| ADM-46 | **Deleted list** | Settings → *Open deleted users* | The account is listed with a `Grace period` badge and the date it was deleted | P1 |
+| ADM-47 | **Restore** | On that page press **Restore** | The account returns to the customer list, unchanged; the deleted list no longer shows it | P1 |
+| ADM-48 🔴 | **Delete forever (stage 2)** | Delete the throwaway account again, then on the deleted page press **Delete forever** and confirm | Row disappears; the account is gone for good and cannot be restored | P2 |
+| ADM-49 | **Trash is not on the customer screen** | Look at the customer list header | There is deliberately **no** deleted-users link there — it lives under Settings | P3 |
 
 ### 7.5 Devices
 
@@ -708,6 +712,7 @@ least **High**, and Critical if it involves power or temperature.
 | 11 | Push notifications tested end to end | ☐ |
 | 12 | Error handling, offline and loading states tested | ☐ |
 | 13 | Admin panel fully tested | ☐ |
+| 13a | Customer delete → restore → delete forever verified | ☐ |
 | 14 | All device-independent cases completed | ☐ |
 | 15 | Device-dependent cases coordinated with the device holder | ☐ |
 | 16 | Pairing verified on a real tub, both platforms | ☐ |
