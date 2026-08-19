@@ -1,4 +1,6 @@
+import Link from 'next/link';
 import { apiGet, getActiveProvider } from '@/lib/api';
+import { IconArrowRight, IconTrash } from '@/components/Icons';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +68,26 @@ export default async function SettingsPage() {
           </tbody>
         </table>
         </div>
+      </section>
+
+      {/* Thùng rác đặt ở ĐÂY chứ không phải màn Users: ở đó nó nằm cạnh danh sách thật, rất dễ
+          bấm nhầm khi đang thao tác hằng ngày. Đây là khu vực quản trị, vào có chủ đích. */}
+      <section className="panel-card admin-tool">
+        <h2 className="card-title">
+          <IconTrash size={16} /> Deleted users
+        </h2>
+        <p className="page-sub" style={{ margin: '0 0 14px' }}>
+          Deleting a customer does not remove them straight away. Tuya keeps the account for a{' '}
+          <strong>seven-day grace period</strong> before erasing it for good. During that window the
+          account is hidden from the customer list and waits here, where you can either{' '}
+          <strong>restore</strong> it or <strong>delete it permanently</strong> without waiting.
+        </p>
+        <p className="page-sub" style={{ margin: '0 0 16px' }}>
+          After seven days Tuya removes the account on its own and it can no longer be restored.
+        </p>
+        <Link href="/users/deleted" className="btn btn-sm view-btn">
+          Open deleted users <IconArrowRight />
+        </Link>
       </section>
     </main>
   );

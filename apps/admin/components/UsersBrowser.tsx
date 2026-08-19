@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { avatarTone, fmtEpoch, initialOf } from '@/lib/format';
@@ -11,7 +10,6 @@ import {
   IconFilter,
   IconSearch,
   IconSort,
-  IconTrash,
 } from './Icons';
 
 const SIZES = [10, 20, 50, 100]; // Tuya chặn page_size ≤ 100 (ListUsersQueryDto)
@@ -91,10 +89,6 @@ export default function UsersBrowser({
           <h1 className="page-title">Tuya Users</h1>
           <p className="page-sub">Manage Tuya Cloud users</p>
         </div>
-        <Link href="/users/deleted" className="btn btn-sm view-btn">
-          <IconTrash />
-          Deleted users
-        </Link>
       </div>
 
       <div className="toolbar">

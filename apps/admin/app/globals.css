@@ -1501,3 +1501,8 @@ form.card > button[type='submit'] {
     animation: none;
   }
 }
+
+/* Khối công cụ quản trị ở cuối trang Settings (thùng rác) - tách khỏi bảng phía trên. */
+.admin-tool {
+  margin-top: 16px;
+}
