@@ -40,3 +40,6 @@ packages/*/lib/
 # Firebase (FCM) app config - chứa định danh project, KHÔNG commit
 **/google-services.json
 .playwright-mcp/*
+docs/pdf/
+.claude
+
