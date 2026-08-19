@@ -19,3 +19,19 @@ export async function purgeUser(uid: string): Promise<void> {
   revalidatePath('/users/deleted');
   revalidatePath('/users');
 }
+
+/**
+ * Server Action: khôi phục user khỏi thùng rác (huỷ pre-delete ở Tuya).
+ * Chỉ dùng được trong 7 ngày ân hạn - quá hạn Tuya đã xoá thật, gọi sẽ lỗi.
+ */
+export async function restoreUser(uid: string): Promise<void> {
+  const res = await apiFetch(`/users/${uid}/restore`, { method: 'POST' });
+  if (res.status === 401 || res.status === 403) {
+    redirect('/login');
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to restore user: ${res.status}`);
+  }
+  revalidatePath('/users/deleted');
+  revalidatePath('/users');
+}

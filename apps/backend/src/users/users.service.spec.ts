@@ -11,6 +11,7 @@ describe('UsersService.deleteUser (orchestration)', () => {
   const markFailure = jest.fn();
   const listPending = jest.fn();
   const listDeletedUids = jest.fn();
+  const removeByUid = jest.fn();
   const deleteMany = jest.fn();
   const configGet = jest.fn();
 
@@ -24,6 +25,7 @@ describe('UsersService.deleteUser (orchestration)', () => {
     markFailure,
     listPending,
     listDeletedUids,
+    removeByUid,
   } as unknown as DeleteJobsService;
   const config = { get: configGet } as unknown as AppConfigService;
 
@@ -147,6 +149,32 @@ describe('UsersService.deleteUser (orchestration)', () => {
 
       expect(res.list.map((u) => u.uid)).toEqual(['u2']);
       expect(res.total).toBe(1);
+    });
+  });
+
+  describe('restoreUser (huỷ pre-delete)', () => {
+    it('gọi cancel-delete rồi mới gỡ bản ghi job', async () => {
+      tuyaRequest.mockResolvedValue(true);
+
+      const res = await service.restoreUser('u9');
+
+      expect(tuyaRequest).toHaveBeenCalledWith({
+        method: 'POST',
+        path: '/v1.0/users/u9/actions/cancel-delete',
+      });
+      expect(removeByUid).toHaveBeenCalledWith('u9');
+      expect(res).toEqual({ uid: 'u9', restored: true });
+    });
+
+    // Bẫy: gỡ job trước rồi Tuya lỗi ⇒ user hiện lại trong admin nhưng Tuya VẪN xoá khi hết hạn.
+    // Khôi phục nửa vời còn tệ hơn không khôi phục - test này khoá đúng thứ tự đó.
+    it('Tuya lỗi → KHÔNG gỡ bản ghi job, ném lỗi ra ngoài', async () => {
+      tuyaRequest.mockRejectedValue(new Error('cancel-delete failed'));
+
+      await expect(service.restoreUser('u9')).rejects.toThrow(
+        'cancel-delete failed',
+      );
+      expect(removeByUid).not.toHaveBeenCalled();
     });
   });
 

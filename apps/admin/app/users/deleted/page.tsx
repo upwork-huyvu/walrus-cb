@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { apiGet } from '@/lib/api';
 import { avatarTone, fmtEpoch, initialOf } from '@/lib/format';
 import PurgeButton from '@/components/PurgeButton';
+import RestoreButton from '@/components/RestoreButton';
 import { IconArrowLeft, IconTrash } from '@/components/Icons';
 
 export const dynamic = 'force-dynamic';
@@ -38,8 +39,10 @@ export default async function DeletedUsersPage() {
         <div>
           <h1 className="page-title">Deleted users</h1>
           <p className="page-sub">
-            Accounts scheduled for deletion. Tuya keeps them for a 7-day grace period, then removes
-            them for good — deleting here skips the wait and cannot be undone.
+            Accounts scheduled for deletion, hidden from the customer list. Tuya keeps them for a
+            7-day grace period: <strong>Restore</strong> puts an account back, while{' '}
+            <strong>Delete forever</strong> skips the remaining wait and cannot be undone. Once the
+            grace period ends Tuya erases the account itself and it can no longer be restored.
           </p>
         </div>
       </div>
@@ -106,6 +109,7 @@ export default async function DeletedUsersPage() {
                       </td>
                       <td className="right">
                         <div className="row-actions">
+                          {u.stillOnTuya ? <RestoreButton uid={u.uid} /> : null}
                           <PurgeButton uid={u.uid} name={name} />
                         </div>
                       </td>
@@ -119,8 +123,9 @@ export default async function DeletedUsersPage() {
       </section>
 
       <p className="page-sub" style={{ marginTop: 14 }}>
-        <IconTrash /> Deleting from this page calls Tuya’s permanent-delete API. There is no undo and
-        no grace period.
+        <IconTrash /> <strong>Delete forever</strong> calls Tuya’s permanent-delete API immediately —
+        there is no undo. <strong>Restore</strong> is only offered while Tuya still holds the
+        account.
       </p>
     </main>
   );

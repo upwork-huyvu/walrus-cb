@@ -155,6 +155,24 @@ export class UsersService {
   }
 
   /**
+   * Khôi phục user đang trong ân hạn - huỷ lệnh pre-delete ở Tuya.
+   * `POST /v1.0/users/{uid}/actions/cancel-delete` (Undelete, chỉ dùng được trong 7 ngày):
+   * https://developer.tuya.com/en/docs/cloud/7795856216?id=Kawfjiiunt8nm
+   *
+   * ⚠️ THỨ TỰ QUAN TRỌNG: gọi Tuya TRƯỚC, thành công mới xoá bản ghi job. Làm ngược lại mà Tuya
+   * lỗi thì user hiện lại trong danh sách admin nhưng Tuya VẪN xoá thật khi hết hạn - khôi phục
+   * nửa vời còn tệ hơn không khôi phục, vì không ai biết là nó sắp biến mất.
+   */
+  async restoreUser(uid: string): Promise<{ uid: string; restored: true }> {
+    await this.tuya.request<boolean>({
+      method: 'POST',
+      path: `/v1.0/users/${uid}/actions/cancel-delete`,
+    });
+    await this.jobs.removeByUid(uid);
+    return { uid, restored: true };
+  }
+
+  /**
    * Xoá VĨNH VIỄN (hard delete) - bỏ qua ân hạn, không hoàn tác được.
    * Chỉ gọi từ thùng rác: user phải đã qua bước pre-delete trước đó.
    * Tuya đã tự xoá sau 7 ngày (404/lỗi) vẫn coi là thành công - kết quả cuối cùng giống nhau,

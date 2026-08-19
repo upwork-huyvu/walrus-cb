@@ -3,6 +3,7 @@ import {
   Delete,
   Get,
   Param,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -43,6 +44,12 @@ export class UsersController {
   @Delete(':uid')
   remove(@Param('uid') uid: string) {
     return this.users.deleteUser(uid);
+  }
+
+  /** Khôi phục user khỏi thùng rác - huỷ pre-delete ở Tuya (chỉ được trong 7 ngày). */
+  @Post(':uid/restore')
+  restore(@Param('uid') uid: string) {
+    return this.users.restoreUser(uid);
   }
 
   /** Xoá VĨNH VIỄN từ thùng rác - bỏ qua ân hạn 7 ngày, không hoàn tác. */
