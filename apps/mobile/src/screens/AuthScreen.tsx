@@ -68,6 +68,16 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
     try {
       await succeed(await fn());
     } catch (e: any) {
+      // Log chẩn đoán: nhánh CANCELLED cố tình KHÔNG hiện gì trên UI, nên nếu không log ở đây thì
+      // lỗi biến mất không dấu vết. Lọc console bằng "[GAUTH]".
+      console.log('[GAUTH] lỗi tới UI', {
+        name: e?.name,
+        code: e?.code, // 'CANCELLED' | 'NO_CONFIG' | 'NO_ID_TOKEN' | 'PLAY_SERVICES' | 'UNKNOWN'
+        message: e?.message,
+        // Lỗi KHÔNG phải GoogleSignInError = đến từ Tuya thirdLogin → giữ nguyên mã Tuya.
+        tuyaCode: e?.name === 'GoogleSignInError' || e?.name === 'AppleSignInError' ? undefined : e?.code,
+        seHienThi: !(e?.name === 'GoogleSignInError' || e?.name === 'AppleSignInError') || e?.code !== 'CANCELLED',
+      });
       // Google/AppleSignInError có message tiếng Việt sẵn → dùng thẳng (đừng đẩy qua TuyaErrors kẻo mangle).
       // 'CANCELLED' = user tự huỷ (đóng picker/sheet) → im lặng, không hiện lỗi.
       if (e?.name === 'GoogleSignInError' || e?.name === 'AppleSignInError') {
@@ -97,7 +107,24 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
   // countryCode dùng cho cả social login → Tuya suy data center từ đây (xem config/countries.ts).
   const doThird = (type: 'gg' | 'ap') =>
     run(async () => {
-      if (type === 'gg') return thirdLogin(await signInGoogle(), 'gg', undefined, country);
+      if (type === 'gg') {
+        const idToken = await signInGoogle();
+        // Mốc phân định: qua được dòng này nghĩa là Google OK, lỗi sau đó là của TUYA.
+        console.log('[GAUTH] gọi Tuya thirdLogin(gg)', { country, idTokenLen: idToken.length });
+        try {
+          const u = await thirdLogin(idToken, 'gg', undefined, country);
+          console.log('[GAUTH] Tuya thirdLogin OK');
+          return u;
+        } catch (e: any) {
+          console.log('[GAUTH] Tuya thirdLogin THẤT BẠI', {
+            code: e?.code, // mã lỗi Tuya, vd USER_PASSWD_WRONG / 1106 / ...
+            message: e?.message,
+            errorCode: e?.errorCode,
+            errorMsg: e?.errorMsg,
+          });
+          throw e;
+        }
+      }
       const cred = await signInApple();
       return thirdLogin(
         cred.identityToken,
