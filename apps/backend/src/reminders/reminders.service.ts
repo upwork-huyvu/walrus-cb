@@ -84,9 +84,14 @@ export class RemindersService {
     return this.toView(r);
   }
 
-  /** Xoá reminder của thiết bị (idempotent). */
-  async deleteForDevice(deviceId: string): Promise<void> {
-    await this.prisma.deviceReminder.deleteMany({ where: { deviceId } });
+  /**
+   * Xoá reminder sau khi thiết bị đã rời Tuya (idempotent). Check owner bằng dữ liệu đã lưu thay vì
+   * query live Tuya, vì sau `removeDevice` thiết bị không còn trong user device list để guard kiểm nữa.
+   */
+  async deleteOwnedForDevice(tuyaUid: string, deviceId: string): Promise<void> {
+    await this.prisma.deviceReminder.deleteMany({
+      where: { deviceId, tuyaUid },
+    });
   }
 
   /**

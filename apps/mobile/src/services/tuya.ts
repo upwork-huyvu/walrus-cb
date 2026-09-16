@@ -22,6 +22,7 @@ import {
 import { logDeviceSnapshot, logDeviceReadAttempt, logDpUpdate } from './deviceLog';
 import { parseTempRange, type TempRange } from './deviceSchema';
 import { describeTuyaError } from './tuyaError';
+import { getHomeDeviceList, removeMockDevice } from './home';
 import {
   mockRead,
   mockSetTarget,
@@ -55,6 +56,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 }
 
 const READ_TIMEOUT_MS = 8000;
+const REMOVE_TIMEOUT_MS = 15000;
 
 /** Chức năng nào thiết bị có DP → UI ẩn nút không tồn tại (khớp code thật của thiết bị). */
 export type DeviceCaps = { power: boolean; light: boolean; purify: boolean };
@@ -210,6 +212,43 @@ export async function refreshDevicesOnline(devIds: string[]): Promise<Record<str
     }),
   );
   return out;
+}
+
+/**
+ * Gỡ thiết bị khỏi Tuya Home/cloud của chính user đang đăng nhập. Đây là `removeDevice`, KHÔNG phải
+ * factory reset. Chỉ resolve sau callback success của SDK; caller chỉ được dọn local sau đó.
+ */
+export async function removeDevice(devId: string): Promise<void> {
+  if (!devId) throw new Error('Missing device ID.');
+  if (shouldMock(devId)) {
+    removeMockDevice(devId);
+    return;
+  }
+  if (typeof lib.Tuya.removeDevice !== 'function') {
+    throw new Error('This app build does not support removing devices.');
+  }
+  await withTimeout<void>(lib.Tuya.removeDevice(devId), REMOVE_TIMEOUT_MS, 'Device removal');
+}
+
+/**
+ * Remove idempotent: SDK có thể báo `no device` sau khi thiết bị đã reset/xoá ở app khác. Chỉ coi
+ * nhánh lỗi là thành công khi refetch chính Home xác nhận devId đã vắng; nếu không xác minh được thì
+ * giữ lỗi gốc để caller không dọn local nhầm.
+ */
+export async function removeDeviceOrConfirmAbsent(devId: string, homeId?: number): Promise<void> {
+  try {
+    await removeDevice(devId);
+  } catch (removeError) {
+    if (homeId != null) {
+      try {
+        const current = await getHomeDeviceList(homeId);
+        if (!current.some((device) => device.devId === devId)) return;
+      } catch {
+        // Giữ lỗi remove gốc ở dưới.
+      }
+    }
+    throw removeError;
+  }
 }
 
 /**

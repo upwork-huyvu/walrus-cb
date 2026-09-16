@@ -1,10 +1,10 @@
 export {}; // đánh dấu module scope (tránh trùng tên global với test khác)
 // Test services/home: nạp lại module với lib native giả/vắng theo từng case (module require native lúc load).
 
-function load(nativeTuya: any | null, mockDevices = false) {
+function load(nativeTuya: any | null, mockDevices = false, onHomeChange?: (listener: (event: unknown) => void) => unknown) {
   jest.resetModules();
   jest.doMock('@jimmy-vu/react-native-turbo-tuya', () =>
-    nativeTuya ? { Tuya: nativeTuya } : (() => { throw new Error('no native'); })(),
+    nativeTuya ? { Tuya: nativeTuya, onHomeChange } : (() => { throw new Error('no native'); })(),
   );
   // Cờ MOCK_DEVICES cố định theo case (mặc định TẮT để test hành vi thật, độc lập config/mock.ts).
   jest.doMock('../config/mock', () => ({
@@ -63,6 +63,12 @@ describe('services/home - mock (native vắng)', () => {
     expect(devices).toHaveLength(1);
     expect(devices[0]).toMatchObject({ devId: 'mock-dev-001', isOnline: true });
   });
+
+  it('removeMockDevice làm thiết bị biến mất ở các lần refetch sau', async () => {
+    const home = load(null);
+    home.removeMockDevice('mock-dev-001');
+    expect(await home.getHomeDeviceList(1)).toEqual([]);
+  });
 });
 
 describe('services/home - native có mặt', () => {
@@ -118,5 +124,35 @@ describe('services/home - native có mặt', () => {
       { devId: 'mock-walrus-pro-2', name: 'Walrus Pro 2', productId: 'mock', isOnline: true, iconUrl: '' },
       { devId: 'mock-walrus-mini', name: 'Walrus Mini', productId: 'mock', isOnline: false, iconUrl: '' },
     ]);
+  });
+
+  it('listenHomeDeviceChanges forward add/remove đúng home và dọn native listener khi remove', async () => {
+    const startHomeStatusListener = jest.fn().mockResolvedValue(undefined);
+    const stopHomeStatusListener = jest.fn().mockResolvedValue(undefined);
+    let emit: ((event: unknown) => void) | undefined;
+    const eventRemove = jest.fn();
+    const onHomeChange = jest.fn((listener: (event: unknown) => void) => {
+      emit = listener;
+      return { remove: eventRemove };
+    });
+    const home = load({ startHomeStatusListener, stopHomeStatusListener }, false, onHomeChange);
+    const onChange = jest.fn();
+    const sub = home.listenHomeDeviceChanges(9, onChange);
+    await Promise.resolve();
+    expect(startHomeStatusListener).toHaveBeenCalledWith(9);
+
+    emit?.({ type: 'deviceRemoved', homeId: 9, devId: 'd1' });
+    emit?.({ type: 'deviceAdded', homeId: 10, devId: 'other-home' });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith({
+      type: 'deviceRemoved',
+      homeId: 9,
+      devId: 'd1',
+    });
+
+    sub.remove();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(eventRemove).toHaveBeenCalled();
+    expect(stopHomeStatusListener).toHaveBeenCalledWith(9);
   });
 });

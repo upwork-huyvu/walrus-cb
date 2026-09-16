@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState as RNAppState,
   Image,
   Pressable,
   RefreshControl,
@@ -13,7 +14,7 @@ import {
 import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
-import { getHomeDeviceList, type HomeDevice } from '../services/home';
+import { getHomeDeviceList, listenHomeDeviceChanges, type HomeDevice } from '../services/home';
 import { logDeviceDetails, refreshDevicesOnline } from '../services/tuya';
 import { BathIcon } from '../components/DeviceIcons';
 
@@ -23,12 +24,14 @@ type Props = {
   homeId?: number;
   homeName?: string;
   pairedDevice?: HomeDevice;
+  removedDeviceIds?: string[];
+  onDeviceRemoved?: (devId: string) => Promise<void> | void;
 };
 
 // TAB Thiết bị (landing sau login) - bám layout Tuya SmartLife:
 // trên-trái = chọn nhà (⌂ tên nhà ▾ → Quản lý nhà) · trên-phải = ＋ thêm thiết bị;
 // thân = danh sách thiết bị / empty-state "Thêm thiết bị đầu tiên". Remount → tự refetch.
-export default function DeviceListScreen({ navigate, state, homeId, homeName, pairedDevice }: Props) {
+export default function DeviceListScreen({ navigate, state, homeId, homeName, pairedDevice, removedDeviceIds = [], onDeviceRemoved }: Props) {
   const C = useTheme();
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,10 +42,12 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
 
   const mergePairedDevice = useCallback(
     (list: HomeDevice[]) => {
-      if (!pairedDevice?.devId) return list;
-      return [pairedDevice, ...list.filter((device) => device.devId !== pairedDevice.devId)];
+      // Tombstone giữ thiết bị vừa remove không bị snapshot Home cũ hoặc paired cache chèn ngược lại.
+      const visible = list.filter((device) => !removedDeviceIds.includes(device.devId));
+      if (!pairedDevice?.devId || removedDeviceIds.includes(pairedDevice.devId)) return visible;
+      return [pairedDevice, ...visible.filter((device) => device.devId !== pairedDevice.devId)];
     },
-    [pairedDevice],
+    [pairedDevice, removedDeviceIds],
   );
 
   const load = useCallback(
@@ -88,6 +93,27 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (homeId == null) return;
+    const homeSub = listenHomeDeviceChanges(homeId, (event) => {
+      if (event.type === 'deviceRemoved') {
+        // Event remove là nguồn sự thật; huỷ kết quả fetch cũ đang bay để nó không re-add thiết bị.
+        loadTokenRef.current += 1;
+        setDevices((prev) => prev.filter((device) => device.devId !== event.devId));
+        void onDeviceRemoved?.(event.devId);
+      } else {
+        void load(true);
+      }
+    });
+    const appStateSub = RNAppState.addEventListener('change', (next) => {
+      if (next === 'active') void load(true);
+    });
+    return () => {
+      homeSub.remove();
+      appStateSub.remove();
+    };
+  }, [homeId, load, onDeviceRemoved]);
 
   const openDevice = (d: HomeDevice) => {
     // Chỉ điều hướng - device-detail (DashboardScreen) tự connect theo devId (tránh gọi connectDevice 2 lần).

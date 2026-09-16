@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer, useRef } from 'react';
+import { useState, useEffect, useReducer, useRef, useCallback } from 'react';
 import { getStreakMultiplier } from './levels';
 import {
   initSdk,
@@ -15,7 +15,7 @@ import { clampToRange } from '../services/deviceSchema';
 import { describeTuyaError } from '../services/tuyaError';
 import { debounce } from '../lib/debounce';
 import { deviceReducer, initialDeviceState } from './deviceMachine';
-import { getDevId, setDevId as persistDevId } from '../services/deviceStore';
+import { clearDevId, getDevId, setDevId as persistDevId } from '../services/deviceStore';
 import {
   loadRitual,
   saveRitual,
@@ -51,6 +51,8 @@ export function useAppState() {
   // Device: reducer (status/loading/error/temp/light/pending/tempRange). devId = thiết bị đã pair (persist).
   const [device, dispatch] = useReducer(deviceReducer, initialDeviceState);
   const [devId, setDevId] = useState('');
+  const devIdRef = useRef(devId);
+  devIdRef.current = devId;
   const deviceConnected = device.status !== 'idle';
 
   // Publish target được DEBOUNCE (audit M-1): bấm +/- nhanh chỉ gửi giá trị cuối. Tạo 1 lần.
@@ -147,6 +149,20 @@ export function useAppState() {
     dispatch({ type: 'disconnect' });
   };
 
+  /**
+   * Quên hẳn thiết bị sau khi Tuya đã remove thành công (hoặc nhận event remove từ home khác).
+   * Khác disconnect: huỷ request/publish đang chờ và xoá cả devId persist để restart không nối lại bồn cũ.
+   */
+  const forgetDevice = useCallback(async (removedDevId: string): Promise<void> => {
+    if (!removedDevId || devIdRef.current !== removedDevId) return;
+    connectReqRef.current = '';
+    publishTargetRef.current.cancel();
+    devIdRef.current = '';
+    setDevId('');
+    dispatch({ type: 'disconnect' });
+    await clearDevId();
+  }, []);
+
   // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert.
   const togglePower = () => {
     const next = !device.powerOn;
@@ -220,6 +236,7 @@ export function useAppState() {
     pendingTarget: device.pendingTarget,
     connectDevice,
     disconnectDevice,
+    forgetDevice,
     refreshOnline,
     togglePower,
     toggleLight,

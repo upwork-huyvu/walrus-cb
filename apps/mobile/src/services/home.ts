@@ -36,6 +36,9 @@ const mockHomes: HomeInfo[] = [];
 const mockDevices: HomeDevice[] = [
   { devId: 'mock-dev-001', name: 'Walrus Ice Bath', productId: 'mock', isOnline: true, iconUrl: '' },
 ];
+// Tombstone trong phiên cho bồn giả đã được remove. Nếu không lọc ở nguồn, mock cố định sẽ xuất hiện
+// lại ngay lần refetch kế tiếp và che mất bug cache của luồng xoá thật.
+const removedMockDeviceIds = new Set<string>();
 
 function mapHome(h: any): HomeInfo {
   return {
@@ -88,13 +91,18 @@ export async function ensureDefaultHome(): Promise<HomeInfo> {
 
 /** Bồn giả → chỉ field HomeDevice (bỏ field trạng thái seed). */
 function mockHomeDevices(): HomeDevice[] {
-  return MOCK_DEVICE_LIST.map((d) => ({
+  return MOCK_DEVICE_LIST.filter((d) => !removedMockDeviceIds.has(d.devId)).map((d) => ({
     devId: d.devId,
     name: d.name,
     productId: d.productId,
     isOnline: d.isOnline,
     iconUrl: d.iconUrl,
   }));
+}
+
+/** Xoá bồn giả khỏi nguồn list trong phiên (dùng để test trọn luồng remove mà không cần native). */
+export function removeMockDevice(devId: string): void {
+  if (devId) removedMockDeviceIds.add(devId);
 }
 
 /**
@@ -105,7 +113,9 @@ function mockHomeDevices(): HomeDevice[] {
  */
 export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
   if (!homeAvailable) {
-    const fake = MOCK_DEVICES ? mockHomeDevices() : [...mockDevices];
+    const fake = MOCK_DEVICES
+      ? mockHomeDevices()
+      : mockDevices.filter((d) => !removedMockDeviceIds.has(d.devId));
     logHomeDevices(homeId, fake); // native vắng → nói rõ đây là list GIẢ, không phải thiết bị thật
     return fake;
   }
@@ -119,4 +129,54 @@ export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
   const out = MOCK_DEVICES ? [...real, ...mockHomeDevices()] : real;
   logHomeDevices(homeId, out); // thấy ngay home có thiết bị nào (kể cả pair bằng Smart Life)
   return out;
+}
+
+export type HomeDeviceChange = {
+  type: 'deviceAdded' | 'deviceRemoved';
+  homeId: number;
+  devId: string;
+};
+
+export type HomeSubscription = { remove(): void };
+
+/**
+ * Theo dõi thiết bị được thêm/xoá trong home (kể cả từ điện thoại/Smart Life khác).
+ * Native vắng hoặc bridge cũ chưa có listener → no-op; Device List vẫn có refetch/refresh làm fallback.
+ */
+export function listenHomeDeviceChanges(homeId: number, onChange: (event: HomeDeviceChange) => void): HomeSubscription {
+  if (!homeAvailable || typeof lib.onHomeChange !== 'function' || typeof lib.Tuya.startHomeStatusListener !== 'function') {
+    return { remove() {} };
+  }
+
+  let eventSub: { remove?: () => void } | undefined;
+  try {
+    eventSub = lib.onHomeChange((raw: { type?: string; homeId?: number; devId?: string }) => {
+      if (raw?.type !== 'deviceAdded' && raw?.type !== 'deviceRemoved') return;
+      if (typeof raw.homeId === 'number' && raw.homeId !== homeId) return;
+      if (!raw.devId) return;
+      onChange({ type: raw.type, homeId, devId: raw.devId });
+    });
+  } catch {
+    return { remove() {} };
+  }
+
+  // Promise.resolve().then giữ được cả lỗi throw đồng bộ lẫn reject bất đồng bộ của native.
+  const started = Promise.resolve().then(() => lib.Tuya.startHomeStatusListener(homeId));
+  // Luôn gắn rejection handler để native reject khi screen còn mounted không thành unhandled promise.
+  void started.catch((e: unknown) => {
+    if (typeof __DEV__ !== 'undefined' && __DEV__) {
+      // eslint-disable-next-line no-console
+      console.warn('[home] startHomeStatusListener failed', e);
+    }
+  });
+
+  return {
+    remove() {
+      eventSub?.remove?.();
+      if (typeof lib.Tuya.stopHomeStatusListener === 'function') {
+        // Chỉ stop sau khi start đã settle để tránh start muộn dựng lại listener sau khi screen unmount.
+        void started.then(() => lib.Tuya.stopHomeStatusListener(homeId)).catch(() => {});
+      }
+    },
+  };
 }

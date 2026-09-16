@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StatusBar, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StatusBar, Text, View } from 'react-native';
 import { useTheme, F } from '../theme';
 import type { AppState } from '../state/useAppState';
 import type { Navigate } from '../navigation';
@@ -8,6 +8,9 @@ import TempGauge from '../components/TempGauge';
 import CleaningPanel from '../components/CleaningPanel';
 import FilterReminderCard from '../components/FilterReminderCard';
 import { PowerIcon, BulbIcon, LeafIcon } from '../components/DeviceIcons';
+import { removeDeviceOrConfirmAbsent } from '../services/tuya';
+import { describeTuyaError } from '../services/tuyaError';
+import { cleanupRemovedDeviceReminder } from '../services/reminders';
 
 type Props = {
   state: AppState;
@@ -15,13 +18,16 @@ type Props = {
   devId?: string;
   devName?: string;
   userUid?: string;
+  homeId?: number;
+  onDeviceRemoved?: (devId: string) => Promise<void> | void;
 };
 
 // Màn Device Detail - design "Walrus Pro 2": pill trạng thái + gauge nhiệt + target ± +
 // 3 công tắc (đèn/lọc/lạnh) + card cleaning + filter reminder. devId/devName/userUid truyền từ App.
-export default function DashboardScreen({ state, navigate, devId, devName, userUid }: Props) {
+export default function DashboardScreen({ state, navigate, devId, devName, userUid, homeId, onDeviceRemoved }: Props) {
   const C = useTheme();
   const DARK_ON_GOLD = '#0A0A0F'; // icon trên nền vàng active
+  const [removing, setRemoving] = useState(false);
 
   // Mở Device Detail là LUÔN đọc lại snapshot thật (online + DP), không dựa vào state cũ.
   // Vì sao KHÔNG guard theo (devId !== state.devId || !deviceConnected): devId đã persist nên khớp
@@ -44,18 +50,44 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   const dispTarget =
     rawTarget == null ? '-' : (rawTarget / Math.pow(10, scale)).toFixed(scale > 0 ? scale : 0);
 
+  const runRemove = async () => {
+    const id = devId || state.devId;
+    if (!id || removing) return;
+    setRemoving(true);
+    try {
+      await removeDeviceOrConfirmAbsent(id, homeId);
+
+      // Cleanup metadata không chặn thành công Tuya; lỗi backend được queue để retry lần sau.
+      await cleanupRemovedDeviceReminder(id, userUid ?? '');
+      if (onDeviceRemoved) await onDeviceRemoved(id);
+      else {
+        await state.forgetDevice(id);
+        navigate('device-list');
+      }
+    } catch (e) {
+      const info = describeTuyaError(e, {
+        fallback: 'Could not remove this device. Check your connection and try again.',
+      });
+      Alert.alert('Could not remove device', info.message, [{ text: 'OK' }]);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
   const menu = () => {
-    Alert.alert(name, undefined, [
-      {
-        text: 'Hide device',
-        style: 'destructive',
-        onPress: () => {
-          state.disconnectDevice();
-          navigate('device-list');
+    if (removing) return;
+    Alert.alert(
+      'Remove device?',
+      `${name} will be removed from your Walrus account and Tuya Home. You will need to pair it again to use it.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => void runRemove(),
         },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+      ],
+    );
   };
 
   const bumpTarget = (delta: number) => {
@@ -96,8 +128,18 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
               ICE BATH
             </Text>
           </View>
-          <Pressable onPress={menu} hitSlop={14} style={{ width: 40, alignItems: 'flex-end' }}>
-            <Text style={{ color: C.muted, fontSize: 22, lineHeight: 26 }}>⋮</Text>
+          <Pressable
+            testID="device-menu"
+            onPress={menu}
+            disabled={removing}
+            hitSlop={14}
+            style={{ width: 40, alignItems: 'flex-end', opacity: removing ? 0.6 : 1 }}
+          >
+            {removing ? (
+              <ActivityIndicator size="small" color={C.ochre} />
+            ) : (
+              <Text style={{ color: C.muted, fontSize: 22, lineHeight: 26 }}>⋮</Text>
+            )}
           </Pressable>
         </View>
 

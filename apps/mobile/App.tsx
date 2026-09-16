@@ -43,6 +43,7 @@ import { configureGoogle } from './src/services/googleAuth';
 import { ensureDefaultHome, type HomeDevice } from './src/services/home';
 import { getIntroSeen } from './src/state/introFlag';
 import { getUnreadCount } from './src/services/messages';
+import { retryPendingReminderDeletes } from './src/services/reminders';
 import {
   onForegroundMessage,
   onNotificationTap,
@@ -81,12 +82,17 @@ export default function App() {
   const [homeName, setHomeName] = useState('');
   const [activeDevId, setActiveDevId] = useState('');
   const [activeDevName, setActiveDevName] = useState('');
+  const activeDevIdRef = useRef(activeDevId);
+  activeDevIdRef.current = activeDevId;
   const [lastPairedDevice, setLastPairedDevice] = useState<HomeDevice | undefined>(undefined);
+  // Giữ tombstone trong phiên để snapshot Home/cached paired device không re-add ngay sau remove.
+  const [removedDeviceIds, setRemovedDeviceIds] = useState<string[]>([]);
   const [gateError, setGateError] = useState('');
   const [gateNonce, setGateNonce] = useState(0);
   const [isDark, setIsDark] = useState(true);
   const toggleTheme = useCallback(() => setIsDark((d) => !d), []);
   const appState = useAppState();
+  const forgetDevice = appState.forgetDevice;
   const theme = isDark ? DARK_THEME : LIGHT_THEME;
   // Bơm isDark vào state cho screens (replit đọc state.isDark).
   const state: AppState = { ...appState, isDark };
@@ -116,6 +122,12 @@ export default function App() {
   useEffect(() => {
     refreshUnread();
   }, [refreshUnread]);
+
+  // Cleanup reminder có thể bị queue nếu backend tạm lỗi đúng lúc Tuya remove thành công.
+  useEffect(() => {
+    const uid = auth.user?.uid;
+    if (uid) void retryPendingReminderDeletes(uid);
+  }, [auth.user?.uid]);
 
   useEffect(() => {
     const sub = RNAppState.addEventListener('change', (s) => {
@@ -220,7 +232,10 @@ export default function App() {
       'devId' in params.pairedDevice &&
       typeof params.pairedDevice.devId === 'string'
     ) {
-      setLastPairedDevice(params.pairedDevice as HomeDevice);
+      const paired = params.pairedDevice as HomeDevice;
+      setLastPairedDevice(paired);
+      // Pair lại cùng devId trong phiên là hành động tường minh → bỏ tombstone remove cũ.
+      setRemovedDeviceIds((ids) => ids.filter((id) => id !== paired.devId));
     }
     // Đẩy màn hiện tại vào back-stack (dedupe liên tiếp + cap 20) để goBack quay về đúng nơi vừa rời.
     // Dùng screenRef (không phải biến `screen` đóng băng) vì navigate có thể bị gọi từ closure cũ (effect notification mount-once).
@@ -251,6 +266,21 @@ export default function App() {
     await auth.deleteAccount();
     setScreen('auth');
   };
+
+  const handleDeviceRemoved = useCallback(
+    async (removedDevId: string) => {
+      await forgetDevice(removedDevId);
+      setLastPairedDevice((device) => (device?.devId === removedDevId ? undefined : device));
+      setRemovedDeviceIds((ids) => (ids.includes(removedDevId) ? ids : [...ids, removedDevId]));
+      if (activeDevIdRef.current === removedDevId) {
+        setActiveDevId('');
+        setActiveDevName('');
+      }
+      setHistory((items) => items.filter((item) => item !== 'device-detail'));
+      setScreen('device-list');
+    },
+    [forgetDevice]
+  );
 
   const handleSessionComplete = (seconds: number) => {
     appState.completeSession(seconds);
@@ -319,6 +349,8 @@ export default function App() {
           homeId={homeId}
           homeName={homeName}
           pairedDevice={lastPairedDevice}
+          removedDeviceIds={removedDeviceIds}
+          onDeviceRemoved={handleDeviceRemoved}
         />
       );
       break;
@@ -371,6 +403,8 @@ export default function App() {
           devId={activeDevId}
           devName={activeDevName}
           userUid={auth.user?.uid}
+          homeId={homeId}
+          onDeviceRemoved={handleDeviceRemoved}
         />
       );
       break;
@@ -378,7 +412,15 @@ export default function App() {
       currentScreen = <PairingScreen navigate={navigate} state={state} homeId={homeId} />;
       break;
     case 'dashboard':
-      currentScreen = <DashboardScreen navigate={navigate} state={state} />;
+      currentScreen = (
+        <DashboardScreen
+          navigate={navigate}
+          state={state}
+          userUid={auth.user?.uid}
+          homeId={homeId}
+          onDeviceRemoved={handleDeviceRemoved}
+        />
+      );
       break;
     case 'session':
       currentScreen = <SessionScreen navigate={navigate} goBack={goBack} onComplete={handleSessionComplete} onActiveChange={setSessionActive} />;

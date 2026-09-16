@@ -119,10 +119,12 @@ describe('RemindersService', () => {
     expect(arg.data.lastReplacedAt).toBeInstanceOf(Date);
   });
 
-  it('deleteForDevice: deleteMany theo deviceId (idempotent)', async () => {
+  it('deleteOwnedForDevice: chỉ xoá đúng deviceId + uid đã lưu (idempotent)', async () => {
     deleteMany.mockResolvedValue({ count: 1 });
-    await service.deleteForDevice('dev-1');
-    expect(deleteMany).toHaveBeenCalledWith({ where: { deviceId: 'dev-1' } });
+    await service.deleteOwnedForDevice('uid-1', 'dev-1');
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { deviceId: 'dev-1', tuyaUid: 'uid-1' },
+    });
   });
 });
 

@@ -61,6 +61,30 @@ describe('reminders client - backend (có PUSH_API_KEY)', () => {
     expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].method).toBe('DELETE');
   });
 
+  it('cleanup sau remove: backend lỗi → queue; lần retry sau thành công thì bỏ queue', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
+    const mod = load('key-1');
+    await expect(mod.cleanupRemovedDeviceReminder('d1', 'uid-1')).resolves.toBe(false);
+    expect(JSON.parse(mockMem['walrus.reminders.pending-deletes.v1'])).toEqual([{ deviceId: 'd1', uid: 'uid-1' }]);
+
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 204 });
+    await mod.retryPendingReminderDeletes('uid-1');
+    expect(JSON.parse(mockMem['walrus.reminders.pending-deletes.v1'])).toEqual([]);
+  });
+
+  it('retry chỉ xử lý pending delete của user đang đăng nhập', async () => {
+    mockMem['walrus.reminders.pending-deletes.v1'] = JSON.stringify([
+      { deviceId: 'd1', uid: 'uid-1' },
+      { deviceId: 'd2', uid: 'uid-2' },
+    ]);
+    fetchMock.mockResolvedValue({ ok: true, status: 204 });
+    const mod = load('key-1');
+    await mod.retryPendingReminderDeletes('uid-1');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('http://backend.test/reminders/d1');
+    expect(JSON.parse(mockMem['walrus.reminders.pending-deletes.v1'])).toEqual([{ deviceId: 'd2', uid: 'uid-2' }]);
+  });
+
   it('res không ok → throw', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 403 });
     const mod = load('key-1');

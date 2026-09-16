@@ -34,8 +34,10 @@ function stageOf(daysRemaining: number): ReminderStage {
 // Mỗi deviceId có ô RIÊNG: đổi lọc bồn A không ảnh hưởng bồn B. Chưa track → null (opt-in riêng
 // từng bồn, khớp đúng backend thật). Lưu AsyncStorage để không mất khi restart app.
 const MOCK_KEY = 'walrus.reminders.mock.v1';
+const PENDING_DELETE_KEY = 'walrus.reminders.pending-deletes.v1';
 const DEFAULT_INTERVAL = 90;
 type MockState = { lastReplacedAt: number; intervalDays: number; enabled: boolean };
+type PendingDelete = { deviceId: string; uid: string };
 const mockStore = new Map<string, MockState>();
 
 // Nạp state đã lưu (1 lần). Mọi thao tác mock await `mockReady` để không đọc trước khi nạp xong.
@@ -137,4 +139,70 @@ export async function deleteReminder(deviceId: string, uid: string): Promise<voi
     return;
   }
   return api<void>(`/reminders/${deviceId}`, 'DELETE', uid);
+}
+
+async function readPendingDeletes(): Promise<PendingDelete[]> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_DELETE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is PendingDelete => !!item && typeof item.deviceId === 'string' && typeof item.uid === 'string');
+  } catch {
+    return [];
+  }
+}
+
+async function writePendingDeletes(items: PendingDelete[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PENDING_DELETE_KEY, JSON.stringify(items));
+  } catch {
+    /* cleanup queue best-effort; không được làm hỏng luồng remove Tuya đã thành công */
+  }
+}
+
+async function removePendingDelete(deviceId: string, uid: string): Promise<void> {
+  const items = await readPendingDeletes();
+  await writePendingDeletes(items.filter((item) => item.deviceId !== deviceId || item.uid !== uid));
+}
+
+async function enqueuePendingDelete(deviceId: string, uid: string): Promise<void> {
+  const items = await readPendingDeletes();
+  if (!items.some((item) => item.deviceId === deviceId && item.uid === uid)) {
+    items.push({ deviceId, uid });
+  }
+  await writePendingDeletes(items);
+}
+
+/**
+ * Dọn reminder SAU KHI Tuya đã remove thành công. Backend lỗi không được biến thiết bị thành "xoá
+ * nửa vời" trên UI: ghi queue local và retry ở lần app chạy/đăng nhập kế tiếp.
+ */
+export async function cleanupRemovedDeviceReminder(deviceId: string, uid: string): Promise<boolean> {
+  try {
+    await deleteReminder(deviceId, uid);
+    await removePendingDelete(deviceId, uid);
+    return true;
+  } catch {
+    if (deviceId && uid) await enqueuePendingDelete(deviceId, uid);
+    return false;
+  }
+}
+
+/** Retry tuần tự để không dồn request backend; chỉ xử lý queue của user đang đăng nhập. */
+export async function retryPendingReminderDeletes(uid: string): Promise<void> {
+  if (!uid) return;
+  const items = await readPendingDeletes();
+  const keep: PendingDelete[] = [];
+  for (const item of items) {
+    if (item.uid !== uid) {
+      keep.push(item);
+      continue;
+    }
+    try {
+      await deleteReminder(item.deviceId, uid);
+    } catch {
+      keep.push(item);
+    }
+  }
+  await writePendingDeletes(keep);
 }
