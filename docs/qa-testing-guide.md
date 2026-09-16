@@ -109,7 +109,7 @@ Never run destructive tests against a real customer's account.
 | Permission | Platform | When | Why it matters |
 |---|---|---|---|
 | **Location** | Both | Pairing | Required to read the Wi-Fi name and to scan for Bluetooth. Denying it breaks pairing |
-| **Local Network** | iOS | First pairing attempt | Required for Wi-Fi EZ pairing. **iOS asks only once ever** — if you tap Deny, you must re-enable it in Settings by hand |
+| **Local Network** | iOS | First pairing attempt | Required for Wi-Fi pairing (EZ **and** AP). **iOS asks only once ever** — if you tap Deny, you must re-enable it in Settings by hand |
 | **Bluetooth** | Both | Bluetooth pairing | |
 | **Notifications** | Both | After sign-in | Needed for push tests |
 
@@ -231,11 +231,14 @@ You can meaningfully test everything up to the point where a tub would have to a
 
 - The mode selector offers **Wi-Fi (EZ)**, **Wi-Fi hotspot (AP)** and **Bluetooth**, and opens on
   **Wi-Fi (EZ)** on both platforms.
-- On EZ the Wi-Fi name is **filled in for you** from the network the phone is on.
-- On AP the Wi-Fi field is **cleared and must be typed**, with a warning telling you to enter your
-  home router's network — not the tub's own hotspot.
-- Switching mode **clears** whatever you typed.
-- Starting a search with an empty network name is blocked.
+- On both EZ and AP the Wi-Fi name is **filled in from the network the phone is on** — on iOS only
+  once Location is allowed. If it cannot be read, the field stays empty, a reason appears under it,
+  and iOS shows a **Use the network I'm connected to** button (plus **Open Settings** after a Deny).
+- On AP a warning tells you to enter your home router's network — not the tub's own hotspot.
+- Switching EZ ↔ AP **keeps** whatever you typed (same router credentials). The field is cleared only
+  if it holds the tub's own `SmartLife…` hotspot name.
+- Starting a search with an empty network name is blocked, and so is a network name that looks like
+  the tub's hotspot (`SmartLife-XXXX` / `SL-…-XXXX`) — in either mode.
 - On Android, being on a 5 GHz network **blocks** EZ with a message naming the band. On iOS it can
   only warn, because iOS does not expose the band.
 - With no tub in pairing mode, the search runs a visible countdown and then ends with a message
@@ -255,7 +258,7 @@ confirmation that something happened in the room.
 | Mode | What the tub must be doing | Notes |
 |---|---|---|
 | **Wi-Fi (EZ)** | Reset until its indicator blinks **quickly** | Phone must be on the 2.4 GHz network |
-| **Wi-Fi hotspot (AP)** | Reset until its indicator blinks **slowly** | The phone must join the tub's own `SmartLife…` hotspot partway through, then come back to the app |
+| **Wi-Fi hotspot (AP)** | Reset until its indicator blinks **slowly** | The phone must join the tub's own `SmartLife…` hotspot partway through, then come back to the app. The hotspot disappears as soon as the tub has the Wi-Fi details — the phone should rejoin the home Wi-Fi by itself; rejoin it by hand if it does not |
 | **Bluetooth** | In pairing mode | Bluetooth and Location on |
 
 **In the app:** choose the mode, enter the Wi-Fi details, start searching, wait for the tub to
@@ -454,7 +457,7 @@ Capture, in this order:
 | PAIR-09 | Pairing | Location denied | Fresh install | Deny Location, attempt to pair | A clear explanation, not a silent failure | No | P2 | |
 | PAIR-10 | Pairing | **EZ pairing succeeds — iOS** | Tub blinking **fast** | Enter Wi-Fi password, start searching, stay near the tub, tap it on the radar | Pairs within ~2 min; appears in the device list | **Yes** | P1 | |
 | PAIR-11 | Pairing | **EZ pairing succeeds — Android** | Tub blinking **fast** | As above | Pairs successfully | **Yes** | P1 | |
-| PAIR-12 | Pairing | **AP pairing** | Tub blinking **slow** | Switch to AP, enter home Wi-Fi, join the `SmartLife…` hotspot, return, start searching | Pairs; phone returns to its normal Wi-Fi afterwards | **Yes** | P1 | |
+| PAIR-12 | Pairing | **AP pairing** | Tub blinking **slow** | Switch to AP, check the pre-filled home Wi-Fi + password, join the `SmartLife…` hotspot, return, start searching | The `SmartLife…` hotspot disappears once the tub has the credentials; the phone is back on the home Wi-Fi (automatically, or rejoined by hand) and pairing completes | **Yes** | P1 | |
 | PAIR-13 | Pairing | **Bluetooth pairing** | Tub in pairing mode, BT + Location on | Choose Bluetooth, start searching, tap the tub | Pairs without asking for Wi-Fi details | **Yes** | P2 | |
 | PAIR-14 | Pairing | **Paired tub is visible everywhere** | Just paired | Check the app device list and the admin Devices page | Present in both, owner correct | **Yes** | P2 | |
 

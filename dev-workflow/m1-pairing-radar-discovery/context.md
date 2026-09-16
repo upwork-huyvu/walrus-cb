@@ -253,14 +253,28 @@
 - ⚠️ `pairing.ts` có **mock layer** khi native vắng (`pairingAvailable === false`) - Metro chạy
   không có native vẫn giả lập được scan/pair. `MOCK_BLE.isCombo = true`. Test UI dựa vào cái này.
 
+- ❌→✅ **Đính chính 2026-09-15 (client chỉ ra): AP CŨNG tự điền Wi-Fi đang nối.** Quyết định
+  2026-07-16 "cấm prefill ở AP" dựa trên giả định *"lúc pair AP máy đang ở hotspot"* - đúng lúc bấm
+  **Start**, sai lúc **nhập** (bước nhập đứng trước bước nối hotspot; Smart Life tự điền ở màn này).
+  Ca duy nhất điền sai (máy đã ở `SmartLife-xxxx`) nhận ra bằng tên ⇒ `isTuyaHotspotSsid()` trong
+  `pairingModes.ts` chặn ở prefill / dropdown / preflight cho **mọi** mode. `prefillCurrentWifi` giờ
+  chỉ còn phân biệt "có ô Wi-Fi" (EZ=AP=true, BLE=false). Đổi mode EZ↔AP **giữ nguyên** ô.
+  Chi tiết 10 điểm lệch + nguồn: mục "ĐÍNH CHÍNH (2026-09-15)" trong research note.
+- 🔴 **Nợ flow AP (D3, xác nhận lại 2026-09-15):** token/securityConfigs/homeId đang lấy lúc bấm
+  Start = khi máy đã ở hotspot (không internet). Doc: *"must get a pairing token from the cloud in the
+  networked state"*. Gỡ: tách 2 tap - **Continue** (online: preflight + homeId + `getPairingToken`,
+  hạn 10 phút, iOS cache `regInfo`) → màn xen "nối hotspot rồi quay lại" → **Start pairing**
+  (`startWifiPairing(mode, ssid, password, token)` đã có trong lib). Chờ client chốt vì thêm 1 màn.
+
 ## Liên kết
 
 - Plan: [plan.md](plan.md)
 - Progress: [progress.md](progress.md)
 - Research liên quan:
   [**tuya-ios-ap-mode-pairing.md**](../../docs/research/tuya-ios-ap-mode-pairing.md) (2026-07-16 - AP
-  legacy **không cần entitlement**; iOS **không** tự nối hotspot còn Android **có**; đèn AP chậm/EZ
-  nhanh; ssid = của router) ·
+  legacy **không cần entitlement**; đèn AP chậm/EZ nhanh; ssid = của router. **Đính chính 2026-09-15:**
+  AP **tự điền** Wi-Fi như EZ, user tự nối hotspot ở **cả 2 nền**, Local Network cần cho cả AP, hotspot
+  tắt ngay khi nhận credential; còn nợ **token phải lấy khi còn online**) ·
   [tuya-auto-scan-discovery.md](../../docs/research/tuya-auto-scan-discovery.md) ·
   [tuya-home-sdk-device-pairing.md](../../docs/research/tuya-home-sdk-device-pairing.md) ·
   [tuya-home-sdk-bluetooth.md](../../docs/research/tuya-home-sdk-bluetooth.md) ·

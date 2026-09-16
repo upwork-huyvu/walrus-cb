@@ -9,17 +9,24 @@
 //     trên iOS. Không cảnh báo về entitlement nữa: thiếu quyền thì Xcode fail lúc KÝ chứ không fail lúc
 //     chạy, nên app đang chạy được nghĩa là quyền đã có - cảnh báo chỉ tổ đuổi user khỏi mode mặc định.
 //   - Cái iOS VẪN có thể vướng là quyền **Local Network**: user bấm Deny một lần thì iOS không hỏi lại,
-//     và EZ sẽ im lặng không tới đâu → cảnh báo cái đó thay vì cảnh báo entitlement.
+//     và EZ/AP sẽ im lặng không tới đâu → cảnh báo cái đó thay vì cảnh báo entitlement. Áp dụng cho
+//     CẢ AP: AP cũng là traffic LAN (socket tới thiết bị qua hotspot) nên iOS 14 hỏi Local Network y
+//     hệt - màn nối hotspot của Smart Life còn gắn sẵn link "Local Network Access". Quyền này KHÔNG
+//     liên quan entitlement multicast (chỉ EZ cần multicast).
 //   - Wi-Fi EZ chỉ chạy trên 2.4GHz; AP mode thì hỗ trợ cả router 2.4+5GHz.
+//   - SSID hotspot thiết bị (`SmartLife-xxxx`) không bao giờ là SSID router hợp lệ → chặn ở MỌI mode
+//     (EZ dính khi máy còn kẹt ở hotspot sau lần AP hỏng; AP dính khi user chọn nhầm trong dropdown).
 import { Platform } from 'react-native';
 import { getCurrentWifiBand, wifiBandAvailable } from './wifiScanner';
+import { HOTSPOT_SSID_MESSAGE, isTuyaHotspotSsid } from './pairingModes';
 import { logPairing } from './pairingLog';
 
 export type PreflightCode =
   | 'ssid_empty'
+  | 'ssid_is_device_hotspot'
   | 'band_5ghz'
   | 'band_unknown'
-  | 'ios_ez_local_network';
+  | 'ios_local_network';
 
 export type PreflightIssue = {
   code: PreflightCode;
@@ -49,19 +56,23 @@ export async function preflightPairing(input: PreflightInput): Promise<Preflight
       severity: 'block',
       message: 'Enter the Wi-Fi network name your Walrus should join.',
     });
+  } else if (isTuyaHotspotSsid(input.ssid)) {
+    issues.push({ code: 'ssid_is_device_hotspot', severity: 'block', message: HOTSPOT_SSID_MESSAGE });
   }
 
-  // AP mode né được cả 5GHz lẫn quyền mạng nội bộ → không cần check băng tần.
-  if (input.mode === 'EZ') {
-    if (platform === 'ios') {
-      issues.push({
-        code: 'ios_ez_local_network',
-        severity: 'warn',
-        message:
-          'If pairing never finds Walrus, check Settings → Walrus → Local Network is on. iOS only asks once.',
-      });
-    }
+  // Local Network: cả EZ lẫn AP đều là traffic LAN → iOS hỏi ở cả 2 mode.
+  if (platform === 'ios') {
+    issues.push({
+      code: 'ios_local_network',
+      severity: 'warn',
+      message:
+        'If pairing never finds Walrus, check Settings → Walrus → Local Network is on. iOS only asks once.',
+    });
+  }
 
+  // Băng tần chỉ quan trọng với EZ (gói EZ phát trên mạng máy ĐANG nối). AP thì lúc bấm Start máy đang
+  // ở hotspot thiết bị, router 2.4/5GHz đều được → không check.
+  if (input.mode === 'EZ') {
     const { band, frequency } = await getCurrentWifiBand();
     if (band === '5GHz' || band === '6GHz') {
       issues.push({

@@ -130,6 +130,56 @@ Cho phép **thiết bị quét hộ danh sách Wi-Fi** rồi user chọn (tự l
 
 ---
 
+## ❌ ĐÍNH CHÍNH (2026-09-15) - AP CŨNG TỰ ĐIỀN Wi-Fi, và 4 điểm lệch khác
+
+Client chỉ ra *"cả EZ lẫn AP đều tự điền tên Wi-Fi đang kết nối"* → chạy audit 5 nguồn (doc iOS SDK,
+doc Android SDK, Smart Life user manual, tổng quan Tuya, ghi chú nội bộ) + phản biện 3 góc nhìn
+cho từng điểm. **10/10 điểm lệch được xác nhận**, trong đó 5 điểm sửa mô tả/UI ngay:
+
+1. **AP tự điền Wi-Fi nhà như EZ.** Bước nhập Wi-Fi đứng TRƯỚC bước nối hotspot - lúc đó máy còn ở
+   Wi-Fi nhà ⇒ mạng đang nối chính là mạng cần truyền. Smart Life tự điền ở màn này (màn nhập Wi-Fi
+   nằm **trước** cả chỗ chọn EZ/AP; ảnh doc: ô "Wi-Fi Name" điền sẵn `Tuya-Test` kèm nút đổi mạng -
+   https://images.tuyacn.com/content-platform/hestia/16394793059541c07de4b.png). Quyết định
+   2026-07-16 "cấm prefill ở AP" dựa trên giả định sai *"lúc pair AP máy đang ở hotspot"* - đúng lúc
+   **bấm Start** thì máy ở hotspot, nhưng lúc **nhập** thì không. Ca duy nhất điền sai (máy đã ở
+   `SmartLife-xxxx` vì vào lại sau lần hỏng) nhận ra được bằng tên ⇒ `isTuyaHotspotSsid()` chặn ở
+   prefill, dropdown, và preflight cho **mọi** mode (EZ cũng dính nếu máy còn kẹt ở hotspot).
+2. **iOS EZ không được hứa "it is filled in for you".** Đọc SSID cần quyền Location (iOS 13+,
+   doc "Pair": *"if users do not allow the app to access location data ... cannot get a valid Wi-Fi
+   SSID ... guide users to manually enter the Wi-Fi name"*); user Deny một lần là iOS không hỏi lại.
+   Thêm: app so mã lỗi `LocationPermission` (hoa) trong khi lib trả `locationPermissionDenied`
+   (thường) ⇒ gợi ý cấp quyền chưa bao giờ hiện. Card iOS cũng không có nút đọc lại (nút đó là dead
+   code). ⇒ Bước ghi rõ điều kiện + lối gõ tay; card iOS có nút "Use the network I'm connected to"
+   và "Open Settings".
+3. **"Keep the phone on the hotspot until it finishes" sai mốc.** Doc iOS SDK (iOS-network-host):
+   *"The device automatically turns off the AP"* → nối router → kích hoạt cloud ⇒ hotspot biến mất
+   **trước** khi pairing xong. Không nguồn nào nói điện thoại tự quay về Wi-Fi nhà ⇒ ghi "should …
+   on its own; if not, reconnect yourself".
+4. **Câu "Android tự nối hotspot" - lý do đúng là scoping, không phải Android 10.** Câu đó thuộc
+   mục **"New AP pairing process"** (`newOptimizedActivator`, firmware TuyaOS ≥ 3.6.1, "Restart
+   pairing"); app này đi path legacy `ActivatorBuilder`/`THING_AP` ⇒ không áp dụng. Giả thuyết
+   "lỗi thời vì Android 10" ở mục 2026-07-16 bên dưới là suy đoán, không có nguồn. Kết luận (user tự
+   nối ở cả 2 nền) **vẫn đúng**, chỉ bỏ câu "If Android offers to connect for you".
+5. **Local Network (iOS) cần cho cả AP.** AP là traffic LAN qua hotspot ⇒ iOS 14 hỏi y hệt EZ; màn
+   nối hotspot của Smart Life gắn sẵn link "Local Network Access". Không liên quan multicast.
+
+Còn **2 điểm là lỗi FLOW, chưa sửa** (cần quyết định sản phẩm):
+
+- 🔴 **Token lấy sai lúc.** Bấm Start (khi máy đã ở hotspot, không internet) mới gọi
+  `getTokenWithHomeId` + `getDeviceSecurityConfigs` (+ `getHomeList` nếu thiếu homeId). Doc:
+  *"Before the AP pairing process, the SDK must get a pairing token from the cloud **in the networked
+  state**"*; sample chính chủ `APModeTableViewController` lấy token ở `viewDidLoad`. Máy có 4G có
+  thể "may mắn" đi qua cellular; máy Wi-Fi-only/tắt data thì fail. Rủi ro này đã được ghi từ
+  2026-07-16 (context.md) nhưng chưa gỡ. Cách gỡ: tách 2 tap - "Continue" (còn online: preflight +
+  homeId + token, hạn 10 phút) → màn xen "nối hotspot rồi quay lại" → "Start pairing"
+  (`startWifiPairing(mode, ssid, password, token)` đã có sẵn trong lib, không cần native mới; iOS
+  nên cache `regInfo` cùng lúc lấy token).
+- 🟡 **Security-level device:** `didPassWIFIToSecurityLevelDeviceWithUUID:` đang auto-continue
+  với comment "preflight đã đảm bảo cùng Wi-Fi" - ở AP lúc đó máy đang ở hotspot, tiền đề sai.
+  Callback này chỉ bắn khi AP (header SDK). Chưa biết Walrus có phải security-level không.
+
+---
+
 ## ❌ ĐÍNH CHÍNH (2026-07-16) - "Android SDK tự nối hotspot" KHÔNG đáng tin
 
 Bảng dưới ghi khác biệt "Android tự nối hotspot / iOS thì không", lấy từ **một dòng** trong doc

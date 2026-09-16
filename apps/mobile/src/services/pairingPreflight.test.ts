@@ -52,9 +52,30 @@ describe('preflightPairing - chặn sớm thay vì chạy 120s rồi báo lỗi 
     const p = load({ band: 'unknown', frequency: 0, bandAvailable: false });
     const issues = await p.preflightPairing({ mode: 'EZ', ssid: 'Can March', platform: 'ios' });
 
-    expect(codes(issues)).toEqual(expect.arrayContaining(['ios_ez_local_network', 'band_unknown']));
+    expect(codes(issues)).toEqual(expect.arrayContaining(['ios_local_network', 'band_unknown']));
     // Chỉ cảnh báo, KHÔNG chặn: EZ giờ là mode mặc định trên iOS, chặn nó là chặn luồng chính.
     expect(p.hasBlocker(issues)).toBe(false);
+  });
+
+  // SSID hotspot thiết bị không bao giờ là SSID router hợp lệ → chặn ở MỌI mode (D7). EZ dính khi máy
+  // còn kẹt ở hotspot sau lần AP hỏng và prefill điền nó vào; AP dính khi user chọn nhầm.
+  it.each([
+    ['EZ', 'ios'],
+    ['EZ', 'android'],
+    ['AP', 'ios'],
+    ['AP', 'android'],
+  ] as const)('%s / %s: SSID "SmartLife-BEEC" (hotspot thiết bị) → block', async (mode, platform) => {
+    const p = load();
+    const issues = await p.preflightPairing({ mode, ssid: 'SmartLife-BEEC', platform });
+    expect(codes(issues)).toContain('ssid_is_device_hotspot');
+    expect(p.hasBlocker(issues)).toBe(true);
+    expect(issues.find((i: any) => i.code === 'ssid_is_device_hotspot').message).toMatch(/home Wi-Fi/);
+  });
+
+  it('SSID router bình thường → không bị chặn nhầm là hotspot', async () => {
+    const p = load();
+    const issues = await p.preflightPairing({ mode: 'AP', ssid: 'SL-Home', platform: 'android' });
+    expect(codes(issues)).not.toContain('ssid_is_device_hotspot');
   });
 
   // Entitlement multicast đã được Apple duyệt → không còn cảnh báo nào bảo user tránh EZ trên iOS.
@@ -65,11 +86,19 @@ describe('preflightPairing - chặn sớm thay vì chạy 120s rồi báo lỗi 
     expect(issues.map((i: any) => i.message).join(' ')).not.toMatch(/Use AP mode instead/i);
   });
 
-  it('AP mode bỏ qua hết check băng tần/quyền mạng (nó không dùng multicast)', async () => {
+  // AP không check băng tần (lúc Start máy ở hotspot thiết bị, router 2.4/5GHz đều được) NHƯNG vẫn là
+  // traffic LAN → iOS hỏi Local Network y hệt EZ (D6). Quyền này không liên quan multicast entitlement.
+  it('AP trên iOS: bỏ check băng tần nhưng VẪN nhắc Local Network (warn, không chặn)', async () => {
     const p = load({ band: '5GHz', frequency: 5180, bandAvailable: false });
     const issues = await p.preflightPairing({ mode: 'AP', ssid: 'Can March', platform: 'ios' });
-    expect(issues).toHaveLength(0);
+    expect(codes(issues)).toEqual(['ios_local_network']);
     expect(p.hasBlocker(issues)).toBe(false);
+  });
+
+  it('AP trên Android: không có gì để cảnh báo', async () => {
+    const p = load({ band: '5GHz', frequency: 5180 });
+    const issues = await p.preflightPairing({ mode: 'AP', ssid: 'Can March', platform: 'android' });
+    expect(issues).toHaveLength(0);
   });
 });
 

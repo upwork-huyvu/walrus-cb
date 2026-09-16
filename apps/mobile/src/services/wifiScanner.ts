@@ -1,4 +1,5 @@
 import { PermissionsAndroid, Platform } from 'react-native';
+import { HOTSPOT_SSID_MESSAGE, isTuyaHotspotSsid } from './pairingModes';
 
 export type ScannedWifi = {
   ssid: string;
@@ -85,14 +86,28 @@ export async function scanWifiNetworks(): Promise<ScannedWifi[]> {
   return [...bySsid.values()].sort((a, b) => b.level - a.level);
 }
 
-// Kết quả detect SSID hiện tại - có lý do để UI hiện message đúng (denied/simulator/không đọc được).
+// Kết quả detect SSID hiện tại - có lý do để UI hiện message đúng (denied/simulator/không đọc được/
+// đang ở hotspot thiết bị).
 export type CurrentWifiResult =
   | { ok: true; ssid: string }
-  | { ok: false; reason: 'unsupported' | 'permission' | 'not-found' | 'error'; message: string };
+  | {
+      ok: false;
+      reason: 'unsupported' | 'permission' | 'not-found' | 'hotspot' | 'error';
+      message: string;
+    };
+
+// iOS 13+ không cấp Location thì SSID trả về placeholder "WLAN"/"Wi-Fi" kèm BSSID 00:00:00:00:00:00
+// (doc Tuya "Pair"). Coi như không đọc được, đừng điền chữ "Wi-Fi" vào ô tên mạng.
+const IOS_SSID_PLACEHOLDERS = new Set(['wlan', 'wi-fi', 'wifi']);
 
 // Đọc SSID wifi đang kết nối. iOS: native tự bật prompt xin quyền Location khi chưa hỏi (notDetermined),
 // nên gọi hàm này = vừa xin quyền vừa đọc. Trả reason để phân biệt: chưa cấp quyền vs máy không đọc được
 // (điển hình: iOS Simulator luôn nil vì không có wifi hardware).
+//
+// ⚠️ Mã lỗi của react-native-wifi-reborn viết THƯỜNG chữ l: `locationPermissionDenied`,
+// `locationPermissionRestricted` (iOS, ConnectError.m), `locationPermissionMissing` (Android). Bản
+// trước so `includes('LocationPermission')` (hoa) ⇒ reason 'permission' không bao giờ khớp và user
+// chỉ thấy "Could not detect" chung chung. So sánh sau khi lowercase.
 export async function detectCurrentWifi(): Promise<CurrentWifiResult> {
   if (!currentWifiAvailable) {
     return {
@@ -106,7 +121,13 @@ export async function detectCurrentWifi(): Promise<CurrentWifiResult> {
   }
   try {
     const ssid = cleanSsid(await wifiLib.getCurrentWifiSSID());
-    if (ssid) return { ok: true, ssid };
+    if (ssid && isTuyaHotspotSsid(ssid)) {
+      // Máy đang ở hotspot của chính thiết bị - KHÔNG được điền vào ô router (ràng buộc #3 pairingModes).
+      return { ok: false, reason: 'hotspot', message: HOTSPOT_SSID_MESSAGE };
+    }
+    if (ssid && !(Platform.OS === 'ios' && IOS_SSID_PLACEHOLDERS.has(ssid.toLowerCase()))) {
+      return { ok: true, ssid };
+    }
     return {
       ok: false,
       reason: 'not-found',
@@ -116,8 +137,8 @@ export async function detectCurrentWifi(): Promise<CurrentWifiResult> {
           : 'Could not read the current Wi-Fi name. Enter it manually.',
     };
   } catch (e: any) {
-    const code = String(e?.code ?? e?.message ?? e);
-    if (code.includes('LocationPermission')) {
+    const code = String(e?.code ?? e?.message ?? e).toLowerCase();
+    if (code.includes('locationpermission') || code.includes('locationservicesoff')) {
       return {
         ok: false,
         reason: 'permission',

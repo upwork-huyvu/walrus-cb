@@ -20,19 +20,38 @@
 //    Xcode FAIL LÚC KÝ (không phải lỗi runtime), nên nếu build được thì quyền chắc chắn đã vào.
 //    Khác biệt còn lại giữa 2 nền: iOS không liệt kê được Wi-Fi và không đọc được băng tần.
 //
-// 3. **AP: CẤM tự điền mạng đang kết nối** (`prefillCurrentWifi: false`) - nhưng **QUÉT thì được**.
-//    Đây là hai thứ KHÁC NHAU, bản trước gộp nhầm làm một rồi cấm cả hai:
-//      · `getCurrentWifiSsid()` trả về **mạng máy đang nối** ⇒ ở AP rất có thể là hotspot
-//        `SmartLife-xxxx` của chính thiết bị ⇒ tự điền = **sai**, trong khi Tuya cần SSID CỦA
-//        ROUTER: "the ssid and password respectively specify the hotspot name and password of the
-//        router rather than that of the device". Lỗi trả về KHÔNG hé lộ gì về nguyên nhân.
-//      · `scanWifiNetworks()` trả về **mọi mạng xung quanh** (Android), không liên quan tới việc
-//        đang nối mạng nào ⇒ **luôn an toàn**, kể cả khi máy đã ở hotspot thiết bị. Và ở màn nhập
-//        thì máy thường VẪN CÒN ở Wi-Fi nhà (bước nối hotspot đứng SAU bước nhập).
-//    ⇒ AP trên Android: dropdown (quét được) nhưng **không tự điền**. AP trên iOS: gõ tay, vì iOS
-//    không có API liệt kê Wi-Fi.
+// 3. **Tự điền mạng đang kết nối ở CẢ EZ lẫn AP - chỉ cấm khi mạng đó là HOTSPOT THIẾT BỊ.**
+//    (Đính chính 2026-09-15, client chỉ ra. Bản trước cấm hẳn tự điền ở AP.)
+//      · Ở AP, credentials nhập vào là CỦA ROUTER: "the ssid and password respectively specify the
+//        hotspot name and password of the router rather than that of the device" (doc iOS SDK).
+//        Nhưng bước NHẬP đứng TRƯỚC bước nối hotspot - lúc đó máy vẫn đang ở Wi-Fi nhà ⇒ mạng đang
+//        nối CHÍNH LÀ mạng cần truyền. Smart Life cũng tự điền ở màn này (màn nhập Wi-Fi nằm trước
+//        cả chỗ chọn EZ/AP). Cấm tự điền ở AP = bắt user gõ tay vô cớ.
+//      · Ca DUY NHẤT tự điền sai: máy ĐÃ ở hotspot `SmartLife-xxxx` / `SL-…-xxxx` của thiết bị
+//        (vào lại sau lần pair hỏng, hoặc nối hotspot trước theo thói quen). Tên hotspot nhận ra
+//        được bằng prefix ⇒ `isTuyaHotspotSsid()` chặn ở prefill, ở nút "Use the network I'm
+//        connected to", ở dropdown quét, và ở preflight trước khi bấm Start - cho MỌI mode, vì
+//        SSID hotspot không bao giờ là SSID router hợp lệ (EZ cũng dính nếu máy còn kẹt ở hotspot).
+//      · `scanWifiNetworks()` (Android) trả về mọi mạng xung quanh ⇒ dropdown luôn an toàn, chỉ cần
+//        lọc tên hotspot ra khỏi danh sách để nó không nằm ngay đầu với nhãn "Strong".
+//    ⇒ `prefillCurrentWifi` = true cho cả EZ và AP; false chỉ ở BLE (không có ô Wi-Fi).
 
 export type PairingPlatform = 'ios' | 'android';
+
+/**
+ * Tên hotspot Tuya phát ra khi thiết bị ở AP mode: mặc định `SmartLife-XXXX`, tuỳ biến `SL-<tên>-XXXX`
+ * (XXXX = 4 ký tự cuối MAC). Hậu tố 4 ký tự được neo cho dạng `SL-` để không chặn nhầm router nhà
+ * tên kiểu "SL-Home"; dạng `SmartLife-` thì khớp mọi hậu tố vì không ai đặt tên router như vậy.
+ */
+export function isTuyaHotspotSsid(ssid: string | null | undefined): boolean {
+  const s = (ssid ?? '').trim();
+  if (!s) return false;
+  return /^SmartLife[-_]/i.test(s) || /^SL-.+-[0-9A-Za-z]{4}$/i.test(s);
+}
+
+/** Thông báo dùng chung khi phát hiện ô Wi-Fi / mạng đang nối là hotspot thiết bị. */
+export const HOTSPOT_SSID_MESSAGE =
+  'That is the Walrus hotspot, not your home Wi-Fi. Enter the 2.4GHz network Walrus should join - and if this phone is still on the "SmartLife" hotspot, reconnect it to your home Wi-Fi first.';
 
 /** Kênh ghép nối vật lý. Mỗi mode đúng 1 kênh - xem ràng buộc #1 đầu file. */
 export type PairingChannel = 'ez' | 'ap' | 'ble';
@@ -55,9 +74,8 @@ export type PairingModeSpec = {
   channel: PairingChannel;
   wifiInput: WifiInput;
   /**
-   * Được phép TỰ ĐIỀN mạng đang kết nối không? **Tách hẳn khỏi `wifiInput`** - xem ràng buộc #3:
-   * quét danh sách thì luôn an toàn, còn tự điền mạng ĐANG NỐI thì ở AP sẽ ra hotspot của chính
-   * thiết bị. AP = false, EZ = true.
+   * Có ô Wi-Fi để TỰ ĐIỀN mạng đang kết nối không? EZ = AP = true, BLE = false. Tự điền luôn đi qua
+   * `isTuyaHotspotSsid()` - xem ràng buộc #3.
    */
   prefillCurrentWifi: boolean;
   /** Cảnh báo hiện ngay trên ô Wi-Fi (AP cần; EZ không). */
@@ -68,13 +86,16 @@ export type PairingModeSpec = {
 
 // Đèn báo: EZ nháy NHANH, AP nháy CHẬM (nguyên văn SmartLife user manual). Đây là bước vật lý đầu
 // tiên và cũng là thứ user hay làm sai nhất → luôn để bước 1.
+// iOS không tự điền được vô điều kiện: đọc SSID cần quyền Location (iOS 13+), user Deny một lần là
+// iOS không hỏi lại ⇒ đừng hứa "it is filled in for you" - nói rõ điều kiện và lối thoát gõ tay.
+// Đây là step thứ 2 nói về ô Wi-Fi (dùng chung EZ/AP, chỉ khác câu đuôi).
+const IOS_WIFI_FIELD_STEP =
+  'Check the Wi-Fi name below - it is filled in from the network this phone is on when Location is allowed; otherwise type it - and enter its password.';
+
 function modeEz(platform: PairingPlatform): PairingModeSpec {
   // Android quét được danh sách mạng → dropdown. iOS không có API liệt kê Wi-Fi → gõ tay, GIỐNG AP.
-  // Nhưng khác AP ở chỗ vẫn tự điền được (xem `prefillCurrentWifi` ngay dưới).
   const pickNetworkStep =
-    platform === 'android'
-      ? 'Pick that network below and enter its password.'
-      : 'Confirm the Wi-Fi name below - it is filled in for you - and enter its password.';
+    platform === 'android' ? 'Pick that network below and enter its password.' : IOS_WIFI_FIELD_STEP;
   return {
     id: 'ez',
     label: 'Wi-Fi (EZ)',
@@ -82,8 +103,7 @@ function modeEz(platform: PairingPlatform): PairingModeSpec {
     channel: 'ez',
     wifiInput: platform === 'android' ? 'dropdown' : 'manual',
     // EZ: máy đang ở CHÍNH mạng cần truyền cho thiết bị → tự điền là đúng, đỡ cho user một bước.
-    // Đúng trên cả iOS: `com.apple.developer.networking.wifi-info` cho phép đọc SSID đang nối, và ở
-    // EZ thì mạng đang nối CHÍNH LÀ mạng cần truyền - không dính bẫy hotspot như AP (ràng buộc #3).
+    // iOS đọc được SSID đang nối qua `com.apple.developer.networking.wifi-info` + quyền Location.
     prefillCurrentWifi: true,
     steps: [
       'Reset Walrus until its Wi-Fi indicator is blinking QUICKLY.',
@@ -109,40 +129,46 @@ const MODE_BLE: PairingModeSpec = {
   ],
 };
 
-// Bước 2 giống nhau ở cả 2 nền tảng và là bước CHỐNG SAI quan trọng nhất của AP: user rất dễ tưởng
-// phải điền hotspot SmartLife… của thiết bị.
-const AP_ROUTER_STEP =
-  'Type your home 2.4GHz Wi-Fi name and password below. This is the network Walrus will join - NOT the device’s own hotspot.';
+// Câu đuôi của bước nhập Wi-Fi ở AP - bước CHỐNG SAI quan trọng nhất: user rất dễ tưởng phải điền
+// hotspot SmartLife… của thiết bị. Câu đầu theo `wifiInput` (dropdown → pick, manual → type/check).
+const AP_ROUTER_SUFFIX = 'This is the network Walrus will join - NOT the device’s own hotspot.';
 
 function modeAp(platform: PairingPlatform): PairingModeSpec {
-  // ⚠️ ĐÍNH CHÍNH (2026-07-16, client chỉ ra): bản trước bảo user Android "khỏi rời app, SDK tự nối
-  // hotspot" - dựa vào MỘT DÒNG trong doc Android: "the SDK automatically connects to the hotspot
-  // of the device within a certain period". Dòng đó **mâu thuẫn với SmartLife user manual** (bắt
-  // user vào Wi-Fi settings chọn hotspot `SmartLife…` - và manual đó mô tả app CHẠY THẬT), và rất
-  // có thể đã lỗi thời: từ **Android 10** app không còn tự join Wi-Fi ngầm được nữa, mà app này
-  // targetSdk 36. ⇒ Cả 2 nền tảng đều hướng dẫn user TỰ NỐI - đúng thì chạy, mà nếu SDK có tự nối
-  // thật thì user chỉ thấy nó đã nối sẵn, không hại gì. **Cần B6 xác nhận trên máy thật.**
+  const routerStep =
+    platform === 'android'
+      ? `Pick your home 2.4GHz Wi-Fi below - or keep the one already filled in - and enter its password. ${AP_ROUTER_SUFFIX}`
+      : `${IOS_WIFI_FIELD_STEP} ${AP_ROUTER_SUFFIX}`;
+  // Cả 2 nền tảng đều bảo user TỰ vào Settings nối hotspot (đúng SmartLife user manual + doc iOS SDK
+  // "Guide the user to connect their phone to the AP emitted by the device").
+  // ⚠️ Doc Android có câu "the SDK automatically connects to the hotspot of the device" - nhưng câu đó
+  // thuộc AP flow MỚI (`newOptimizedActivator`, firmware TuyaOS ≥ 3.6.1, mục "Restart pairing").
+  // App này đi path legacy `ActivatorBuilder`/`THING_AP` (TuyaPairingModule.kt) ⇒ Android KHÔNG tự
+  // nối, đừng viết "If Android offers to connect for you". Câu "no internet, stay connected" là hành
+  // vi của Android OS (hộp thoại "Stay connected?" - bấm No là nó rớt hotspot), không phải doc Tuya.
   const joinHotspotStep =
     platform === 'ios'
       ? 'Open iPhone Settings → Wi-Fi and connect this phone to the Walrus hotspot - the network whose name starts with "SmartLife".'
-      : 'Open your phone’s Wi-Fi settings and connect this phone to the Walrus hotspot - the network whose name starts with "SmartLife". If Android offers to connect for you, accept it.';
+      : 'Open your phone’s Wi-Fi settings and connect this phone to the Walrus hotspot - the network whose name starts with "SmartLife". If Android warns that this network has no internet, stay connected to it anyway.';
+  // Thiết bị tắt hotspot NGAY khi nhận xong credentials rồi mới đi nối router + kích hoạt cloud
+  // (doc iOS SDK: "The device automatically turns off the AP" → connect to router → activation) - tức
+  // hotspot biến mất TRƯỚC khi "pairing finishes". Không doc nào nói điện thoại tự quay về Wi-Fi nhà
+  // ⇒ nói "should ... on its own; if not, reconnect yourself", vì app cần online để hoàn tất.
   const steps = [
     'Reset Walrus until its Wi-Fi indicator is blinking SLOWLY.',
-    AP_ROUTER_STEP,
+    routerStep,
     joinHotspotStep,
-    'Come back here and tap Start searching. Keep the phone on the Walrus hotspot until it finishes.',
-    'Walrus turns its hotspot off by itself once pairing finishes, and your phone returns to your normal Wi-Fi.',
+    'Come back here and tap Start searching. Keep the phone on the Walrus hotspot until it disappears - Walrus switches it off by itself as soon as it has your Wi-Fi details.',
+    'Your phone should then drop back to your home Wi-Fi on its own. If it does not, reconnect to it yourself - the app needs to be online to finish adding Walrus.',
   ];
   return {
     id: 'ap',
     label: 'Wi-Fi hotspot (AP)',
     hint: 'Indicator blinking slowly',
     channel: 'ap',
-    // Android quét được danh sách mạng → cho dropdown luôn (quét là an toàn, xem ràng buộc #3).
-    // iOS không có API liệt kê Wi-Fi → gõ tay.
+    // Android quét được danh sách mạng → dropdown (lọc tên hotspot ra). iOS → gõ tay.
     wifiInput: platform === 'android' ? 'dropdown' : 'manual',
-    // Nhưng KHÔNG tự điền ở cả 2 nền tảng: mạng đang nối lúc này có thể là hotspot của thiết bị.
-    prefillCurrentWifi: false,
+    // Tự điền như EZ: lúc nhập máy còn ở Wi-Fi nhà. `isTuyaHotspotSsid()` chặn ca máy đã ở hotspot.
+    prefillCurrentWifi: true,
     wifiNotice:
       'Enter your HOME Wi-Fi - the network Walrus should join. Not the device’s own “SmartLife…” hotspot.',
     steps,

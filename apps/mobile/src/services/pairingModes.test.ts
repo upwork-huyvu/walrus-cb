@@ -1,6 +1,8 @@
 import {
+  HOTSPOT_SSID_MESSAGE,
   defaultPairingMode,
   getPairingMode,
+  isTuyaHotspotSsid,
   modeNeedsBlePermission,
   modeNeedsWifi,
   pairingModesFor,
@@ -49,9 +51,8 @@ describe('mỗi mode đúng MỘT kênh - không còn chạy song song', () => {
   });
 });
 
-// ⚠️ `wifiInput` (quét/gõ tay) và `prefillCurrentWifi` (tự điền mạng ĐANG NỐI) là HAI thứ khác
-// nhau - bản trước gộp làm một rồi cấm cả hai ở AP. Quét trả về MỌI mạng xung quanh nên luôn an
-// toàn; chỉ "tự điền mạng đang nối" mới ra hotspot SmartLife của thiết bị.
+// `wifiInput` (quét/gõ tay) là chuyện NỀN TẢNG; `prefillCurrentWifi` (tự điền mạng ĐANG NỐI) là
+// chuyện MODE có ô Wi-Fi hay không. Hai thứ độc lập nhau.
 describe('wifiInput - quét hay gõ tay, quyết định bởi NỀN TẢNG có quét được không (AC8/AC9)', () => {
   it('Android quét được → EZ và AP đều dropdown', () => {
     expect(getPairingMode('ez', 'android').wifiInput).toBe('dropdown');
@@ -63,11 +64,10 @@ describe('wifiInput - quét hay gõ tay, quyết định bởi NỀN TẢNG có 
     expect(getPairingMode('ez', 'ios').wifiInput).toBe('manual');
   });
 
-  // Gõ tay ≠ không tự điền. iOS đọc được SSID đang nối (entitlement wifi-info), và ở EZ thì mạng
-  // đang nối CHÍNH LÀ mạng cần truyền → vẫn prefill được, khác hẳn AP.
-  it('iOS EZ: gõ tay nhưng VẪN tự điền; iOS AP: gõ tay và KHÔNG tự điền', () => {
+  // Gõ tay ≠ không tự điền. iOS đọc được SSID đang nối (entitlement wifi-info + quyền Location).
+  it('iOS EZ và AP: gõ tay nhưng VẪN tự điền', () => {
     expect(getPairingMode('ez', 'ios').prefillCurrentWifi).toBe(true);
-    expect(getPairingMode('ap', 'ios').prefillCurrentWifi).toBe(false);
+    expect(getPairingMode('ap', 'ios').prefillCurrentWifi).toBe(true);
   });
 
   it('BLE → none (không cần Wi-Fi)', () => {
@@ -81,20 +81,43 @@ describe('wifiInput - quét hay gõ tay, quyết định bởi NỀN TẢNG có 
   });
 });
 
-describe('prefillCurrentWifi - tự điền mạng ĐANG NỐI (tách khỏi wifiInput)', () => {
-  it('EZ → true: máy đang ở chính mạng cần truyền cho thiết bị', () => {
-    expect(getPairingMode('ez', 'android').prefillCurrentWifi).toBe(true);
+// Đính chính 2026-09-15 (client chỉ ra): Smart Life + doc iOS SDK lấy Wi-Fi nhà TRƯỚC khi nối hotspot
+// - lúc đó máy còn ở Wi-Fi nhà ⇒ tự điền ở AP là đúng, y như EZ. Bản trước cấm hẳn ở AP.
+describe('prefillCurrentWifi - tự điền mạng ĐANG NỐI ở mọi mode có ô Wi-Fi', () => {
+  it.each([
+    ['ez', 'android'],
+    ['ez', 'ios'],
+    ['ap', 'android'],
+    ['ap', 'ios'],
+  ] as const)('%s / %s → true', (id, platform) => {
+    expect(getPairingMode(id, platform).prefillCurrentWifi).toBe(true);
   });
 
-  it('AP → false ở CẢ 2 nền tảng, kể cả khi có dropdown: mạng đang nối có thể là hotspot thiết bị', () => {
-    expect(getPairingMode('ap', 'android').prefillCurrentWifi).toBe(false);
-    expect(getPairingMode('ap', 'ios').prefillCurrentWifi).toBe(false);
+  it('BLE → false (không có ô Wi-Fi để điền)', () => {
+    expect(getPairingMode('ble', 'ios').prefillCurrentWifi).toBe(false);
+  });
+});
+
+// Ca DUY NHẤT tự điền sai là máy đang ở hotspot của chính thiết bị → nhận ra bằng tên.
+describe('isTuyaHotspotSsid - nhận diện hotspot thiết bị để không điền vào ô router', () => {
+  it.each(['SmartLife-BEEC', 'smartlife-1a2b', 'SmartLife_0F3C', 'SmartLife-XXXX-extra', 'SL-Walrus-A1B2'])(
+    '"%s" là hotspot Tuya',
+    (ssid) => expect(isTuyaHotspotSsid(ssid)).toBe(true),
+  );
+
+  it.each(['Can March', 'SL-Home', 'SmartHome', 'MySmartLife', 'SL-A1B2', '', '   '])(
+    '"%s" KHÔNG phải hotspot (router nhà / rỗng) - không được chặn nhầm',
+    (ssid) => expect(isTuyaHotspotSsid(ssid)).toBe(false),
+  );
+
+  it('null/undefined → false, không ném lỗi', () => {
+    expect(isTuyaHotspotSsid(null)).toBe(false);
+    expect(isTuyaHotspotSsid(undefined)).toBe(false);
   });
 
-  it('AP Android: có dropdown NHƯNG vẫn cấm tự điền - hai thứ độc lập nhau', () => {
-    const ap = getPairingMode('ap', 'android');
-    expect(ap.wifiInput).toBe('dropdown');
-    expect(ap.prefillCurrentWifi).toBe(false);
+  it('message dùng chung bảo user nhập Wi-Fi nhà và rời hotspot', () => {
+    expect(HOTSPOT_SSID_MESSAGE).toMatch(/Walrus hotspot/);
+    expect(HOTSPOT_SSID_MESSAGE).toMatch(/home Wi-Fi/);
   });
 });
 
@@ -129,8 +152,8 @@ describe('hướng dẫn từng bước (AC10) - phải khớp doc, không viế
   });
 
   // Yêu cầu client 2026-07-16: "mode AP phải ghi rõ là kết nối với cái wifi của thiết bị".
-  // Bản trước bảo user Android "khỏi rời app" dựa vào 1 dòng doc Android mâu thuẫn với user manual
-  // + nhiều khả năng lỗi thời (Android 10+ không cho app tự join Wi-Fi ngầm).
+  // Bản trước bảo user Android "khỏi rời app" dựa vào 1 dòng doc Android - dòng đó thuộc AP flow MỚI
+  // (newOptimizedActivator, firmware ≥ 3.6.1), app này đi path legacy nên Android KHÔNG tự nối.
   it.each(['ios', 'android'] as const)(
     'AP (%s): phải có bước NỐI ĐIỆN THOẠI vào hotspot của thiết bị, gọi đúng tên "SmartLife"',
     (platform) => {
@@ -141,16 +164,33 @@ describe('hướng dẫn từng bước (AC10) - phải khớp doc, không viế
     },
   );
 
-  it('AP: KHÔNG được bảo user "khỏi rời app" nữa (hồi quy - hướng dẫn cũ sai)', () => {
+  it('AP: KHÔNG được bảo user "khỏi rời app" hay "Android tự nối hộ" (hồi quy - hướng dẫn cũ sai)', () => {
     for (const platform of ['ios', 'android'] as const) {
-      expect(getPairingMode('ap', platform).steps.join(' ')).not.toMatch(/no need to leave the app/);
+      const steps = getPairingMode('ap', platform).steps.join(' ');
+      expect(steps).not.toMatch(/no need to leave the app/);
+      expect(steps).not.toMatch(/offers to connect for you/);
     }
   });
 
-  it('AP: nhắc giữ máy ở hotspot tới khi xong (rời sớm là hỏng giữa chừng)', () => {
+  // Thiết bị tắt hotspot NGAY khi nhận xong credentials (doc iOS SDK), trước khi pairing xong ⇒ mốc
+  // "giữ máy ở hotspot" phải là "tới khi hotspot biến mất", không phải "tới khi xong".
+  it('AP: nhắc giữ máy ở hotspot tới khi HOTSPOT BIẾN MẤT, rồi tự về Wi-Fi nhà nếu máy không tự về', () => {
     for (const platform of ['ios', 'android'] as const) {
-      expect(getPairingMode('ap', platform).steps.join(' ')).toMatch(/Keep the phone on the Walrus hotspot/);
+      const steps = getPairingMode('ap', platform).steps.join(' ');
+      expect(steps).toMatch(/Keep the phone on the Walrus hotspot until it disappears/);
+      expect(steps).not.toMatch(/until it finishes/);
+      expect(steps).toMatch(/reconnect to it yourself/);
     }
+  });
+
+  // Bước nhập Wi-Fi phải khớp CONTROL thật: Android là dropdown (pick), iOS là ô gõ tay đã tự điền
+  // có điều kiện (Location) - không hứa "it is filled in for you" vô điều kiện (D1).
+  it('bước nhập Wi-Fi theo control: Android "Pick", iOS "Check ... when Location is allowed; otherwise type"', () => {
+    expect(getPairingMode('ap', 'android').steps[1]).toMatch(/^Pick your home 2\.4GHz Wi-Fi/);
+    expect(getPairingMode('ap', 'ios').steps[1]).toMatch(/^Check the Wi-Fi name below/);
+    expect(getPairingMode('ap', 'ios').steps[1]).toMatch(/when Location is allowed; otherwise type it/);
+    expect(getPairingMode('ez', 'ios').steps[2]).toMatch(/when Location is allowed; otherwise type it/);
+    expect(getPairingMode('ez', 'ios').steps[2]).not.toMatch(/it is filled in for you/);
   });
 
   it('AP nói rõ ssid/password là của ROUTER, không phải hotspot thiết bị (gõ nhầm = fail 100%)', () => {

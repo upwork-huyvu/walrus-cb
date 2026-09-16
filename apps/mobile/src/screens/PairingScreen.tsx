@@ -32,6 +32,7 @@ import {
 import {
   defaultPairingMode,
   getPairingMode,
+  isTuyaHotspotSsid,
   pairingModesFor,
   type PairingModeId,
 } from '../services/pairingModes';
@@ -63,7 +64,6 @@ import {
   currentWifiAvailable,
   describeWifiScanError,
   detectCurrentWifi,
-  getCurrentWifiSsid,
   scanWifiNetworks,
   wifiScanAvailable,
   type ScannedWifi,
@@ -112,7 +112,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   /** Blip user vừa chạm → mở popup xác nhận. null = popup đóng. */
   const [selected, setSelected] = useState<Blip | null>(null);
   const [modeOpen, setModeOpen] = useState(false);
-  /** Dropdown chọn Wi-Fi (chỉ mode EZ) đang xổ hay đã thu lại. */
+  /** Dropdown chọn Wi-Fi (Android - cả EZ lẫn AP, theo `mode.wifiInput === 'dropdown'`) đang xổ hay đã thu lại. */
   const [wifiOpen, setWifiOpen] = useState(false);
   /** Thiếu quyền BLE → hiện lý do + lối gỡ, thay vì để radar quay mù 120s. */
   const [permIssue, setPermIssue] = useState<{ reason: string; message: string } | null>(null);
@@ -124,6 +124,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   const [scanningWifi, setScanningWifi] = useState(false);
   const [detectingWifi, setDetectingWifi] = useState(false);
   const [wifiScanError, setWifiScanError] = useState('');
+  /** `wifiScanError` do thiếu quyền Location → kèm nút Open Settings (iOS không prompt lại sau Deny). */
+  const [wifiErrorNeedsSettings, setWifiErrorNeedsSettings] = useState(false);
   const [preflight, setPreflight] = useState<PreflightIssue[]>([]);
   const [checking, setChecking] = useState(false);
   /** Số giây còn lại trước khi scan/pair timeout - hiển thị đếm ngược ở màn radar. */
@@ -151,41 +153,61 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   stepRef.current = step;
   foundRef.current = found;
 
-  // Prefill Wi-Fi đang kết nối; fallback sang Wi-Fi đã nhớ (local) - chỉ khi user chưa gõ gì.
-  //
-  // ⚠️ Chỉ prefill khi `mode.prefillCurrentWifi` (EZ). AP thì KHÔNG: lúc đó máy có thể đang nối vào
-  // HOTSPOT CỦA THIẾT BỊ ⇒ "Wi-Fi đang kết nối" = `SmartLife-xxxx`, trong khi Tuya cần SSID của
-  // ROUTER ⇒ tự điền = sai, mà lỗi SDK trả về không hé lộ gì về nguyên nhân.
-  // Danh sách savedWifis vẫn nạp cho MỌI mode (dropdown cần), chỉ không TỰ ĐIỀN.
+  /**
+   * Tự điền Wi-Fi đang kết nối (+ password đã nhớ); fallback sang Wi-Fi đã nhớ gần nhất - chỉ khi ô
+   * còn trống. Dùng cho CẢ EZ lẫn AP (ràng buộc #3 pairingModes.ts): lúc nhập máy còn ở Wi-Fi nhà.
+   *
+   * `detectCurrentWifi()` đã tự chặn ca máy đang ở hotspot `SmartLife…` (reason 'hotspot') và ca iOS
+   * chưa cấp Location (reason 'permission') - khi đó ô để trống và hiện lý do dưới ô để user biết
+   * phải gõ tay / cấp quyền, thay vì im lặng như bản trước (D1: iOS chưa cấp quyền → ô trống, không
+   * ai nói gì, step lại hứa "it is filled in for you").
+   */
+  const prefillFromCurrentWifi = async (saved: SavedWifi[]) => {
+    const res = await detectCurrentWifi();
+    if (res.ok) {
+      setWifiScanError('');
+      setSsid((cur) => cur || res.ssid);
+      const match = saved.find((item) => item.ssid === res.ssid);
+      if (match) setPassword((cur) => cur || match.password);
+      return;
+    }
+    // Không đọc được: lý do 'hotspot'/'permission' đáng để user biết; 'unsupported'/'not-found'/'error'
+    // (simulator, mạng ẩn) thì thôi - fallback mạng đã nhớ là đủ, đừng đỏ màn hình vô cớ.
+    if (res.reason === 'hotspot' || res.reason === 'permission') {
+      setWifiScanError(res.message);
+      setWifiErrorNeedsSettings(res.reason === 'permission');
+    }
+    const [first] = saved.filter((w) => !isTuyaHotspotSsid(w.ssid));
+    if (first) {
+      setSsid((cur) => cur || first.ssid);
+      setPassword((cur) => cur || first.password);
+    }
+  };
+
   useEffect(() => {
     void (async () => {
-      const [current, saved] = await Promise.all([getCurrentWifiSsid(), getSavedWifiList()]);
+      const saved = await getSavedWifiList();
       setSavedWifis(saved);
-      if (!mode.prefillCurrentWifi) return;
-      if (current) {
-        setSsid((cur) => cur || current);
-        const match = saved.find((item) => item.ssid === current);
-        if (match) setPassword((cur) => cur || match.password);
-        return;
-      }
-      const [first] = saved;
-      if (first) {
-        setSsid((cur) => cur || first.ssid);
-        setPassword((cur) => cur || first.password);
-      }
+      if (mode.prefillCurrentWifi) await prefillFromCurrentWifi(saved);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Đổi mode → xoá Wi-Fi đã điền. Bắt buộc, không phải cho gọn: EZ→AP mà giữ nguyên ô thì AP thừa
-  // hưởng đúng cái SSID prefill mà nó vừa cấm; AP→EZ thì ngược lại, user tưởng đã chọn mạng rồi.
+  // Đổi mode: EZ ↔ AP dùng CÙNG credentials router → giữ nguyên ô (user đã chọn/gõ rồi thì đừng bắt
+  // làm lại). Chỉ xoá khi giá trị đang có là hotspot thiết bị (không hợp lệ ở mọi mode). Ô còn trống
+  // mà mode mới có ô Wi-Fi → prefill lại (bản trước chỉ prefill lúc mount nên EZ→AP→EZ ra ô trống).
   const prevModeRef = useRef(modeId);
   useEffect(() => {
     if (prevModeRef.current === modeId) return;
     prevModeRef.current = modeId;
-    setSsid('');
-    setPassword('');
     setWifiOpen(false);
+    setWifiScanError('');
+    if (isTuyaHotspotSsid(ssid)) {
+      setSsid('');
+      setPassword('');
+    }
+    if (mode.prefillCurrentWifi) void prefillFromCurrentWifi(savedWifis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modeId]);
 
   // Đổi mạng hoặc đổi mode → kết quả preflight cũ hết giá trị. Đừng để banner lỗi thời trên màn hình.
@@ -410,7 +432,7 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   /** Không thấy gì sau 120s → nói đúng thứ user cần kiểm, theo mode đang chạy. */
   const nothingFoundMessage = (): string => {
     if (modeId === 'ap') {
-      return 'Walrus did not respond. Check that the indicator is blinking slowly and that this phone is connected to the device hotspot, then try again.';
+      return 'Walrus did not respond. If the Walrus hotspot never disappeared, check that the indicator is blinking slowly and that this phone was connected to the device hotspot. If it did disappear, make sure this phone is back online on your home Wi-Fi, then reset Walrus and try again.';
     }
     if (mode.channel !== 'ble') {
       return 'No Walrus found on your Wi-Fi. Check that the indicator is blinking quickly and that this phone is on the 2.4GHz network, then try again.';
@@ -517,11 +539,13 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   );
 
   const chooseWifi = (wifi: SavedWifi) => {
+    setWifiScanError('');
     setSsid(wifi.ssid);
     setPassword(wifi.password);
   };
 
   const chooseScannedWifi = (wifi: ScannedWifi) => {
+    setWifiScanError('');
     setSsid(wifi.ssid);
     const saved = savedWifis.find((item) => item.ssid === wifi.ssid);
     setPassword(saved?.password ?? '');
@@ -540,12 +564,15 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     }
   };
 
-  // iOS (không có scan list): bấm để xin quyền Location + đọc lại SSID wifi đang kết nối rồi điền vào ô.
-  // Cần khi prefill lúc mở màn fail (chưa cấp quyền / vừa đổi mạng). Báo lý do rõ nếu vẫn không đọc được.
+  // iOS (card gõ tay, EZ lẫn AP): bấm để xin quyền Location + đọc lại SSID đang kết nối rồi điền vào ô.
+  // Cần khi prefill lúc mở màn fail (chưa cấp quyền / vừa đổi mạng). Báo lý do rõ nếu vẫn không đọc
+  // được; `detectCurrentWifi` đã chặn ca đang ở hotspot thiết bị. iOS chỉ hỏi Location MỘT lần - user
+  // đã Deny thì lib reject ngay, không prompt lại ⇒ kèm nút mở Settings (xem `wifiErrorBlock`).
   const detectCurrentWifiAndFill = async () => {
     if (detectingWifi) return;
     setDetectingWifi(true);
     setWifiScanError('');
+    setWifiErrorNeedsSettings(false);
     const res = await detectCurrentWifi();
     if (res.ok) {
       setSsid(res.ssid);
@@ -553,9 +580,38 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
       if (match) setPassword(match.password);
     } else {
       setWifiScanError(res.message);
+      setWifiErrorNeedsSettings(res.reason === 'permission');
     }
     setDetectingWifi(false);
   };
+
+  /** Dòng lỗi dưới ô Wi-Fi (+ nút mở Settings khi thiếu quyền Location). Dùng chung cả 2 card. */
+  const wifiErrorBlock = () =>
+    wifiScanError ? (
+      <View style={{ marginTop: 12 }}>
+        <Text style={{ fontFamily: F.body, color: '#E5484D', fontSize: 12, lineHeight: 18 }}>{wifiScanError}</Text>
+        {wifiErrorNeedsSettings ? (
+          <Pressable onPress={() => void Linking.openSettings()} style={{ marginTop: 8, alignSelf: 'flex-start' }}>
+            <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>Open Settings</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    ) : null;
+
+  /** Nút "Use the network I'm connected to" - chỉ có nghĩa ở card gõ tay (iOS): đọc SSID đang nối. */
+  const detectCurrentWifiButton = () =>
+    currentWifiAvailable && mode.prefillCurrentWifi ? (
+      <Pressable
+        testID="wifi-detect-current"
+        onPress={detectCurrentWifiAndFill}
+        disabled={detectingWifi}
+        style={{ marginTop: 10, alignSelf: 'flex-start', opacity: detectingWifi ? 0.55 : 1 }}
+      >
+        <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>
+          {detectingWifi ? 'Detecting…' : 'Use the network I’m connected to'}
+        </Text>
+      </Pressable>
+    ) : null;
 
   const signalLabel = (level: number) => {
     if (level >= -55) return 'Strong';
@@ -617,17 +673,20 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   );
 
   /**
-   * EZ: Network name là DROPDOWN - bấm để xổ danh sách (quét được thì quét, kèm mạng đã lưu),
-   * chọn xong THU LẠI. Quét là hợp lệ ở đây vì lúc pair EZ máy đang ở đúng mạng cần truyền.
-   * Máy không quét được (iOS / thiếu quyền) → prefill mạng đang kết nối, vẫn gõ tay được.
+   * Android (EZ và AP): Network name là DROPDOWN - bấm để xổ danh sách quét được + mạng đã lưu, chọn
+   * xong THU LẠI. Quét luôn an toàn (liệt kê mọi mạng xung quanh, không phụ thuộc đang nối mạng nào);
+   * chỉ LỌC tên hotspot thiết bị ra để nó không nằm đầu danh sách với nhãn "Strong" (D7). Tự điền
+   * mạng đang nối do `prefillFromCurrentWifi` lo. Vẫn gõ tay được (mạng ẩn / quét không ra).
+   * Không bao giờ render trên iOS (`wifiInput` = 'manual').
    */
   const wifiDropdownCard = () => {
     const hasSsid = ssid.trim().length > 0;
     // Gộp mạng quét được + mạng đã lưu, mạng quét được lên trước (có cường độ sóng để chọn).
+    const visibleScanned = scannedWifis.filter((w) => !isTuyaHotspotSsid(w.ssid));
     const options: { ssid: string; note: string }[] = [
-      ...scannedWifis.slice(0, 8).map((w) => ({ ssid: w.ssid, note: signalLabel(w.level) })),
+      ...visibleScanned.slice(0, 8).map((w) => ({ ssid: w.ssid, note: signalLabel(w.level) })),
       ...savedWifis
-        .filter((sw) => !scannedWifis.some((w) => w.ssid === sw.ssid))
+        .filter((sw) => !isTuyaHotspotSsid(sw.ssid) && !visibleScanned.some((w) => w.ssid === sw.ssid))
         .map((sw) => ({ ssid: sw.ssid, note: 'saved' })),
     ];
 
@@ -746,27 +805,11 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                   {scanningWifi ? 'Scanning…' : 'Scan again'}
                 </Text>
               </Pressable>
-            ) : currentWifiAvailable && mode.prefillCurrentWifi ? (
-              // Chỉ mode được phép tự điền mới có nút này. Ở AP nó sẽ điền hotspot `SmartLife…` của
-              // chính thiết bị - đúng cái sai mà mode đó đang tránh.
-              <Pressable
-                onPress={detectCurrentWifiAndFill}
-                disabled={detectingWifi}
-                style={{ borderTopWidth: 1, borderTopColor: C.border, padding: 13, opacity: detectingWifi ? 0.55 : 1 }}
-              >
-                <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12 }}>
-                  {detectingWifi ? 'Detecting…' : 'Use the network I’m connected to'}
-                </Text>
-              </Pressable>
             ) : null}
           </View>
         ) : null}
 
-        {wifiScanError ? (
-          <Text style={{ fontFamily: F.body, color: '#E5484D', fontSize: 12, lineHeight: 18, marginTop: 12 }}>
-            {wifiScanError}
-          </Text>
-        ) : null}
+        {wifiErrorBlock()}
 
         <View style={{ height: 18 }} />
         {passwordField('Wi-Fi password')}
@@ -779,10 +822,10 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
   };
 
   /**
-   * AP: gõ tay cả 2 ô. KHÔNG scan, KHÔNG prefill - có chủ đích.
-   * Lúc pair AP điện thoại đang nối vào HOTSPOT CỦA THIẾT BỊ, nên "Wi-Fi đang kết nối" =
-   * `SmartLife-xxxx`, trong khi Tuya cần SSID/password CỦA ROUTER. Prefill ở đây = điền sai gần
-   * như chắc chắn, mà lỗi SDK trả về không hé lộ gì về nguyên nhân.
+   * iOS (EZ và AP): gõ tay cả 2 ô vì iOS không có API liệt kê Wi-Fi. Ô tên mạng được
+   * `prefillFromCurrentWifi` tự điền từ mạng đang nối khi có quyền Location (lúc nhập, ở cả EZ lẫn
+   * AP, máy còn ở Wi-Fi nhà - ràng buộc #3 pairingModes.ts). Không đọc được thì hiện lý do + nút
+   * "Use the network I'm connected to" để xin quyền/đọc lại; đã Deny thì kèm Open Settings.
    * Xem docs/research/tuya-ios-ap-mode-pairing.md.
    */
   const wifiManualCard = () => {
@@ -802,7 +845,10 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
           <TextInput
             testID="wifi-manual-ssid"
             value={ssid}
-            onChangeText={setSsid}
+            onChangeText={(v) => {
+              setSsid(v);
+              if (wifiScanError) setWifiScanError('');
+            }}
             placeholder="Your 2.4GHz Wi-Fi name"
             placeholderTextColor={C.muted}
             autoCapitalize="none"
@@ -817,6 +863,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
               borderBottomColor: hasSsid ? C.ochre : C.border,
             }}
           />
+          {detectCurrentWifiButton()}
+          {wifiErrorBlock()}
         </View>
 
         {passwordField('Your Wi-Fi password')}
@@ -892,13 +940,12 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
                     backgroundColor: on ? 'rgba(196,135,58,0.1)' : 'transparent',
                   }}
                 >
+                  {/* KHÔNG gắn nhãn "recommended" cho mode nào. Nhãn cũ trên AP iOS lấy từ doc Tuya
+                      ("For iOS 14.5 and later, we recommend AP") - chỉ đúng khi CHƯA có multicast
+                      entitlement. Từ 2026-08-07 EZ chạy được trên iOS và là mặc định ở cả 2 nền
+                      (xem ràng buộc #2 trong pairingModes.ts) ⇒ gắn "recommended" cho AP là mâu thuẫn. */}
                   <Text style={{ fontFamily: F.body, color: on ? C.ochre : C.white, fontSize: 14, marginBottom: 4 }}>
                     {m.label}
-                    {/* Chỉ gắn "recommended" chỗ CÓ NGUỒN: Tuya nói thẳng "For iOS 14.5 and later,
-                        we recommend that you use the AP mode instead of the Wi-Fi EZ mode".
-                        Trên Android thì không - doc còn nói EZ có tỉ lệ thành công THẤP hơn AP, nên
-                        gắn nhãn cho EZ là tự bịa. */}
-                    {PLATFORM === 'ios' && m.id === 'ap' ? '  · recommended' : ''}
                   </Text>
                   <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, lineHeight: 17 }}>
                     {m.hint}
@@ -916,8 +963,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
 
   /**
    * Hướng dẫn từng bước ĐÁNH SỐ của mode đang chọn (AC10).
-   * Nội dung từ `pairingModes.ts` - đã đối chiếu doc Tuya; AP iOS ≠ AP Android (SDK Android tự nối
-   * hotspot, iOS bắt user ra Settings).
+   * Nội dung từ `pairingModes.ts` - đã đối chiếu doc Tuya. AP ở cả 2 nền đều bảo user TỰ nối
+   * hotspot (đính chính 2026-07-16 - xem `modeAp` trong pairingModes.ts).
    */
   const stepsCard = () => (
     <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 16, marginTop: 12 }}>

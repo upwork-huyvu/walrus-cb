@@ -3,7 +3,7 @@
 > Nơi DUY NHẤT trả lời "dự án đang ở đâu?". Mọi feature đều phải có 1 dòng ở đây.
 > `/plan` thêm dòng mới; `/dev` `/test` `/fix-plan` cập nhật cột Phase/Trạng thái.
 
-- **Cập nhật lần cuối:** 2026-07-28 (`m1-admin-device-mgmt` → TEST: admin quản lý + điều khiển thiết bị qua Tuya Cloud OpenAPI, B1–B6 code xong & CI xanh, còn B7 verify máy thật) · trước đó 2026-07-16 (`m1-pairing-radar-discovery` → TEST: **revise #1 hiện thực xong** (B7-B9): 3 mode tường minh (Android EZ·AP·BLE / iOS AP·BLE), Wi-Fi input theo mode (EZ dropdown · AP tự nhập), hướng dẫn đánh số. **Xoá thiết kế EZ‖BLE song song** ⇒ rủi ro lớn nhất của plan biến mất. jest **261/261**. Còn B6 verify máy thật)
+- **Cập nhật lần cuối:** 2026-09-15 (`m1-pairing-radar-discovery` → TEST: **đính chính mô tả EZ/AP theo client** - AP tự điền Wi-Fi như EZ + guard `isTuyaHotspotSsid`; iOS card có nút đọc lại SSID + Open Settings; fix mã lỗi Location (hoa/thường); Local Network cho cả AP; step AP theo doc (hotspot tắt ngay khi nhận credential). jest **354/354**. 🔴 Nợ D3: token phải lấy khi còn online - chờ client chốt tách 2 tap) · trước đó 2026-07-28 (`m1-admin-device-mgmt` → TEST: admin quản lý + điều khiển thiết bị qua Tuya Cloud OpenAPI, B1–B6 code xong & CI xanh, còn B7 verify máy thật) · trước đó 2026-07-16 (`m1-pairing-radar-discovery` → TEST: **revise #1 hiện thực xong** (B7-B9): 3 mode tường minh (Android EZ·AP·BLE / iOS AP·BLE), Wi-Fi input theo mode (EZ dropdown · AP tự nhập), hướng dẫn đánh số. **Xoá thiết kế EZ‖BLE song song** ⇒ rủi ro lớn nhất của plan biến mất. jest **261/261**. Còn B6 verify máy thật)
 
 > ⚠️ **M1 đã MỞ RỘNG scope (2026-06-28).** Bản brief mới đưa thêm **Part A (thư
 > viện npm Tuya SDK)**, **Part C (backend NestJS + quản lý user)** và **Part D
