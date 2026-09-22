@@ -282,6 +282,15 @@ export default function App() {
     [forgetDevice]
   );
 
+  // Đổi tên đã lưu trên Tuya (DashboardScreen gọi sau khi SDK success) → đồng bộ header + cache thiết bị
+  // vừa pair, để Device List không chèn ngược tên cũ qua `pairedDevice`.
+  const handleDeviceRenamed = useCallback((renamedDevId: string, nextName: string) => {
+    if (activeDevIdRef.current === renamedDevId) setActiveDevName(nextName);
+    setLastPairedDevice((device) =>
+      device?.devId === renamedDevId ? { ...device, name: nextName } : device
+    );
+  }, []);
+
   const handleSessionComplete = (seconds: number) => {
     appState.completeSession(seconds);
   };
@@ -405,6 +414,7 @@ export default function App() {
           userUid={auth.user?.uid}
           homeId={homeId}
           onDeviceRemoved={handleDeviceRemoved}
+          onDeviceRenamed={handleDeviceRenamed}
         />
       );
       break;
@@ -419,6 +429,7 @@ export default function App() {
           userUid={auth.user?.uid}
           homeId={homeId}
           onDeviceRemoved={handleDeviceRemoved}
+          onDeviceRenamed={handleDeviceRenamed}
         />
       );
       break;

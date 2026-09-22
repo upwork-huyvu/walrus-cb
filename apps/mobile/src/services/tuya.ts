@@ -22,7 +22,7 @@ import {
 import { logDeviceSnapshot, logDeviceReadAttempt, logDpUpdate } from './deviceLog';
 import { parseTempRange, type TempRange } from './deviceSchema';
 import { describeTuyaError } from './tuyaError';
-import { getHomeDeviceList, removeMockDevice } from './home';
+import { getHomeDeviceList, removeMockDevice, renameMockDevice } from './home';
 import {
   mockRead,
   mockSetTarget,
@@ -57,6 +57,13 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 
 const READ_TIMEOUT_MS = 8000;
 const REMOVE_TIMEOUT_MS = 15000;
+const RENAME_TIMEOUT_MS = 15000;
+
+/**
+ * Giới hạn độ dài tên thiết bị phía app. Tuya cloud còn ràng buộc riêng của nó - nếu server từ chối,
+ * message nguyên văn của SDK vẫn được hiện (không nuốt), đây chỉ là chặn sớm cho UX.
+ */
+export const DEVICE_NAME_MAX_LENGTH = 40;
 
 /** Chức năng nào thiết bị có DP → UI ẩn nút không tồn tại (khớp code thật của thiết bị). */
 export type DeviceCaps = { power: boolean; light: boolean; purify: boolean };
@@ -228,6 +235,36 @@ export async function removeDevice(devId: string): Promise<void> {
     throw new Error('This app build does not support removing devices.');
   }
   await withTimeout<void>(lib.Tuya.removeDevice(devId), REMOVE_TIMEOUT_MS, 'Device removal');
+}
+
+/** Chuẩn hoá tên người dùng nhập: gộp khoảng trắng liên tiếp + cắt 2 đầu (tránh lưu tên " Bồn   nhà "). */
+export function normalizeDeviceName(raw: string): string {
+  return (raw ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Đổi tên thiết bị **TRÊN TUYA** (`IThingDevice.renameDevice` / `ThingSmartDevice updateName`) → tên mới
+ * đồng bộ sang Smart Life, admin web và mọi máy khác cùng tài khoản, chứ không chỉ đổi nhãn trong app.
+ * Chỉ resolve sau callback success của SDK; caller chỉ được cập nhật UI sau đó.
+ * @returns tên ĐÃ chuẩn hoá (đúng cái vừa lưu) để caller hiện lại cho khớp.
+ */
+export async function renameDevice(devId: string, name: string): Promise<string> {
+  if (!devId) throw new Error('Missing device ID.');
+  const next = normalizeDeviceName(name);
+  if (!next) throw new Error('Device name cannot be empty.');
+  if (next.length > DEVICE_NAME_MAX_LENGTH) {
+    throw new Error(`Device name must be ${DEVICE_NAME_MAX_LENGTH} characters or fewer.`);
+  }
+  if (shouldMock(devId)) {
+    renameMockDevice(devId, next);
+    return next;
+  }
+  // Build native cũ (chưa có bridge rename) → báo rõ thay vì crash "not a function".
+  if (typeof lib.Tuya.renameDevice !== 'function') {
+    throw new Error('This app build does not support renaming devices.');
+  }
+  await withTimeout<void>(lib.Tuya.renameDevice(devId, next), RENAME_TIMEOUT_MS, 'Device rename');
+  return next;
 }
 
 /**

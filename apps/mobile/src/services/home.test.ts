@@ -69,6 +69,20 @@ describe('services/home - mock (native vắng)', () => {
     home.removeMockDevice('mock-dev-001');
     expect(await home.getHomeDeviceList(1)).toEqual([]);
   });
+
+  it('renameMockDevice đổi tên ở các lần refetch sau (chạy được luồng rename khi native vắng)', async () => {
+    const home = load(null);
+    home.renameMockDevice('mock-dev-001', 'Bồn của tôi');
+    const devices = await home.getHomeDeviceList(1);
+    expect(devices[0]).toMatchObject({ devId: 'mock-dev-001', name: 'Bồn của tôi' });
+  });
+
+  it('renameMockDevice áp cho cả MOCK_DEVICE_LIST (MOCK_DEVICES bật)', async () => {
+    const home = load(null, true);
+    home.renameMockDevice('mock-walrus-mini', 'Bồn mini');
+    const devices = await home.getHomeDeviceList(1);
+    expect(devices.map((d: { devId: string; name: string }) => d.name)).toEqual(['Walrus Pro 2', 'Bồn mini']);
+  });
 });
 
 describe('services/home - native có mặt', () => {

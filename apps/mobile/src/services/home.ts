@@ -39,6 +39,15 @@ const mockDevices: HomeDevice[] = [
 // Tombstone trong phiên cho bồn giả đã được remove. Nếu không lọc ở nguồn, mock cố định sẽ xuất hiện
 // lại ngay lần refetch kế tiếp và che mất bug cache của luồng xoá thật.
 const removedMockDeviceIds = new Set<string>();
+// Tên bồn giả đã đổi trong phiên (devId → tên mới). Seed trong config/mock.ts là HẰNG SỐ nên không sửa
+// tại chỗ; override ở đây để list/detail hiện tên mới y như thiết bị thật sau khi Tuya đổi tên xong.
+const renamedMockDeviceNames = new Map<string, string>();
+
+/** Áp tên đã đổi (nếu có) lên 1 bồn giả - dùng chung cho mọi nguồn list mock. */
+function withMockName<T extends HomeDevice>(device: T): T {
+  const renamed = renamedMockDeviceNames.get(device.devId);
+  return renamed ? { ...device, name: renamed } : device;
+}
 
 function mapHome(h: any): HomeInfo {
   return {
@@ -91,18 +100,25 @@ export async function ensureDefaultHome(): Promise<HomeInfo> {
 
 /** Bồn giả → chỉ field HomeDevice (bỏ field trạng thái seed). */
 function mockHomeDevices(): HomeDevice[] {
-  return MOCK_DEVICE_LIST.filter((d) => !removedMockDeviceIds.has(d.devId)).map((d) => ({
-    devId: d.devId,
-    name: d.name,
-    productId: d.productId,
-    isOnline: d.isOnline,
-    iconUrl: d.iconUrl,
-  }));
+  return MOCK_DEVICE_LIST.filter((d) => !removedMockDeviceIds.has(d.devId)).map((d) =>
+    withMockName({
+      devId: d.devId,
+      name: d.name,
+      productId: d.productId,
+      isOnline: d.isOnline,
+      iconUrl: d.iconUrl,
+    }),
+  );
 }
 
 /** Xoá bồn giả khỏi nguồn list trong phiên (dùng để test trọn luồng remove mà không cần native). */
 export function removeMockDevice(devId: string): void {
   if (devId) removedMockDeviceIds.add(devId);
+}
+
+/** Đổi tên bồn giả trong phiên (dùng để chạy trọn luồng rename khi native vắng / bồn giả). */
+export function renameMockDevice(devId: string, name: string): void {
+  if (devId && name) renamedMockDeviceNames.set(devId, name);
 }
 
 /**
@@ -115,7 +131,7 @@ export async function getHomeDeviceList(homeId: number): Promise<HomeDevice[]> {
   if (!homeAvailable) {
     const fake = MOCK_DEVICES
       ? mockHomeDevices()
-      : mockDevices.filter((d) => !removedMockDeviceIds.has(d.devId));
+      : mockDevices.filter((d) => !removedMockDeviceIds.has(d.devId)).map(withMockName);
     logHomeDevices(homeId, fake); // native vắng → nói rõ đây là list GIẢ, không phải thiết bị thật
     return fake;
   }

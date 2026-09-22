@@ -8,7 +8,8 @@ import TempGauge from '../components/TempGauge';
 import CleaningPanel from '../components/CleaningPanel';
 import FilterReminderCard from '../components/FilterReminderCard';
 import { PowerIcon, BulbIcon, LeafIcon } from '../components/DeviceIcons';
-import { removeDeviceOrConfirmAbsent } from '../services/tuya';
+import RenameDeviceModal from '../components/RenameDeviceModal';
+import { DEVICE_NAME_MAX_LENGTH, removeDeviceOrConfirmAbsent, renameDevice } from '../services/tuya';
 import { describeTuyaError } from '../services/tuyaError';
 import { cleanupRemovedDeviceReminder } from '../services/reminders';
 
@@ -20,14 +21,21 @@ type Props = {
   userUid?: string;
   homeId?: number;
   onDeviceRemoved?: (devId: string) => Promise<void> | void;
+  onDeviceRenamed?: (devId: string, name: string) => void;
 };
 
 // Màn Device Detail - design "Walrus Pro 2": pill trạng thái + gauge nhiệt + target ± +
 // 3 công tắc (đèn/lọc/lạnh) + card cleaning + filter reminder. devId/devName/userUid truyền từ App.
-export default function DashboardScreen({ state, navigate, devId, devName, userUid, homeId, onDeviceRemoved }: Props) {
+export default function DashboardScreen({ state, navigate, devId, devName, userUid, homeId, onDeviceRemoved, onDeviceRenamed }: Props) {
   const C = useTheme();
   const DARK_ON_GOLD = '#0A0A0F'; // icon trên nền vàng active
   const [removing, setRemoving] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState('');
+  // Tên vừa đổi trong màn này. Giữ local vì App cập nhật `devName` ở lượt render sau - không có nó
+  // thì header nháy lại tên cũ ngay sau khi Tuya đã lưu xong.
+  const [renamedName, setRenamedName] = useState('');
 
   // Mở Device Detail là LUÔN đọc lại snapshot thật (online + DP), không dựa vào state cũ.
   // Vì sao KHÔNG guard theo (devId !== state.devId || !deviceConnected): devId đã persist nên khớp
@@ -35,11 +43,12 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   // false ⇒ connect bị bỏ ⇒ màn detail đứng nguyên mock (online 12°/6°) dù máy đang offline.
   // connectReqRef trong useAppState đã chống race nên gọi lại mỗi lần mở là an toàn.
   useEffect(() => {
+    setRenamedName(''); // đổi thiết bị → bỏ tên đã đổi của thiết bị trước
     if (devId) void state.connectDevice(devId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devId]);
 
-  const name = devName || 'Walrus';
+  const name = renamedName || devName || 'Walrus';
   // Pill mode: có nguồn (đang chạy) → Chilling, tắt → Idle. (Thiết bị không có DP freeze riêng;
   // Power = setting_pwr chính là on/off của máy làm lạnh.)
   const mode = state.powerOn ? 'Chilling' : 'Idle';
@@ -74,8 +83,31 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
     }
   };
 
-  const menu = () => {
-    if (removing) return;
+  /**
+   * Đổi tên đi THẲNG qua SDK Tuya (không chỉ đổi nhãn trong app) → Smart Life + admin web thấy tên mới.
+   * Lỗi → giữ modal mở kèm message thật của SDK để người dùng sửa/thử lại; KHÔNG cập nhật UI khi chưa lưu được.
+   */
+  const runRename = async (input: string) => {
+    const id = devId || state.devId;
+    if (!id || renaming) return;
+    setRenaming(true);
+    setRenameError('');
+    try {
+      const saved = await renameDevice(id, input);
+      setRenamedName(saved);
+      onDeviceRenamed?.(id, saved); // App đồng bộ header + cache thiết bị vừa pair ở Device List
+      setRenameOpen(false);
+    } catch (e) {
+      const info = describeTuyaError(e, {
+        fallback: 'Could not rename this device. Check your connection and try again.',
+      });
+      setRenameError(info.message);
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const confirmRemove = () => {
     Alert.alert(
       'Remove device?',
       `${name} will be removed from your Walrus account and Tuya Home. You will need to pair it again to use it.`,
@@ -88,6 +120,21 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
         },
       ],
     );
+  };
+
+  const menu = () => {
+    if (removing || renaming) return;
+    Alert.alert(name, 'Device settings', [
+      {
+        text: 'Rename device',
+        onPress: () => {
+          setRenameError('');
+          setRenameOpen(true);
+        },
+      },
+      { text: 'Remove device', style: 'destructive', onPress: confirmRemove },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const bumpTarget = (delta: number) => {
@@ -122,8 +169,9 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
           <Pressable onPress={() => navigate('device-list')} hitSlop={14} style={{ width: 40 }}>
             <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 30, lineHeight: 34 }}>‹</Text>
           </Pressable>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 24 }}>{name}</Text>
+          <View style={{ alignItems: 'center', flex: 1, paddingHorizontal: 8 }}>
+            {/* Tên do người dùng đặt (tối đa DEVICE_NAME_MAX_LENGTH) → cắt 1 dòng, không đẩy vỡ header. */}
+            <Text numberOfLines={1} style={{ fontFamily: F.headline, color: C.white, fontSize: 24 }}>{name}</Text>
             <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 4, marginTop: 4 }}>
               ICE BATH
             </Text>
@@ -131,9 +179,9 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
           <Pressable
             testID="device-menu"
             onPress={menu}
-            disabled={removing}
+            disabled={removing || renaming}
             hitSlop={14}
-            style={{ width: 40, alignItems: 'flex-end', opacity: removing ? 0.6 : 1 }}
+            style={{ width: 40, alignItems: 'flex-end', opacity: removing || renaming ? 0.6 : 1 }}
           >
             {removing ? (
               <ActivityIndicator size="small" color={C.ochre} />
@@ -317,6 +365,20 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
             </View>
           )}
         </ScrollView>
+
+        <RenameDeviceModal
+          visible={renameOpen}
+          initialName={name}
+          maxLength={DEVICE_NAME_MAX_LENGTH}
+          saving={renaming}
+          error={renameError}
+          onCancel={() => {
+            if (renaming) return; // đang gọi Tuya → không cho đóng nửa chừng
+            setRenameOpen(false);
+            setRenameError('');
+          }}
+          onSubmit={(next) => void runRename(next)}
+        />
       </SafeAreaView>
     </View>
   );
