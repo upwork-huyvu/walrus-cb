@@ -45,13 +45,28 @@
   đã sửa. Cùng nguồn: `time` **chính xác tới phút** ("18:00"), `status` = bật/tắt timer **không cần xoá**,
   `isAppPush` = bắn push khi timer chạy, **tối đa 30 timer/thiết bị**, `updateType` 0=tắt/1=bật/2=xoá.
 - **Giới hạn phút :00/:30 là do UI cũ tự đặt**, không phải ràng buộc của Tuya - bánh xe mới cho chọn mọi phút.
-- **Chưa dùng `status`/`isAppPush`:** tắt lịch hiện tại = **xoá cả task**. Muốn giữ cài đặt khi tắt thì đổi sang
-  `updateTimerStatus(op:'close')` (bridge đã có). Push khi chu trình chạy cũng chỉ là bật cờ `appPush` trong
+- **Chưa dùng `status`/`isAppPush`:** tắt lịch hiện tại = **xoá cả task**. Bridge cho `op:'close'` **đã đủ cả 2
+  nền tảng** (B7) nên đổi được bất cứ lúc nào, nhưng phải kèm: `CleanSchedule` mang thêm cờ `enabled`,
+  `readCleanSchedule` đọc `t.status` (hiện đang bỏ qua ⇒ lịch đã tắt vẫn hiện như đang bật) và UI phân biệt
+  On/Off. Tức là một bước riêng, không phải chỉ đổi lời gọi. Push khi chu trình chạy cũng chỉ là bật cờ `appPush` trong
   `timerInput` - để dành, chờ chủ dự án quyết có muốn thông báo không.
 - **Bồn không có DP chu trình.** Bảng thuộc tính g0cv1c chỉ có `setting_clr` (122, bool). Mọi khái niệm
   "cycle / staged cleaning" phải do app + timer cloud dựng nên.
-- **Bridge timer lệch nhau giữa 2 nền tảng** (bảng trong plan §2): iOS thiếu `addTimer`, Android thiếu
-  `getTimerList`. Đây là lý do JS đi theo task name.
+- **Bridge timer giờ ĐỦ CẢ 5 HÀM trên cả 2 nền tảng** (B7, 2026-09-23): iOS wire nốt `updateTimer` +
+  `updateTimerStatus` (trước là stub `TuyaTODO`). Chữ ký lấy verbatim từ **header SDK trong Pods**
+  (`apps/mobile/ios/Pods/ThingSmartTimerKit/Build/ThingSmartTimerKit.xcframework/ios-arm64/…/Headers/ThingSmartTimer.h`)
+  - đây là nguồn chuẩn nhất, đúng bản SDK dự án đang dùng, hơn cả trang doc:
+  - `updateTimerWithTimerId:loops:bizId:bizType:time:dps:status:isAppPush:aliasName:success:failure:`
+  - `updateTimerStatusWithTimerIds:bizId:bizType:updateType:(int)…` (có id) và
+    `updateTimerTaskStatusWithTask:bizId:bizType:updateType:(NSUInteger)…` (rỗng = cả task, khớp
+    `updateCategoryTimerStatus` của Android) ⇒ hợp đồng "timerIds rỗng = cả task" giữ nguyên.
+  - `updateType`: **0 = tắt, 1 = bật, 2 = xoá** ⇔ JS `close` / `open` / `delete`. Op lạ → DELETE (như Android).
+  - ⚠️ Còn một chỗ lệch có chủ ý: `removeTimer` trên iOS **bỏ qua `timerIds`** (luôn xoá cả task); Android
+    xoá đúng id nếu có. JS hiện chỉ gọi dạng cả-task nên chưa lộ.
+  - Header SDK cũng xác nhận lần thứ ba thứ tự `loops`: *"Sunday, Monday, … Saturday"*, ví dụ nguyên văn
+    *"`0100000` means every Monday"*.
+- (lịch sử) Bridge từng lệch nhau: iOS thiếu `addTimer`, Android thiếu `getTimerList`. Đây là lý do JS đi
+  theo task name - vẫn giữ vì nó không phụ thuộc timerId.
 - **Timer Tuya chỉ lặp theo tuần** (`loops` 7 ký tự) ⇒ "every X days" trong design cũ không biểu diễn được.
 - **`time` chỉ tới phút** ⇒ "bây giờ + N phút" phải làm tròn lên phút, sai số ±1 phút là chấp nhận được.
 - Giới hạn **30 timer/thiết bị** - dùng task riêng + xoá trước khi tạo lại nên không đụng trần.
