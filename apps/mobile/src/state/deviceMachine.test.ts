@@ -92,11 +92,55 @@ describe('deviceMachine - kết nối / loading / error (AC2, AC3)', () => {
     expect(s.error).toBe('đọc lỗi');
   });
 
+  // Tín hiệu để useAppState đăng ký lại listener realtime (iOS registerDeviceListener im lặng bỏ qua
+  // khi cache SDK chưa có thiết bị ⇒ listener đăng ký lúc lỗi là listener chết).
+  it('connectOk tăng connectSeq mỗi lần đọc thành công', () => {
+    const first = deviceReducer(initialDeviceState, { type: 'connectOk', snapshot: snap({}) });
+    expect(first.connectSeq).toBe(initialDeviceState.connectSeq + 1);
+    const second = deviceReducer(first, { type: 'connectOk', snapshot: snap({}) });
+    expect(second.connectSeq).toBe(first.connectSeq + 1);
+    // Lỗi thì KHÔNG tăng - không có listener mới nào cần đăng ký.
+    expect(deviceReducer(first, { type: 'connectError', error: 'x' }).connectSeq).toBe(first.connectSeq);
+  });
+
+  // m1-fix-device-connect-error: đọc snapshot trượt thì KHÔNG được khoe số cũ - mặc định của state là
+  // mock 12°/6°, khách nhìn màn ERROR mà vẫn thấy nhiệt độ "thật".
+  it('connectError XOÁ nhiệt độ đang hiển thị (gauge về `-`)', () => {
+    const s = deviceReducer(
+      { ...initialDeviceState, status: 'connecting', loading: true, pendingTarget: 60, prevTarget: 50 },
+      { type: 'connectError', error: 'no device' },
+    );
+    expect(s.currentTemp).toBeNull();
+    expect(s.targetTemp).toBeNull();
+    expect(s.pendingTarget).toBeNull();
+    expect(s.prevTarget).toBeNull();
+  });
+
   it('statusChanged đổi online↔offline; bỏ qua khi idle', () => {
     const online = deviceReducer({ ...initialDeviceState, status: 'offline' }, { type: 'statusChanged', isOnline: true });
     expect(online.status).toBe('online');
     const idle = deviceReducer({ ...initialDeviceState, status: 'idle' }, { type: 'statusChanged', isOnline: true });
     expect(idle.status).toBe('idle');
+  });
+
+  // Chỉ `connectOk` mới được đưa về online. Lật pill bằng cờ online suông = nói dối: `readDevice` chưa
+  // thành công lần nào ⇒ DP map rỗng ⇒ publish bị từ chối ⇒ "online" nhưng bấm gì cũng không ăn.
+  it('statusChanged KHÔNG lật error → online', () => {
+    const s = deviceReducer(
+      { ...initialDeviceState, status: 'error', error: 'no device' },
+      { type: 'statusChanged', isOnline: true },
+    );
+    expect(s.status).toBe('error');
+    expect(s.error).toBe('no device');
+  });
+
+  it('dpPatch KHÔNG lật error → online (vẫn nhận giá trị DP kèm theo)', () => {
+    const s = deviceReducer(
+      { ...initialDeviceState, status: 'error', error: 'no device', currentTemp: null },
+      { type: 'dpPatch', patch: { currentTemp: 5, isOnline: true } },
+    );
+    expect(s.status).toBe('error');
+    expect(s.currentTemp).toBe(5);
   });
 });
 

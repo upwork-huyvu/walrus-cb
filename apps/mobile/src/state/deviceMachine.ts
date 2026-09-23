@@ -21,6 +21,14 @@ export type DeviceState = {
   pendingTarget: number | null; // target đang chờ ack (optimistic chưa confirm)
   prevTarget: number | null; // target trước khi optimistic (để revert nếu timeout)
   tempRange: TempRange;
+  /**
+   * Số lần đọc snapshot THÀNH CÔNG. Không phải để hiển thị - đây là tín hiệu cho `useAppState` ĐĂNG KÝ
+   * LẠI listener realtime sau mỗi lần connect thành công.
+   * Vì sao cần (m1-fix-device-connect-error): iOS `registerDeviceListener` làm
+   * `[ThingSmartDevice deviceWithDeviceId:]` rồi **return im lặng nếu nil**. Đăng ký lúc cache SDK còn
+   * rỗng ⇒ listener CHẾT ⇒ đọc lại thành công rồi vẫn không nhận được DP realtime nào.
+   */
+  connectSeq: number;
 };
 
 const ALL_CAPS: DeviceCaps = { power: true, light: true, purify: true };
@@ -40,6 +48,7 @@ export const initialDeviceState: DeviceState = {
   pendingTarget: null,
   prevTarget: null,
   tempRange: DEFAULT_TEMP_RANGE,
+  connectSeq: 0,
 };
 
 export type Snapshot = {
@@ -101,14 +110,28 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
         tempRange: s.tempRange,
         pendingTarget: null,
         prevTarget: null,
+        connectSeq: state.connectSeq + 1, // → useAppState đăng ký lại listener realtime trên instance sống
       };
     }
 
     case 'connectError':
-      return { ...state, status: 'error', loading: false, error: action.error };
+      // XOÁ số liệu cũ: chưa đọc được snapshot thì gauge phải hiện `-`. Trước đây state giữ nguyên giá
+      // trị đang có - mà mặc định là MOCK 12°/6° ⇒ màn lỗi vẫn khoe nhiệt độ như thật (m1-fix-device-connect-error).
+      return {
+        ...state,
+        status: 'error',
+        loading: false,
+        error: action.error,
+        currentTemp: null,
+        targetTemp: null,
+        pendingTarget: null,
+        prevTarget: null,
+      };
 
     case 'statusChanged': {
-      if (state.status === 'idle') return state; // chưa kết nối → bỏ qua
+      // 'idle' = chưa kết nối; 'error' = đọc snapshot THẤT BẠI ⇒ chỉ mình `connectOk` được quyền đưa về
+      // online. Lật pill bằng cờ online suông là nói dối: DP map vẫn rỗng nên điều khiển không hề ăn.
+      if (state.status === 'idle' || state.status === 'error') return state;
       const next: ConnStatus = action.isOnline ? 'online' : 'offline';
       return next === state.status ? state : { ...state, status: next }; // không đổi → giữ nguyên ref
     }
@@ -147,7 +170,9 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
           changed = true;
         }
       }
-      if (p.isOnline !== undefined && state.status !== 'idle') {
+      // Cùng lý do với 'statusChanged': đang `error` thì KHÔNG tự lật sang online (useAppState sẽ đọc
+      // lại snapshot thật khi realtime báo online - xem self-heal ở listener).
+      if (p.isOnline !== undefined && state.status !== 'idle' && state.status !== 'error') {
         const ns: ConnStatus = p.isOnline ? 'online' : 'offline';
         if (ns !== state.status) {
           next.status = ns;

@@ -42,9 +42,11 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   // sẵn, còn `deviceConnected` mặc định TRUE do state khởi tạo mock (status:'online') ⇒ guard thành
   // false ⇒ connect bị bỏ ⇒ màn detail đứng nguyên mock (online 12°/6°) dù máy đang offline.
   // connectReqRef trong useAppState đã chống race nên gọi lại mỗi lần mở là an toàn.
+  // homeId đi kèm để adapter nạp được home data (cache thiết bị của SDK) khi lần đọc đầu trượt -
+  // ca hay gặp nhất: vừa pair xong, cache chưa có bồn ⇒ native reject `no_device`.
   useEffect(() => {
     setRenamedName(''); // đổi thiết bị → bỏ tên đã đổi của thiết bị trước
-    if (devId) void state.connectDevice(devId);
+    if (devId) void state.connectDevice(devId, homeId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devId]);
 

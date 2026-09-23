@@ -100,7 +100,13 @@ const fmtCountdown = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padS
 export default function PairingScreen({ navigate, state, homeId }: Props) {
   const C = useTheme();
   // homeId tường minh từ Device List (đã qua home-gate). Fallback ensureHome chỉ khi vào pairing trực tiếp.
-  const resolveHomeId = async () => homeId ?? (await ensureHome());
+  // Nhớ lại id đã resolve: sau khi pair xong `done()` cần nó để warm cache SDK mà không gọi lại ensureHome.
+  const resolvedHomeIdRef = useRef<number | undefined>(homeId);
+  const resolveHomeId = async () => {
+    const hid = homeId ?? (await ensureHome());
+    resolvedHomeIdRef.current = hid;
+    return hid;
+  };
   // Mode mặc định: EZ trên CẢ HAI nền, kể từ khi Apple duyệt multicast entitlement (2026-08-07) -
   // trước đó iOS phải mặc định AP. EZ cần Wi-Fi ⇒ luôn vào 'intro' trước; chỉ khi user tự chọn BLE
   // mới có đường vào thẳng radar. Nguồn sự thật là `pairingModes.ts`, đừng hardcode lại ở đây.
@@ -492,7 +498,8 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
         console.warn('[pairing] renameDevice failed', describeError(e));
       }
     }
-    await state.connectDevice(result.devId);
+    // homeId: cần cho warm-up cache SDK - ngay sau khi pair, `deviceWithDeviceId` thường chưa thấy bồn.
+    await state.connectDevice(result.devId, resolvedHomeIdRef.current);
     setSaving(false);
     navigate('device-list', {
       homeId,

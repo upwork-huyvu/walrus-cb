@@ -122,6 +122,28 @@ export function renameMockDevice(devId: string, name: string): void {
 }
 
 /**
+ * Nạp home data để SDK có **cache thiết bị + MQTT** trước khi đọc/điều khiển thiết bị.
+ *
+ * Vì sao cần: `getDeviceSnapshot` (và mọi thao tác device) đi qua
+ * `[ThingSmartDevice deviceWithDeviceId:]` / `newDeviceInstance` - hai hàm này **chỉ đọc cache local**,
+ * không gọi mạng. Cache chưa nạp ⇒ native reject `no_device` (hay gặp NGAY SAU KHI PAIR: Device List
+ * hiện bồn vừa pair từ state local trong lúc `getHomeDeviceList` còn đang bay).
+ * Doc Tuya: "trước khi điều khiển device/group phải init home (getHomeDetail)" -
+ * docs/research/tuya-home-sdk-device-control.md §Tiên quyết.
+ *
+ * Best-effort: native vắng / bridge cũ / lỗi mạng → **no-op, không throw** (caller vẫn thử đọc tiếp và
+ * lỗi thật của lần đọc mới là thứ hiện cho người dùng).
+ */
+export async function warmHomeCache(homeId: number): Promise<void> {
+  if (!homeAvailable || !homeId || typeof lib.Tuya.getHomeDetail !== 'function') return;
+  try {
+    await lib.Tuya.getHomeDetail(homeId);
+  } catch {
+    // nuốt có chủ đích: đây chỉ là bước hâm nóng cache, không phải thao tác người dùng yêu cầu.
+  }
+}
+
+/**
  * Thiết bị trong 1 home → màn device list.
  * - Native vắng (Metro-only): mock list (nếu bật) / demo cũ.
  * - Native có: LẤY THIẾT BỊ THẬT từ SDK; nếu MOCK_DEVICES bật thì CHÈN THÊM bồn giả (không thay thế)

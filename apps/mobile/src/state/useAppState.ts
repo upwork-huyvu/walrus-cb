@@ -2,7 +2,6 @@ import { useState, useEffect, useReducer, useRef, useCallback } from 'react';
 import { getStreakMultiplier } from './levels';
 import {
   initSdk,
-  readDevice,
   setTargetTemp as tuyaSetTargetTemp,
   setLight as tuyaSetLight,
   setPurify as tuyaSetPurify,
@@ -12,6 +11,7 @@ import {
   refreshDevicesOnline,
 } from '../services/tuya';
 import { clampToRange } from '../services/deviceSchema';
+import { readDeviceWithWarmup } from '../services/deviceConnect';
 import { describeTuyaError } from '../services/tuyaError';
 import { debounce } from '../lib/debounce';
 import { deviceReducer, initialDeviceState } from './deviceMachine';
@@ -23,6 +23,9 @@ import {
   totalMinutesOf,
   type SessionRecord,
 } from '../services/ritualStore';
+
+/** Khoảng cách tối thiểu giữa 2 lần tự đọc lại snapshot khi đang `error` (self-heal từ realtime). */
+const RECONNECT_THROTTLE_MS = 5000;
 
 // App state (port từ replit_generate/App.js). Phần device (temp/light/status) chạy qua reducer thuần
 // `deviceMachine` (test được) + adapter `services/tuya` (mock fallback). `devId` lấy từ pairing
@@ -54,6 +57,10 @@ export function useAppState() {
   const devIdRef = useRef(devId);
   devIdRef.current = devId;
   const deviceConnected = device.status !== 'idle';
+  // Listener realtime sống lâu hơn 1 lần render → đọc status qua ref cho khỏi dính giá trị cũ.
+  const statusRef = useRef(device.status);
+  statusRef.current = device.status;
+  const healAtRef = useRef(0); // lần tự-đọc-lại gần nhất (chống quay vòng)
 
   // Publish target được DEBOUNCE (audit M-1): bấm +/- nhanh chỉ gửi giá trị cuối. Tạo 1 lần.
   const publishTargetRef = useRef(
@@ -109,9 +116,13 @@ export function useAppState() {
   // Kết nối: (id mới từ pairing → persist) + init SDK + đọc snapshot DP. connecting → online/offline/error.
   // connectReqRef: chống ghi đè out-of-order - read native có thể về trễ/không đúng thứ tự khi đổi bồn nhanh;
   // chỉ nhận kết quả của lần connect MỚI NHẤT.
+  // homeIdRef: nhớ home đang mở để `readDeviceWithWarmup` nạp được home data (cache thiết bị của SDK) khi
+  // lần đọc đầu trượt - và để `retry()` sau đó vẫn warm được dù không ai truyền lại homeId.
   const connectReqRef = useRef('');
-  const connectDevice = async (id?: string) => {
+  const homeIdRef = useRef<number | undefined>(undefined);
+  const connectDevice = async (id?: string, homeId?: number) => {
     const useId = id ?? devId;
+    if (homeId != null) homeIdRef.current = homeId;
     connectReqRef.current = useId;
     if (id && id !== devId) {
       setDevId(id);
@@ -120,7 +131,9 @@ export function useAppState() {
     dispatch({ type: 'connectStart' });
     await initSdk();
     try {
-      const s = await readDevice(useId);
+      // Không đọc trần nữa: lỗi transient (hay gặp nhất là `no_device` khi cache SDK chưa có bồn vừa
+      // pair) → nạp home data + backoff rồi đọc lại. Xem services/deviceConnect.ts.
+      const s = await readDeviceWithWarmup(useId, homeIdRef.current);
       if (connectReqRef.current !== useId) return; // đã có connect mới hơn → bỏ snapshot cũ
       dispatch({ type: 'connectOk', snapshot: s });
     } catch (e) {
@@ -129,6 +142,10 @@ export function useAppState() {
       dispatch({ type: 'connectError', error: describeTuyaError(e).message });
     }
   };
+  // Giữ bản MỚI NHẤT của connectDevice cho các callback sống lâu (listener realtime) gọi lại, khỏi dính
+  // closure cũ của lần render đầu.
+  const connectDeviceRef = useRef(connectDevice);
+  connectDeviceRef.current = connectDevice;
 
   // Thử lại sau khi đọc lỗi (state error → connecting → đọc lại).
   const retry = () => {
@@ -205,11 +222,30 @@ export function useAppState() {
 
   // Realtime DP + online/offline (onDeviceStatus) → reducer. Chỉ subscribe khi CÓ devId thật:
   // devId rỗng (chưa mở bồn nào) mà vẫn gọi thì mock tạo timer 'bồn ma' key '' chạy nền + bịa nhiệt độ.
+  //
+  // Tự chữa khi đang `error`: thiết bị báo online → ĐỌC LẠI SNAPSHOT THẬT, chứ KHÔNG lật pill sang
+  // online suông. Lý do (m1-fix-device-connect-error): `readDevice` chưa thành công lần nào ⇒ DP map
+  // rỗng ⇒ mọi publish bị từ chối ⇒ pill xanh nhưng bấm gì cũng không ăn - đúng hiện tượng khách báo
+  // là "đợi tý lại kết nối được".
   useEffect(() => {
     if (!deviceConnected || !devId) return;
-    const sub = listenDevice(devId, (p) => dispatch({ type: 'dpPatch', patch: p }));
+    const sub = listenDevice(devId, (p) => {
+      if (statusRef.current === 'error' && p.isOnline) {
+        const now = Date.now();
+        // Throttle: bồn có thể đẩy event liên tục, đọc lại mà vẫn lỗi thì đừng quay vòng.
+        if (now - healAtRef.current >= RECONNECT_THROTTLE_MS) {
+          healAtRef.current = now;
+          void connectDeviceRef.current(devIdRef.current);
+        }
+        return; // bỏ patch này: connectOk sắp ghi đè toàn bộ state bằng số liệu thật
+      }
+      dispatch({ type: 'dpPatch', patch: p });
+    });
     return () => sub.remove();
-  }, [deviceConnected, devId]);
+    // `connectSeq` (tăng ở mỗi connectOk) nằm trong deps để ĐĂNG KÝ LẠI listener sau khi đọc thành công:
+    // iOS `registerDeviceListener` return im lặng khi cache SDK chưa có thiết bị ⇒ lần đăng ký lúc đang
+    // lỗi là listener CHẾT, không đăng ký lại thì realtime im luôn dù đã kết nối được.
+  }, [deviceConnected, devId, device.connectSeq]);
 
   return {
     totalSessions,

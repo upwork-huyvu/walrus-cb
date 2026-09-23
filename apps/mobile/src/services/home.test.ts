@@ -170,3 +170,28 @@ describe('services/home - native có mặt', () => {
     expect(stopHomeStatusListener).toHaveBeenCalledWith(9);
   });
 });
+
+// m1-fix-device-connect-error: hâm nóng cache thiết bị của SDK (getHomeDetail) trước khi đọc thiết bị.
+describe('services/home - warmHomeCache', () => {
+  it('native CÓ → gọi getHomeDetail đúng homeId', async () => {
+    const getHomeDetail = jest.fn().mockResolvedValue({ homeId: 7 });
+    const home = load({ getHomeDetail });
+    await home.warmHomeCache(7);
+    expect(getHomeDetail).toHaveBeenCalledWith(7);
+  });
+
+  it('getHomeDetail lỗi → NUỐT, không throw (warm chỉ là bước phụ, lỗi thật phải là lỗi của lần ĐỌC)', async () => {
+    const getHomeDetail = jest.fn().mockRejectedValue(new Error('network down'));
+    const home = load({ getHomeDetail });
+    await expect(home.warmHomeCache(7)).resolves.toBeUndefined();
+  });
+
+  it('native vắng / thiếu homeId / bridge cũ không có getHomeDetail → no-op', async () => {
+    await expect(load(null).warmHomeCache(7)).resolves.toBeUndefined();
+    const getHomeDetail = jest.fn();
+    const home = load({ getHomeDetail });
+    await home.warmHomeCache(0);
+    expect(getHomeDetail).not.toHaveBeenCalled();
+    await expect(load({}).warmHomeCache(7)).resolves.toBeUndefined();
+  });
+});
