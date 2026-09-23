@@ -306,9 +306,9 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
                 ))}
               </View>
 
-              {/* ── Cleaning card ── */}
+              {/* ── Cleaning card (chu trình thật: bật DP 122 + hẹn tắt trên Tuya cloud) ── */}
               <View style={{ marginTop: 24 }}>
-                <CleaningPanel />
+                <CleaningPanel devId={devId || state.devId} purifyOn={state.purifyOn} />
               </View>
 
               {/* ── Filter reminder card (per-device, backend) ── */}

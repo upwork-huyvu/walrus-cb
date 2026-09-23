@@ -460,8 +460,18 @@ Chỉ hỗ trợ DP `switch_number`/`sub_switch_number` ⇒ không hợp với D
 - **iOS `getDp` query DP** verbatim: header iOS `ThingSmartDevice` (trang DP parser confirm parser nhưng chưa thấy `getDp` rõ) - mở header khi code.
 - **iOS `ThingSmartGroup` (Smart App SDK chuẩn)**: signature `addDevice/removeDevice/dismissGroup` + delegate `ThingSmartGroupDelegate` - mở header (đừng dùng API Commercial Lighting `publishBrightPercent`…).
 - **`CommunicationEnum` giá trị cụ thể** (LAN/MQTT/BLE/HTTP = số mấy) - mở API reference Android khi code `publishDps(dps, orders, cb)`.
-- **`actions` JSON format** của `ThingTimerBuilder.setActions` (Android timer chuẩn) vs `setDps(Map)` của extension - verify khi code.
+- ~~**`actions` JSON format** của `ThingTimerBuilder.setActions`~~ → **ĐÃ CHỐT (2026-09-23, javap trên
+  `thingsmart:7.5.6`):** `actions` = JSON **mảng** các `DpTimerPointBean`, tức
+  `[{"time":"HH:mm","dps":{"<dpId>":<value>}}]`. Căn cứ: bean nội bộ
+  `com.thingclips.sdk.timer.bean.DpTimerPointBean { String time; JSONObject dps; }` + API cũ
+  `IThingTimer.addTimerWithTask(task, devId, time, Map<String,Object> dps, loops, …)` - cùng cặp (time, dps).
+  Kèm theo (cùng lần javap): `IThingCommonTimer` có **`updateCategoryTimerStatus(task, devId, type, op, cb)`**
+  ⇒ xoá/bật-tắt theo **cả task**, khớp được với iOS (`removeTimerWithTask`); `TimerTask.getTimerList()` →
+  `ArrayList<Timer>` với `Timer{timerId, time, loops, status, dpId, value, remark, date}` - Android trả
+  **dpId + value rời** (chuỗi), không phải map `dps` như iOS ⇒ bridge phải dựng lại `{dpId: value}`.
+  Vẫn cần lần chạy thật để chốt (timer có vào máy không).
 - **Timer có chạy khi thiết bị offline?** (cloud timer vs device-local timer) - cần test trên ice-bath thật.
+  Đây là điều kiện sống còn của `m1-clean-cycle` (lệnh tắt chu trình nằm ở timer cloud).
 
 ---
 
