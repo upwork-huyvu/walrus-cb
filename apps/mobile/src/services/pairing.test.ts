@@ -72,20 +72,6 @@ describe('deviceNeedsWifi - route combo (hỏi Wi-Fi) vs BLE thuần (pair thẳ
   });
 });
 
-describe('renameDevice', () => {
-  it('native vắng → no-op (không throw)', async () => {
-    const p = load(null);
-    await expect(p.renameDevice('d1', 'Tên')).resolves.toBeUndefined();
-  });
-
-  it('native có → gọi lib.Tuya.renameDevice(devId, name)', async () => {
-    const renameDevice = jest.fn().mockResolvedValue(undefined);
-    const p = load({ renameDevice });
-    await p.renameDevice('d1', 'Bồn của tôi');
-    expect(renameDevice).toHaveBeenCalledWith('d1', 'Bồn của tôi');
-  });
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // describeError / errorDetail  (m1-fix-wifi-pairing · B2)
 //

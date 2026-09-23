@@ -257,11 +257,9 @@ export async function pairBle(
   }
 }
 
-// --- Đặt tên thiết bị sau khi pair (bước confirm cuối, chuẩn SmartLife). Native vắng → no-op. ---
-export async function renameDevice(devId: string, name: string): Promise<void> {
-  if (!pairingAvailable) return;
-  await lib.Tuya.renameDevice(devId, name);
-}
+// ĐÃ BỎ `renameDevice` ở đây (2026-09-23). Bản này nuốt lỗi, không validate, không timeout và
+// native vắng thì im lặng coi như thành công ⇒ đổi tên lúc pair "chạy" mà Tuya vẫn giữ tên cũ.
+// Dùng `services/tuya.ts#renameDevice` cho MỌI chỗ đổi tên (pairing, Device List, Device Settings).
 
 // Map các "step" kỹ thuật từ onPairingProgress → nhãn kiểu SmartLife (searching→found→…).
 // ⚠️ Nhánh LỖI phải đứng TRƯỚC: iOS gửi `device_timeout` (ThingActivatorStep = 4) qua đúng kênh tiến trình

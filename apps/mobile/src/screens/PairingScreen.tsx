@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Linking,
   Modal,
@@ -51,12 +52,15 @@ import {
   describeError,
   errorDetail,
   isFailureStep,
-  renameDevice,
   pairingStepLabel,
   type PairedDevice,
   type BleScanItem,
   type Subscription,
 } from '../services/pairing';
+// Rename đi qua adapter THIẾT BỊ (không phải bản rút gọn của services/pairing): có validate, timeout,
+// nhánh mock, và THROW khi build native chưa hỗ trợ - đổi tên lúc pair phải chắc như đổi ở Device Detail.
+import { renameDevice } from '../services/tuya';
+import { describeTuyaError } from '../services/tuyaError';
 import { dumpPairingLog, logPairing } from '../services/pairingLog';
 import { hasBlocker, preflightPairing, type PreflightIssue } from '../services/pairingPreflight';
 import { getSavedWifiList, saveWifi, type SavedWifi } from '../services/wifiStore';
@@ -488,15 +492,22 @@ export default function PairingScreen({ navigate, state, homeId }: Props) {
     }
     setSaving(true);
     const name = deviceName.trim();
-    const displayName = name || result.name || 'Walrus Ice Bath';
+    // Tên hiển thị = tên Tuya ĐÃ LƯU. Không dùng tên vừa gõ khi lưu hỏng: Device List sẽ refetch từ
+    // Tuya và tên cũ hiện lại ⇒ người dùng tưởng app "quên" tên mình đặt.
+    let displayName = result.name || 'Walrus Ice Bath';
     try {
-      if (name && name !== result.name) await renameDevice(result.devId, name);
+      if (name && name !== result.name) displayName = await renameDevice(result.devId, name);
+      else if (name) displayName = name;
     } catch (e) {
-      // Đặt tên lỗi không chặn hoàn tất - thiết bị đã pair; đổi tên lại ở detail sau (audit L-2).
-      if (typeof __DEV__ !== 'undefined' && __DEV__) {
-        // eslint-disable-next-line no-console
-        console.warn('[pairing] renameDevice failed', describeError(e));
-      }
+      // Thiết bị ĐÃ pair xong - lỗi đặt tên không được huỷ thành quả đó. Nhưng cũng KHÔNG được nuốt:
+      // trước đây chỉ console.warn ở __DEV__ ⇒ bản release im lặng, khách báo "đổi tên không ăn".
+      logPairing('rename.error', { ...errorDetail(e) });
+      const info = describeTuyaError(e, { fallback: 'Could not save the device name.' });
+      Alert.alert(
+        'Device added, but the name was not saved',
+        `${info.message}\n\nYou can rename it from the device screen.`,
+        [{ text: 'OK' }],
+      );
     }
     // homeId: cần cho warm-up cache SDK - ngay sau khi pair, `deviceWithDeviceId` thường chưa thấy bồn.
     await state.connectDevice(result.devId, resolvedHomeIdRef.current);
