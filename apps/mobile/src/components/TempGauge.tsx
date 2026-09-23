@@ -1,5 +1,5 @@
 // Vòng cung nhiệt độ (SVG) cho màn device detail: track tối + cung vàng theo nhiệt hiện tại
-// + vạch trắng ở đầu cung; giữa là số CURRENT + target. Cung 270°, mở đáy (135° → 405°).
+// + vạch trắng ở đầu cung; giữa là nhiệt độ nước + nhiệt độ đặt. Cung 270°, mở đáy (135° → 405°).
 import { Text, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 import { F, useTheme } from '../theme';
@@ -98,8 +98,8 @@ export default function TempGauge({ current, target, pending = false, range, siz
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 4 }}>
-          CURRENT
+        <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 2.5 }}>
+          WATER TEMPERATURE
         </Text>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
           <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 84, lineHeight: 96 }}>
@@ -110,7 +110,7 @@ export default function TempGauge({ current, target, pending = false, range, siz
           </Text>
         </View>
         <Text style={{ fontFamily: F.body, fontSize: 15, opacity: pending ? 0.6 : 1 }}>
-          <Text style={{ color: C.muted }}>Target </Text>
+          <Text style={{ color: C.muted }}>Set temperature </Text>
           <Text style={{ color: C.ochre }}>{formatTemp(target, range)}</Text>
         </Text>
       </View>

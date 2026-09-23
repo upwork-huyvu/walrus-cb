@@ -144,11 +144,11 @@ export default function HomeScreen({ state, navigate, userName, onSignOut }: Pro
 
               <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
                 <View style={{ flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 14, alignItems: 'center' }}>
-                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 6 }}>CURRENT</Text>
+                  <Text numberOfLines={1} style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 0.8, marginBottom: 6 }}>WATER TEMPERATURE</Text>
                   <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 26 }}>{formatTemp(state.currentTemp, state.tempRange)}</Text>
                 </View>
                 <View style={{ flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 14, alignItems: 'center' }}>
-                  <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 6 }}>TARGET</Text>
+                  <Text numberOfLines={1} style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 0.8, marginBottom: 6 }}>SET TEMPERATURE</Text>
                   <Text style={{ fontFamily: F.headline, color: C.ochre, fontSize: 26 }}>{formatTemp(state.targetTemp, state.tempRange)}</Text>
                 </View>
               </View>

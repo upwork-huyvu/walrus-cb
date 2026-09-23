@@ -134,10 +134,10 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
                 />
               </View>
 
-              {/* ── TARGET − / + ── */}
+              {/* ── SET TEMPERATURE − / + ── */}
               <View style={{ alignItems: 'center', marginTop: 8 }}>
-                <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 4 }}>
-                  TARGET
+                <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 12, letterSpacing: 2.5 }}>
+                  SET TEMPERATURE
                 </Text>
                 <View
                   style={{
