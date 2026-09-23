@@ -18,14 +18,17 @@ trên SM-A325F với bồn giả/bồn thật nếu tiện. Song song chờ khá
 2. Bồn phải bật khử trùng (nút lá sáng), card hiện "Cleaning… until HH:mm" (AC1).
 3. **Thoát app hẳn (vuốt kill), khoá máy.** Tới giờ đó bồn phải **tự tắt** khử trùng (AC2).
 4. Chạy lại chu trình rồi bấm **Stop cleaning** → bồn tắt ngay, và sau đó **không** tự tắt/bật lần nữa (AC4).
-5. EDIT → WEEKLY, chọn 1 thứ, giờ gần hiện tại vài phút, Save → tới giờ bồn tự bật, sau `CYCLE LENGTH` tự tắt (AC5).
-   ⚠️ Nếu bật đúng **thứ khác** so với thứ đã chọn ⇒ `loops` lệch mốc ngày, sửa `loopsFrom` trong `cleanCycle.ts`.
+5. EDIT → sheet lịch: **cuộn bánh xe** chọn giờ lẻ (vd 07:13) + bỏ EVERY DAY, chọn 1 thứ, đặt giờ gần hiện tại
+   vài phút → Save → tới giờ bồn tự bật, sau `CYCLE LENGTH` tự tắt (AC5). Kiểm luôn phút lẻ có lưu đúng không.
+   ⚠️ Nếu bật đúng **thứ khác** so với thứ đã chọn ⇒ `loops` lệch mốc ngày, sửa `loopsFrom` trong `cleanCycle.ts`
+   (doc Tuya nói ký tự đầu = Chủ Nhật, code đang theo đúng vậy - chỉ còn xác nhận bằng máy thật).
 
 ## Checklist các bước (đồng bộ với plan.md mục 4)
 - [x] B1 - iOS native `addTimer`  · done (compile ✓)
 - [x] B2 - Android `getTimerList` + xoá theo task  · done (javap verify + compileDebugKotlin ✓)
 - [x] B3 - Service `services/cleanCycle.ts` + test  · done (20 test)
 - [x] B4 - Nối `CleaningPanel` vào service  · done
+- [x] B6 - Làm lại UI chọn giờ (bánh xe HH:mm trong sheet, bỏ giới hạn :00/:30)  · done
 - [ ] B5 - Verify máy thật (iPhone khách)  · blocked (cần build iOS + bồn thật)
 
 ## Checklist tiêu chí hoàn thành (đồng bộ với plan.md mục 3)
@@ -41,6 +44,7 @@ trên SM-A325F với bồn giả/bồn thật nếu tiện. Song song chờ khá
 ## Nhật ký chạy (Run log) - mới nhất ở trên
 | Thời gian | Phase/Bước | Kết quả | Ghi chú / output |
 |---|---|---|---|
+| 2026-09-23 | DEV+TEST B6 - **làm lại UI đặt giờ** | ✅ | Chủ dự án: "không có chọn thời gian bắt đầu clean, nhìn rất dở". Đúng 3 lỗi UI (service KHÔNG sai): (1) khối START TIME bị **giấu sau khi chọn DAILY/WEEKLY** mà mặc định là OFF ⇒ mở EDIT không thấy giờ đâu; (2) ô phút: cả ▲ lẫn ▼ đều chạy `m === 0 ? 30 : 0` ⇒ **chỉ chọn được :00 hoặc :30** và nút xuống y hệt nút lên; (3) giờ phải bấm từng nấc, 23 lần để lùi 1 tiếng. Tuya cho `time` **chính xác tới phút** nên giới hạn 00/30 là tự app đặt ra. Sửa: **`CleanScheduleSheet`** - bottom-sheet kiểu Smart Life với **bánh xe HH:mm cuộn-snap (tới từng phút)**, REPEAT = EVERY DAY + 7 chip thứ, CYCLE LENGTH, Save / Turn schedule off; card CLEANING chỉ còn tóm tắt + EDIT + Run/Stop. Bánh xe đặt trong Modal vì ScrollView dọc lồng trong ScrollView dọc của Device Detail thì Android tranh cử chỉ. **Xác minh doc Tuya:** `loops` = *"The digits represent Sunday, Monday … Saturday sequentially from left to right"* ⇒ `loopsFrom` (0 = CN, khớp `Date.getDay()`) **ĐÚNG**, comment 'T2..CN' trong `NativeTuyaTimer.ts` sai đã sửa; doc cũng xác nhận `status` bật/tắt timer không cần xoá, `isAppPush`, tối đa 30 timer/thiết bị. tsc 0 · eslint 0 error · **jest 427/427** (+3 test `snapIndex`). |
 | 2026-09-23 | DEV+TEST B2 | ✅ | Android wire nốt: `getTimerList` (map `TimerTask.timerList` → `TimerItem`, dựng `dpsJson` từ `dpId`+`value`), xoá/bật-tắt **theo cả task** bằng `updateCategoryTimerStatus` khi JS không truyền timerIds (khớp iOS), `updateTimer` gắn `timerId`, `status` dùng hằng `ThingTimerBuilder.STATUS_OPEN/CLOSE`. Chữ ký + format `actions` **verify bằng javap** trên `thingsmart:7.5.6` (xem context). `./gradlew :jimmy-vu_react-native-turbo-tuya:compileDebugKotlin` → **BUILD SUCCESSFUL, 0 warning**. Kèm theo phía JS: `dpBoolOf` chịu được dps kiểu `true` / `"true"` / `1` (iOS lấy nguyên từ cloud, Android dựng từ `value` chuỗi) - không thì "có lịch mà app báo chưa đặt". Chạy lại: tsc 0 · eslint sạch · jest **416/416**. |
 | 2026-09-23 | TEST B1/B3/B4 | ✅ | **native:** `xcodebuild -scheme TurboTuya -sdk iphonesimulator` → **BUILD SUCCEEDED**, `TuyaTimer.mm` 0 warning. **mobile:** `npx tsc --noEmit` exit 0 · `npx eslint` 4 file: **0 error** (chỉ warning `no-inline-styles` như toàn repo) · `npx jest` **30/30 suite, 415/415 test** (+20 test mới của `cleanCycle`). Chưa chạy trên bồn thật. |
 | 2026-09-23 | DEV B4 | ✅ | `CleaningPanel` bỏ đếm lùi giả: trạng thái theo DP 122 (`purifyOn` truyền từ Dashboard) + mốc hẹn tắt; Run/Stop; chọn CYCLE LENGTH 15/30/60; lịch OFF/DAILY/WEEKLY (chọn nhiều thứ, bỏ "every X days"); lỗi hiện tại chỗ. |

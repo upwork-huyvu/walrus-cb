@@ -6,7 +6,7 @@
 - **Milestone:** M1 · B (mobile) + A (lib native)
 - **Phần liên quan:** mobile + lib native (iOS trước, Android sau)
 - **Ngày tạo:** 2026-09-23
-- **Cập nhật lần cuối:** 2026-09-23
+- **Cập nhật lần cuối:** 2026-09-23 (B6: làm lại UI chọn giờ)
 
 ## 1. Mục tiêu & phạm vi
 Khách báo (2026-09-22): nút **"Run clean cycle now"** không làm gì - đúng, vì card CLEANING xưa nay chỉ là
@@ -75,7 +75,12 @@ có trạng thái "đã bật mà không có hẹn tắt"**.
      (15/30/60 phút, mặc định 30 - chốt lại theo trả lời của khách); editor lịch Daily/chọn thứ; hiện lỗi thật.
    - File: `apps/mobile/src/components/CleaningPanel.tsx`, `screens/DashboardScreen.tsx` (truyền devId/purifyOn)
    - Kiểm thử: jest component (nếu hợp lý) + tsc/eslint; còn lại là test máy thật.
-5. **B5 - Verify máy thật (iPhone khách)**
+5. **B6 - Làm lại UI chọn giờ bắt đầu** *(thêm 2026-09-23 sau phản hồi của chủ dự án)*
+   - Việc: tách sheet `CleanScheduleSheet` - **bánh xe HH:mm** (mọi phút, không còn :00/:30), REPEAT
+     (EVERY DAY + 7 thứ), CYCLE LENGTH, Save / Turn schedule off; card chỉ còn tóm tắt + EDIT + Run/Stop.
+   - File: `apps/mobile/src/components/CleanScheduleSheet.tsx` (mới), `CleaningPanel.tsx`.
+   - Kiểm thử: jest `snapIndex` + tsc/eslint; phần cảm giác cuộn phải test trên máy.
+6. **B5 - Verify máy thật (iPhone khách)**
    - Việc: build iOS (gom chung với `m1-fix-ios-target-temp`) → checklist AC1/AC2/AC4/AC6.
    - Kiểm thử: manual ⏳.
 

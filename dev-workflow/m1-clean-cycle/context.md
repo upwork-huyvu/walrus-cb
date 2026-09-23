@@ -19,6 +19,11 @@
 - **2026-09-23** - Thứ tự **hẹn tắt trước, bật sau**. Tạo timer lỗi thì không bật. Lý do: bật trước mà hẹn tắt
   lỗi mạng = ozone chạy mãi; ngược lại (có timer mà chưa bật) chỉ là một lệnh tắt thừa, vô hại.
 - **2026-09-23** - Giữ nút lá (DP 122) nguyên nghĩa bật/tắt tay. Chu trình là lớp trên, không đổi hành vi cũ.
+- **2026-09-23 (B6)** - Đặt lịch chuyển sang **bottom-sheet riêng** (`CleanScheduleSheet`) với **bánh xe
+  HH:mm** kiểu Smart Life, thay vì editor nhúng trong card. Lý do: (a) bánh xe là ScrollView dọc, nhét vào
+  ScrollView dọc của Device Detail thì Android tranh cử chỉ; (b) editor cũ **giấu khối giờ** cho tới khi chọn
+  DAILY/WEEKLY nên nhìn như không có chỗ chọn giờ - đúng cái chủ dự án phàn nàn. Bỏ luôn 3 chip OFF/DAILY/WEEKLY:
+  REPEAT = "EVERY DAY" + 7 chip thứ, còn tắt lịch là hành động riêng ("Turn schedule off").
 
 ## Bản đồ file/module
 | File / Module | Vai trò |
@@ -27,10 +32,22 @@
 | `packages/tuya-react-native/android/.../timer/TuyaTimerModule.kt` | Bridge Android: `addTimer` ✓, `getTimerList` ❌ (B2) |
 | `packages/tuya-react-native/src/specs/NativeTuyaTimer.ts` | Hợp đồng JS của timer (inputJson, TimerItem) |
 | `apps/mobile/src/services/cleanCycle.ts` | Service chu trình + lịch (B3) |
-| `apps/mobile/src/components/CleaningPanel.tsx` | Card CLEANING - hiện là UI giả, sẽ nối vào service (B4) |
+| `apps/mobile/src/components/CleaningPanel.tsx` | Card CLEANING: tóm tắt lịch + Run/Stop (B4) |
+| `apps/mobile/src/components/CleanScheduleSheet.tsx` | Sheet đặt lịch: bánh xe HH:mm + thứ + độ dài (B6) |
 | `apps/mobile/src/services/tuya.ts` | `setPurify` (DP 122) - dùng lại cho bật/tắt |
 
 ## Phát hiện & cạm bẫy (Findings / Gotchas)
+- **`loops` bắt đầu từ CHỦ NHẬT - đã xác minh bằng doc (2026-09-23).** Hai trang doc nói nguyên văn *"The
+  digits represent Sunday, Monday, Tuesday, Wednesday, Thursday, Friday, and Saturday sequentially from left
+  to right"* ([Scheduled Tasks](https://developer.tuya.com/en/docs/app-development/timer?id=Ka5srtq1mj67w),
+  [Device Schedule](https://developer.tuya.com/en/docs/app-development/extension-device-timer?id=Kcy2vuod948de))
+  ⇒ `loopsFrom` (index 0 = CN, khớp `Date.getDay()`) đúng; comment "T2..CN" trong `NativeTuyaTimer.ts` là SAI,
+  đã sửa. Cùng nguồn: `time` **chính xác tới phút** ("18:00"), `status` = bật/tắt timer **không cần xoá**,
+  `isAppPush` = bắn push khi timer chạy, **tối đa 30 timer/thiết bị**, `updateType` 0=tắt/1=bật/2=xoá.
+- **Giới hạn phút :00/:30 là do UI cũ tự đặt**, không phải ràng buộc của Tuya - bánh xe mới cho chọn mọi phút.
+- **Chưa dùng `status`/`isAppPush`:** tắt lịch hiện tại = **xoá cả task**. Muốn giữ cài đặt khi tắt thì đổi sang
+  `updateTimerStatus(op:'close')` (bridge đã có). Push khi chu trình chạy cũng chỉ là bật cờ `appPush` trong
+  `timerInput` - để dành, chờ chủ dự án quyết có muốn thông báo không.
 - **Bồn không có DP chu trình.** Bảng thuộc tính g0cv1c chỉ có `setting_clr` (122, bool). Mọi khái niệm
   "cycle / staged cleaning" phải do app + timer cloud dựng nên.
 - **Bridge timer lệch nhau giữa 2 nền tảng** (bảng trong plan §2): iOS thiếu `addTimer`, Android thiếu

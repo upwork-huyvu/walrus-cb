@@ -76,9 +76,10 @@ export function minutesBetweenClocks(from: string, to: string): number | null {
 }
 
 /**
- * `days` → chuỗi `loops` 7 ký tự. **Ký tự đầu = Chủ Nhật** theo timer Tuya.
- * ⚠️ Chưa verify trên bồn thật: lịch "hằng ngày" ('1111111') thì đối xứng nên không lộ, chọn thứ cụ thể mới
- * lộ. Nếu lệch, chỉ cần sửa đúng chỗ này (+ `daysFromLoops`).
+ * `days` → chuỗi `loops` 7 ký tự. **Ký tự đầu = Chủ Nhật**, đúng thứ tự `Date.getDay()` của JS.
+ * Căn cứ: doc Tuya "Scheduled Tasks" + "Device Schedule" nói nguyên văn *"The digits represent Sunday,
+ * Monday, … Saturday sequentially from left to right"* (2026-09-23). Lịch "hằng ngày" đối xứng nên không
+ * lộ thứ tự; chọn thứ cụ thể mới lộ ⇒ vẫn xác nhận lại ở lần test máy thật đầu tiên.
  */
 export function loopsFrom(days: number[]): string {
   const on = new Set((days ?? []).map((d) => ((Math.trunc(d) % 7) + 7) % 7));

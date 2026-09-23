@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { F, useTheme } from '../theme';
 import { RefreshIcon } from './DeviceIcons';
+import CleanScheduleSheet from './CleanScheduleSheet';
 import {
-  CLEAN_DURATIONS_MIN,
   DEFAULT_CLEAN_MINUTES,
   clockTime,
   nextScheduleRun,
@@ -17,6 +17,7 @@ import {
 } from '../services/cleanCycle';
 
 // Card CLEANING (design "Walrus Pro 2"): lịch vệ sinh + "Run clean cycle now".
+// Phần ĐẶT LỊCH nằm trong `CleanScheduleSheet` (bánh xe giờ kiểu Smart Life) - card chỉ tóm tắt.
 // Bồn chỉ có DP khử trùng bật/tắt (nút lá) ⇒ 1 chu trình = bật + HẸN TẮT TRÊN TUYA CLOUD sau N phút
 // (services/cleanCycle.ts). Trạng thái "đang chạy" lấy từ DP thật (`purifyOn`), KHÔNG dùng đồng hồ giả:
 // máy tự tắt hay người dùng tắt ở Smart Life thì card cũng phải theo.
@@ -26,10 +27,8 @@ type Props = {
   purifyOn?: boolean;
 };
 
-type Freq = 'off' | 'daily' | 'weekly';
-
 // Hiện theo thứ tự Mon→Sun cho dễ đọc, nhưng giá trị là số của `Date.getDay()` (0 = CN) để khớp
-// `loops` của timer Tuya.
+// `loops` của timer Tuya (doc: các chữ số lần lượt là CN → T7 từ trái sang phải).
 const DAY_CHIPS = [
   { v: 1, l: 'Mon' },
   { v: 2, l: 'Tue' },
@@ -39,9 +38,6 @@ const DAY_CHIPS = [
   { v: 6, l: 'Sat' },
   { v: 0, l: 'Sun' },
 ];
-const EVERY_DAY = [0, 1, 2, 3, 4, 5, 6];
-
-const pad2 = (n: number): string => String(n).padStart(2, '0');
 
 const scheduleLabel = (s: CleanSchedule | null): string => {
   if (!s || s.days.length === 0) return 'No cleaning schedule';
@@ -55,12 +51,9 @@ const errorText = (e: unknown, fallback: string): string =>
 
 export default function CleaningPanel({ devId, purifyOn = false }: Props) {
   const C = useTheme();
-  const [editing, setEditing] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [schedule, setSchedule] = useState<CleanSchedule | null>(null);
-  const [freq, setFreq] = useState<Freq>('off');
-  const [days, setDays] = useState<number[]>([1]);
-  const [hour, setHour] = useState(7);
-  const [minute, setMinute] = useState(0);
+  // Độ dài chu trình dùng cho nút chạy tay; lịch mang độ dài riêng của nó (lưu trong `schedule`).
   const [minutes, setMinutes] = useState(DEFAULT_CLEAN_MINUTES);
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [confirm, setConfirm] = useState(0); // 0 = chưa bấm, 1 → 2 = hai bước xác nhận
@@ -83,14 +76,7 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
       if (!alive) return;
       setEndsAt(end);
       setSchedule(saved);
-      if (saved) {
-        setFreq(saved.days.length === 7 ? 'daily' : 'weekly');
-        setDays(saved.days);
-        setMinutes(saved.minutes);
-        const [h, m] = saved.time.split(':');
-        setHour(Number(h) || 0);
-        setMinute(Number(m) || 0);
-      }
+      if (saved) setMinutes(saved.minutes); // nút chạy tay theo độ dài đã chọn cho lịch
     })();
     return () => {
       alive = false;
@@ -107,7 +93,7 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
 
   const nextLabel = (): string => {
     const at = nextScheduleRun(schedule, new Date());
-    if (at == null) return 'Tap EDIT to clean automatically';
+    if (at == null) return 'No automatic cleaning yet - tap EDIT';
     const mins = Math.max(1, Math.round((at - Date.now()) / 60_000));
     const h = Math.floor(mins / 60);
     return h > 0 ? `Next cycle in ${h}h ${mins % 60}m` : `Next cycle in ${mins}m`;
@@ -141,22 +127,16 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
     }
   };
 
-  const saveSchedule = async () => {
+  /** Lưu (hoặc tắt khi `next = null`) lịch. Chỉ đóng sheet khi Tuya đã nhận. */
+  const saveSchedule = async (next: CleanSchedule | null) => {
     if (!devId || busy) return;
-    const next: CleanSchedule | null =
-      freq === 'off'
-        ? null
-        : { days: freq === 'daily' ? EVERY_DAY : days, time: `${pad2(hour)}:${pad2(minute)}`, minutes };
-    if (next && next.days.length === 0) {
-      setError('Pick at least one day.');
-      return;
-    }
     setBusy(true);
     setError('');
     try {
       await setCleanSchedule(devId, next);
       setSchedule(next);
-      setEditing(false);
+      if (next) setMinutes(next.minutes);
+      setSheetOpen(false);
     } catch (e) {
       setError(errorText(e, 'Could not save the cleaning schedule.'));
     } finally {
@@ -191,26 +171,6 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
     return { border: C.border, bg: 'transparent', text: C.white };
   };
 
-  const chip = (label: string, active: boolean, onPress: () => void, key?: string) => (
-    <Pressable
-      key={key ?? label}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        paddingVertical: 10,
-        borderRadius: 10,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: active ? C.ochre : C.border,
-        backgroundColor: active ? 'rgba(196,135,58,0.1)' : 'transparent',
-      }}
-    >
-      <Text style={{ fontFamily: F.body, color: active ? C.ochre : C.muted, fontSize: 11, letterSpacing: 1 }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-
   return (
     <View
       style={{
@@ -224,9 +184,17 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
       {/* ── Header: CLEANING + EDIT ── */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 3 }}>CLEANING</Text>
-        <Pressable onPress={() => setEditing(!editing)} hitSlop={10} disabled={busy}>
-          <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12, letterSpacing: 1.5 }}>
-            {editing ? 'CLOSE' : 'EDIT'}
+        <Pressable
+          testID="clean-edit"
+          onPress={() => {
+            setError('');
+            setSheetOpen(true);
+          }}
+          hitSlop={10}
+          disabled={busy || !devId}
+        >
+          <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 12, letterSpacing: 1.5, opacity: devId ? 1 : 0.5 }}>
+            EDIT
           </Text>
         </Pressable>
       </View>
@@ -258,112 +226,6 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
           </Text>
         </View>
       </View>
-
-      {/* ── Editor (EDIT) ── */}
-      {editing && (
-        <View style={{ marginTop: 18, gap: 16 }}>
-          <View>
-            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 10 }}>
-              SCHEDULE
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {chip('OFF', freq === 'off', () => setFreq('off'))}
-              {chip('DAILY', freq === 'daily', () => setFreq('daily'))}
-              {chip('WEEKLY', freq === 'weekly', () => setFreq('weekly'))}
-            </View>
-          </View>
-
-          {/* Chọn thứ - timer Tuya lặp theo TUẦN nên không có "mỗi X ngày". */}
-          {freq === 'weekly' && (
-            <View>
-              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 10 }}>
-                DAYS
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {DAY_CHIPS.map((d) =>
-                  chip(
-                    d.l,
-                    days.includes(d.v),
-                    () => setDays(days.includes(d.v) ? days.filter((x) => x !== d.v) : [...days, d.v]),
-                    `day-${d.v}`,
-                  ),
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Thời lượng: dùng cho cả lịch lẫn nút chạy tay. */}
-          <View>
-            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 10 }}>
-              CYCLE LENGTH
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {CLEAN_DURATIONS_MIN.map((m) => chip(`${m} MIN`, minutes === m, () => setMinutes(m), `dur-${m}`))}
-            </View>
-          </View>
-
-          {/* Giờ bật */}
-          {freq !== 'off' && (
-            <View>
-              <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 10, letterSpacing: 2, marginBottom: 14 }}>
-                START TIME
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                <View style={{ alignItems: 'center', width: 72 }}>
-                  <Pressable onPress={() => setHour((h) => (h + 1) % 24)} style={{ padding: 10, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ color: C.muted, fontSize: 18 }}>▲</Text>
-                  </Pressable>
-                  <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingVertical: 14, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 32 }}>{pad2(hour)}</Text>
-                    <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 9, letterSpacing: 2, marginTop: 4 }}>HH</Text>
-                  </View>
-                  <Pressable onPress={() => setHour((h) => (h + 23) % 24)} style={{ padding: 10, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ color: C.muted, fontSize: 18 }}>▼</Text>
-                  </Pressable>
-                </View>
-
-                <Text style={{ fontFamily: F.headline, color: C.muted, fontSize: 28, marginBottom: 8 }}>:</Text>
-
-                <View style={{ alignItems: 'center', width: 72 }}>
-                  <Pressable onPress={() => setMinute((m) => (m === 0 ? 30 : 0))} style={{ padding: 10, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ color: C.muted, fontSize: 18 }}>▲</Text>
-                  </Pressable>
-                  <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingVertical: 14, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 32 }}>{pad2(minute)}</Text>
-                    <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 9, letterSpacing: 2, marginTop: 4 }}>MM</Text>
-                  </View>
-                  <Pressable onPress={() => setMinute((m) => (m === 0 ? 30 : 0))} style={{ padding: 10, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ color: C.muted, fontSize: 18 }}>▼</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          )}
-
-          <Pressable
-            testID="clean-save-schedule"
-            onPress={() => void saveSchedule()}
-            disabled={busy || !devId}
-            style={{
-              borderRadius: 12,
-              paddingVertical: 13,
-              alignItems: 'center',
-              borderWidth: 1,
-              borderColor: C.ochre,
-              backgroundColor: 'rgba(196,135,58,0.08)',
-              opacity: busy || !devId ? 0.6 : 1,
-            }}
-          >
-            {busy ? (
-              <ActivityIndicator size="small" color={C.ochre} />
-            ) : (
-              <Text style={{ fontFamily: F.body, fontSize: 13, letterSpacing: 0.5, color: C.ochre }}>
-                {freq === 'off' ? 'Turn schedule off' : 'Save schedule'}
-              </Text>
-            )}
-          </Pressable>
-        </View>
-      )}
 
       {/* ── Run / Stop ── */}
       <Pressable
@@ -397,11 +259,26 @@ export default function CleaningPanel({ devId, purifyOn = false }: Props) {
         </Pressable>
       )}
 
-      {error ? (
+      {error && !sheetOpen ? (
         <Text style={{ fontFamily: F.body, color: '#D9534F', fontSize: 12, textAlign: 'center', marginTop: 10 }}>
           {error}
         </Text>
       ) : null}
+
+      <CleanScheduleSheet
+        visible={sheetOpen}
+        schedule={schedule}
+        defaultMinutes={minutes}
+        busy={busy}
+        error={error}
+        onClose={() => {
+          if (busy) return; // đang gọi Tuya → không đóng nửa chừng
+          setSheetOpen(false);
+          setError('');
+        }}
+        onSave={(next) => void saveSchedule(next)}
+        onTurnOff={() => void saveSchedule(null)}
+      />
     </View>
   );
 }
