@@ -34,6 +34,7 @@ import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import ReminderScreen from './src/screens/ReminderScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import HelpScreen from './src/screens/HelpScreen';
+import DeviceSettingsScreen from './src/screens/DeviceSettingsScreen';
 import DeviceTestScreen from './src/screens/DeviceTestScreen';
 import BottomTabBar, { type TabKey } from './src/components/BottomTabBar';
 import { useAuth } from './src/state/useAuth';
@@ -276,7 +277,9 @@ export default function App() {
         setActiveDevId('');
         setActiveDevName('');
       }
-      setHistory((items) => items.filter((item) => item !== 'device-detail'));
+      // Bỏ MỌI màn của thiết bị vừa xoá khỏi back-stack, không thì `goBack` rơi vào màn điều khiển /
+      // cài đặt của một thiết bị không còn tồn tại.
+      setHistory((items) => items.filter((item) => item !== 'device-detail' && item !== 'device-settings'));
       setScreen('device-list');
     },
     [forgetDevice]
@@ -360,6 +363,7 @@ export default function App() {
           pairedDevice={lastPairedDevice}
           removedDeviceIds={removedDeviceIds}
           onDeviceRemoved={handleDeviceRemoved}
+          onDeviceRenamed={handleDeviceRenamed}
         />
       );
       break;
@@ -413,6 +417,19 @@ export default function App() {
           devName={activeDevName}
           userUid={auth.user?.uid}
           homeId={homeId}
+        />
+      );
+      break;
+    case 'device-settings':
+      currentScreen = (
+        <DeviceSettingsScreen
+          navigate={navigate}
+          goBack={goBack}
+          state={state}
+          devId={activeDevId}
+          devName={activeDevName}
+          userUid={auth.user?.uid}
+          homeId={homeId}
           onDeviceRemoved={handleDeviceRemoved}
           onDeviceRenamed={handleDeviceRenamed}
         />
@@ -428,8 +445,6 @@ export default function App() {
           state={state}
           userUid={auth.user?.uid}
           homeId={homeId}
-          onDeviceRemoved={handleDeviceRemoved}
-          onDeviceRenamed={handleDeviceRenamed}
         />
       );
       break;

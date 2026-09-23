@@ -168,6 +168,17 @@ export async function readDevice(devId: string): Promise<DeviceSnapshot> {
 }
 
 /**
+ * `rawJson` của snapshot = toàn bộ model thiết bị SDK trả về (tên, productId, firmware, MAC, online…).
+ * Dùng cho màn Device settings; parse ở `services/deviceInfo.ts` (iOS và Android trả khác field nhau).
+ * Mock / native vắng / không có rawJson → chuỗi RỖNG, màn vẫn hiện được phần thông tin lấy từ state.
+ */
+export async function readDeviceRaw(devId: string): Promise<string> {
+  if (shouldMock(devId)) return '';
+  const snap = await withTimeout<any>(lib.Tuya.getDeviceSnapshot(devId), READ_TIMEOUT_MS, 'Device read');
+  return typeof snap?.rawJson === 'string' ? snap.rawJson : '';
+}
+
+/**
  * CHẨN ĐOÁN (dev-only): đọc snapshot + in TOÀN BỘ chi tiết 1 thiết bị (DP/schema/device model).
  * Khác `readDevice`: KHÔNG throw, không trả gì - chỉ để log. Dùng khi muốn xem DP thật mà chưa
  * cần mở màn device detail (readDevice chỉ chạy lúc vào Dashboard).

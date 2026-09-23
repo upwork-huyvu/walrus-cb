@@ -15,8 +15,10 @@ import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
 import { getHomeDeviceList, listenHomeDeviceChanges, type HomeDevice } from '../services/home';
-import { logDeviceDetails, refreshDevicesOnline } from '../services/tuya';
+import { DEVICE_NAME_MAX_LENGTH, logDeviceDetails, refreshDevicesOnline, renameDevice } from '../services/tuya';
+import { describeTuyaError } from '../services/tuyaError';
 import { BathIcon } from '../components/DeviceIcons';
+import RenameDeviceModal from '../components/RenameDeviceModal';
 
 type Props = {
   navigate: Navigate;
@@ -26,14 +28,19 @@ type Props = {
   pairedDevice?: HomeDevice;
   removedDeviceIds?: string[];
   onDeviceRemoved?: (devId: string) => Promise<void> | void;
+  onDeviceRenamed?: (devId: string, name: string) => void;
 };
 
 // TAB Thiết bị (landing sau login) - bám layout Tuya SmartLife:
 // trên-trái = chọn nhà (⌂ tên nhà ▾ → Quản lý nhà) · trên-phải = ＋ thêm thiết bị;
 // thân = danh sách thiết bị / empty-state "Thêm thiết bị đầu tiên". Remount → tự refetch.
-export default function DeviceListScreen({ navigate, state, homeId, homeName, pairedDevice, removedDeviceIds = [], onDeviceRemoved }: Props) {
+export default function DeviceListScreen({ navigate, state, homeId, homeName, pairedDevice, removedDeviceIds = [], onDeviceRemoved, onDeviceRenamed }: Props) {
   const C = useTheme();
   const [devices, setDevices] = useState<HomeDevice[]>([]);
+  // Giữ (long-press) một thiết bị = đổi tên nhanh, không phải vào tận màn settings.
+  const [renameTarget, setRenameTarget] = useState<HomeDevice | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState('');
@@ -118,6 +125,27 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
   const openDevice = (d: HomeDevice) => {
     // Chỉ điều hướng - device-detail (DashboardScreen) tự connect theo devId (tránh gọi connectDevice 2 lần).
     navigate('device-detail', { devId: d.devId, devName: d.name });
+  };
+
+  /** Đổi tên ngay trên danh sách: lưu qua Tuya rồi mới sửa nhãn (chưa lưu được thì đừng đổi UI). */
+  const runRename = async (input: string) => {
+    const target = renameTarget;
+    if (!target || renaming) return;
+    setRenaming(true);
+    setRenameError('');
+    try {
+      const saved = await renameDevice(target.devId, input);
+      setDevices((prev) => prev.map((d) => (d.devId === target.devId ? { ...d, name: saved } : d)));
+      onDeviceRenamed?.(target.devId, saved); // App đồng bộ header Device Detail + cache thiết bị vừa pair
+      setRenameTarget(null);
+    } catch (e) {
+      setRenameError(
+        describeTuyaError(e, { fallback: 'Could not rename this device. Check your connection and try again.' })
+          .message,
+      );
+    } finally {
+      setRenaming(false);
+    }
   };
 
   return (
@@ -207,10 +235,22 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
                 </Pressable>
               </View>
             ) : (
-              devices.map((d) => (
+              <>
+                {/* Long-press không tự lộ ra được → nói thẳng một dòng cho người dùng biết. */}
+                <Text
+                  style={{ fontFamily: F.body, color: C.muted, fontSize: 11, letterSpacing: 0.5, marginBottom: 10 }}
+                >
+                  Hold a device to rename it.
+                </Text>
+                {devices.map((d) => (
                 <Pressable
                   key={d.devId}
                   onPress={() => openDevice(d)}
+                  onLongPress={() => {
+                    setRenameError('');
+                    setRenameTarget(d);
+                  }}
+                  delayLongPress={350}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -241,15 +281,11 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
                     )}
                   </View>
 
+                  {/* Chỉ ảnh + tên: devId là thứ của kỹ thuật, người dùng không cần thấy ở danh sách
+                      (vẫn xem được ở màn Device settings). */}
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 17 }}>
+                    <Text numberOfLines={2} style={{ fontFamily: F.headline, color: C.white, fontSize: 17 }}>
                       {d.name || 'Device'}
-                    </Text>
-                    <Text
-                      numberOfLines={1}
-                      style={{ fontFamily: F.body, color: C.muted, fontSize: 12, marginTop: 4 }}
-                    >
-                      {d.devId}
                     </Text>
                   </View>
 
@@ -267,10 +303,25 @@ export default function DeviceListScreen({ navigate, state, homeId, homeName, pa
                     </Text>
                   </View>
                 </Pressable>
-              ))
+                ))}
+              </>
             )}
           </ScrollView>
         )}
+
+        <RenameDeviceModal
+          visible={renameTarget != null}
+          initialName={renameTarget?.name || 'Device'}
+          maxLength={DEVICE_NAME_MAX_LENGTH}
+          saving={renaming}
+          error={renameError}
+          onCancel={() => {
+            if (renaming) return; // đang gọi Tuya → không cho đóng nửa chừng
+            setRenameTarget(null);
+            setRenameError('');
+          }}
+          onSubmit={(next) => void runRename(next)}
+        />
       </SafeAreaView>
     </View>
   );

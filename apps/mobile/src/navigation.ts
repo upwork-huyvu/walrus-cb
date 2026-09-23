@@ -14,6 +14,7 @@ export type ScreenName =
   | 'create-home' // chưa có nhà → tạo nhà trước (chuẩn Tuya SmartLife)
   | 'device-list' // TAB Device (landing sau login): danh sách thiết bị của home
   | 'device-detail' // tap 1 thiết bị → điều khiển (DashboardScreen) + ritual
+  | 'device-settings' // Device Detail `⋮` → thông tin thiết bị + đổi tên + xoá (có xác nhận)
   | 'reminder' // TAB Reminder: filter reminder (90 ngày, local)
   | 'shop' // TAB Shop: filters/accessories/parts → walruswellness.com/shop
   | 'help' // TAB Help: FAQ + email support

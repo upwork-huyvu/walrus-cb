@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, SafeAreaView, ScrollView, StatusBar, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { Pressable, SafeAreaView, ScrollView, StatusBar, Text, View } from 'react-native';
 import { useTheme, F } from '../theme';
 import type { AppState } from '../state/useAppState';
 import type { Navigate } from '../navigation';
@@ -8,10 +8,6 @@ import TempGauge from '../components/TempGauge';
 import CleaningPanel from '../components/CleaningPanel';
 import FilterReminderCard from '../components/FilterReminderCard';
 import { PowerIcon, BulbIcon, LeafIcon } from '../components/DeviceIcons';
-import RenameDeviceModal from '../components/RenameDeviceModal';
-import { DEVICE_NAME_MAX_LENGTH, removeDeviceOrConfirmAbsent, renameDevice } from '../services/tuya';
-import { describeTuyaError } from '../services/tuyaError';
-import { cleanupRemovedDeviceReminder } from '../services/reminders';
 
 type Props = {
   state: AppState;
@@ -20,22 +16,14 @@ type Props = {
   devName?: string;
   userUid?: string;
   homeId?: number;
-  onDeviceRemoved?: (devId: string) => Promise<void> | void;
-  onDeviceRenamed?: (devId: string, name: string) => void;
 };
 
 // Màn Device Detail - design "Walrus Pro 2": pill trạng thái + gauge nhiệt + target ± +
 // 3 công tắc (đèn/lọc/lạnh) + card cleaning + filter reminder. devId/devName/userUid truyền từ App.
-export default function DashboardScreen({ state, navigate, devId, devName, userUid, homeId, onDeviceRemoved, onDeviceRenamed }: Props) {
+// Quản lý thiết bị (đổi tên / xoá / thông tin) nằm ở màn `device-settings`, mở bằng nút `⋮`.
+export default function DashboardScreen({ state, navigate, devId, devName, userUid, homeId }: Props) {
   const C = useTheme();
   const DARK_ON_GOLD = '#0A0A0F'; // icon trên nền vàng active
-  const [removing, setRemoving] = useState(false);
-  const [renameOpen, setRenameOpen] = useState(false);
-  const [renaming, setRenaming] = useState(false);
-  const [renameError, setRenameError] = useState('');
-  // Tên vừa đổi trong màn này. Giữ local vì App cập nhật `devName` ở lượt render sau - không có nó
-  // thì header nháy lại tên cũ ngay sau khi Tuya đã lưu xong.
-  const [renamedName, setRenamedName] = useState('');
 
   // Mở Device Detail là LUÔN đọc lại snapshot thật (online + DP), không dựa vào state cũ.
   // Vì sao KHÔNG guard theo (devId !== state.devId || !deviceConnected): devId đã persist nên khớp
@@ -45,12 +33,11 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   // homeId đi kèm để adapter nạp được home data (cache thiết bị của SDK) khi lần đọc đầu trượt -
   // ca hay gặp nhất: vừa pair xong, cache chưa có bồn ⇒ native reject `no_device`.
   useEffect(() => {
-    setRenamedName(''); // đổi thiết bị → bỏ tên đã đổi của thiết bị trước
     if (devId) void state.connectDevice(devId, homeId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [devId]);
 
-  const name = renamedName || devName || 'Walrus';
+  const name = devName || 'Walrus';
   // Pill mode: có nguồn (đang chạy) → Chilling, tắt → Idle. (Thiết bị không có DP freeze riêng;
   // Power = setting_pwr chính là on/off của máy làm lạnh.)
   const mode = state.powerOn ? 'Chilling' : 'Idle';
@@ -61,83 +48,9 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
   const dispTarget =
     rawTarget == null ? '-' : (rawTarget / Math.pow(10, scale)).toFixed(scale > 0 ? scale : 0);
 
-  const runRemove = async () => {
-    const id = devId || state.devId;
-    if (!id || removing) return;
-    setRemoving(true);
-    try {
-      await removeDeviceOrConfirmAbsent(id, homeId);
-
-      // Cleanup metadata không chặn thành công Tuya; lỗi backend được queue để retry lần sau.
-      await cleanupRemovedDeviceReminder(id, userUid ?? '');
-      if (onDeviceRemoved) await onDeviceRemoved(id);
-      else {
-        await state.forgetDevice(id);
-        navigate('device-list');
-      }
-    } catch (e) {
-      const info = describeTuyaError(e, {
-        fallback: 'Could not remove this device. Check your connection and try again.',
-      });
-      Alert.alert('Could not remove device', info.message, [{ text: 'OK' }]);
-    } finally {
-      setRemoving(false);
-    }
-  };
-
-  /**
-   * Đổi tên đi THẲNG qua SDK Tuya (không chỉ đổi nhãn trong app) → Smart Life + admin web thấy tên mới.
-   * Lỗi → giữ modal mở kèm message thật của SDK để người dùng sửa/thử lại; KHÔNG cập nhật UI khi chưa lưu được.
-   */
-  const runRename = async (input: string) => {
-    const id = devId || state.devId;
-    if (!id || renaming) return;
-    setRenaming(true);
-    setRenameError('');
-    try {
-      const saved = await renameDevice(id, input);
-      setRenamedName(saved);
-      onDeviceRenamed?.(id, saved); // App đồng bộ header + cache thiết bị vừa pair ở Device List
-      setRenameOpen(false);
-    } catch (e) {
-      const info = describeTuyaError(e, {
-        fallback: 'Could not rename this device. Check your connection and try again.',
-      });
-      setRenameError(info.message);
-    } finally {
-      setRenaming(false);
-    }
-  };
-
-  const confirmRemove = () => {
-    Alert.alert(
-      'Remove device?',
-      `${name} will be removed from your Walrus account and Tuya Home. You will need to pair it again to use it.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => void runRemove(),
-        },
-      ],
-    );
-  };
-
-  const menu = () => {
-    if (removing || renaming) return;
-    Alert.alert(name, 'Device settings', [
-      {
-        text: 'Rename device',
-        onPress: () => {
-          setRenameError('');
-          setRenameOpen(true);
-        },
-      },
-      { text: 'Remove device', style: 'destructive', onPress: confirmRemove },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
+  // `⋮` mở màn Device settings (thông tin + đổi tên + xoá có xác nhận). Trước đây là Alert 2 lựa chọn -
+  // không có chỗ hiện thông tin thiết bị, và trộn logic quản lý vào màn điều khiển.
+  const openSettings = () => navigate('device-settings', { devId: devId || state.devId, devName: name });
 
   const bumpTarget = (delta: number) => {
     const base = state.pendingTarget ?? state.targetTemp;
@@ -180,16 +93,11 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
           </View>
           <Pressable
             testID="device-menu"
-            onPress={menu}
-            disabled={removing || renaming}
+            onPress={openSettings}
             hitSlop={14}
-            style={{ width: 40, alignItems: 'flex-end', opacity: removing || renaming ? 0.6 : 1 }}
+            style={{ width: 40, alignItems: 'flex-end' }}
           >
-            {removing ? (
-              <ActivityIndicator size="small" color={C.ochre} />
-            ) : (
-              <Text style={{ color: C.muted, fontSize: 22, lineHeight: 26 }}>⋮</Text>
-            )}
+            <Text style={{ color: C.muted, fontSize: 22, lineHeight: 26 }}>⋮</Text>
           </Pressable>
         </View>
 
@@ -368,19 +276,6 @@ export default function DashboardScreen({ state, navigate, devId, devName, userU
           )}
         </ScrollView>
 
-        <RenameDeviceModal
-          visible={renameOpen}
-          initialName={name}
-          maxLength={DEVICE_NAME_MAX_LENGTH}
-          saving={renaming}
-          error={renameError}
-          onCancel={() => {
-            if (renaming) return; // đang gọi Tuya → không cho đóng nửa chừng
-            setRenameOpen(false);
-            setRenameError('');
-          }}
-          onSubmit={(next) => void runRename(next)}
-        />
       </SafeAreaView>
     </View>
   );
