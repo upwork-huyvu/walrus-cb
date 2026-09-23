@@ -21,7 +21,7 @@ import {
 } from './dp';
 import { logDeviceSnapshot, logDeviceReadAttempt, logDpUpdate } from './deviceLog';
 import { parseTempRange, type TempRange } from './deviceSchema';
-import { describeTuyaError } from './tuyaError';
+import { describeTuyaError, extractCode } from './tuyaError';
 import { getHomeDeviceList, removeMockDevice, renameMockDevice } from './home';
 import {
   mockRead,
@@ -289,6 +289,34 @@ export async function removeDeviceOrConfirmAbsent(devId: string, homeId?: number
 }
 
 /**
+ * Mã native trả khi method CHƯA wire: iOS `TuyaTODO` → 'ios_todo', Android `todo()` → 'not_implemented'.
+ * Gặp mã này thì lùi về `publishDps` thường. Sự cố 2026-09-22: `publishDpsAwaitAck` trên iOS từng là stub,
+ * reject ngay mà không gửi gì ⇒ khách iPhone không đổi được nhiệt độ. `typeof === 'function'` không bắt
+ * được vì TurboModule luôn expose đủ hàm của spec, kể cả hàm stub.
+ */
+const NOT_WIRED_CODES = new Set(['ios_todo', 'not_implemented']);
+
+const isNotWired = (e: unknown): boolean => NOT_WIRED_CODES.has(extractCode(e) ?? '');
+
+/**
+ * Publish rồi chờ thiết bị xác nhận (onDpUpdate khớp DP) nếu native hỗ trợ. Native chưa wire ⇒
+ * `publishDps`: chỉ biết "đã gửi", giá trị thật vẫn về qua listener realtime (`listenDevice`).
+ */
+async function publishAwaitingAck(devId: string, dpsJson: string): Promise<void> {
+  if (typeof lib.Tuya.publishDpsAwaitAck !== 'function') {
+    await lib.Tuya.publishDps(devId, dpsJson);
+    return;
+  }
+  try {
+    await lib.Tuya.publishDpsAwaitAck(devId, dpsJson, 0); // 0 → timeout mặc định native
+  } catch (e) {
+    if (!isNotWired(e)) throw e;
+    devLogError('publishDpsAwaitAck (not wired, falling back to publishDps)', e);
+    await lib.Tuya.publishDps(devId, dpsJson);
+  }
+}
+
+/**
  * Đặt nhiệt độ mục tiêu - dùng `publishDpsAwaitAck` (resolve khi onDpUpdate khớp) để phân biệt
  * "đã gửi" vs "thiết bị đã đổi" (cạm bẫy Tuya: onSuccess ≠ đổi xong).
  * @returns `true` = thiết bị đã xác nhận (ack); `false` = không ack / lỗi → caller revert optimistic.
@@ -307,11 +335,7 @@ export async function setTargetTemp(devId: string, temp: number): Promise<SetRes
     return { ok: false, error: 'This device has no target-temperature control.' };
   }
   try {
-    if (typeof lib.Tuya.publishDpsAwaitAck === 'function') {
-      await lib.Tuya.publishDpsAwaitAck(devId, dps, 0); // 0 → timeout mặc định native
-    } else {
-      await lib.Tuya.publishDps(devId, dps);
-    }
+    await publishAwaitingAck(devId, dps);
     return { ok: true };
   } catch (e) {
     devLogError('setTargetTemp', e);
