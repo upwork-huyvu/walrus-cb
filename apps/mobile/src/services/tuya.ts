@@ -45,9 +45,15 @@ function devLogError(where: string, e: unknown): void {
 export type SetResult = { ok: boolean; error?: string };
 
 // Bọc promise với timeout → reject 'timeout' nếu native không phản hồi (audit M-2: tránh kẹt loading).
+// Error PHẢI mang `code: 'timeout'`: describeTuyaError chỉ nhận mã lỗi qua `code` (hoặc mã ÂM trong
+// message) - trước đây nó cào số từ message nên "... after 8000ms" thành mã `8000` ⇒ "Unknown error.".
+export function timeoutError(label: string, ms: number): Error {
+  return Object.assign(new Error(`${label} timed out after ${ms}ms`), { code: 'timeout', domain: 'sdk' });
+}
+
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    const t = setTimeout(() => reject(timeoutError(label, ms)), ms);
     p.then(
       (v) => { clearTimeout(t); resolve(v); },
       (e) => { clearTimeout(t); reject(e); },

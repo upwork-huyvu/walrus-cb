@@ -1,4 +1,4 @@
-import { describeTuyaError, extractCode, extractDomain } from './tuyaError';
+import { describeTuyaError, extractCode, extractDomain, isRetryableTuyaError } from './tuyaError';
 
 // Classifier giả lập TuyaErrors của lib (vì lib không import được trong jest - native vắng).
 const fakeClassifier = {
@@ -48,5 +48,70 @@ describe('tuyaError.describeTuyaError', () => {
   it('không có classifier (dev/native vắng) → message thô / fallback', () => {
     expect(describeTuyaError(new Error('raw native msg'), { classifier: null }).message).toBe('raw native msg');
     expect(describeTuyaError({}, { classifier: null }).message).toBe('Unable to reach the device. Please try again.');
+  });
+});
+
+// --- REGRESSION (m1-fix-device-connect-error) ---
+// Bug khách báo: màn Device Detail hiện "Unknown error." vì describeTuyaError() đẩy MỌI code vào bảng
+// mã Tuya - mà bảng đó chỉ tra được mã SỐ; code phi-số ('no_device') luôn ra category 'unknown'.
+describe('tuyaError: mã PHI-SỐ của bridge', () => {
+  it('no_device → câu tiếng Anh rõ nghĩa + retryable, KHÔNG phải "Unknown error."', () => {
+    const r = describeTuyaError(
+      Object.assign(new Error('Không tìm thấy thiết bị'), { code: 'no_device' }),
+      { classifier: fakeClassifier },
+    );
+    expect(r.code).toBe('no_device');
+    expect(r.message).not.toMatch(/Unknown error/i);
+    expect(r.message).toMatch(/not ready yet/i);
+    expect(r.retryable).toBe(true);
+  });
+
+  it('timeout → retryable; init_error / ios_todo → KHÔNG retryable', () => {
+    expect(describeTuyaError({ code: 'timeout' }, { classifier: fakeClassifier }).retryable).toBe(true);
+    expect(describeTuyaError({ code: 'init_error' }, { classifier: fakeClassifier }).retryable).toBe(false);
+    expect(describeTuyaError({ code: 'ios_todo' }, { classifier: fakeClassifier }).retryable).toBe(false);
+  });
+
+  it('mã phi-số LẠ (không có trong bảng) → giữ nguyên message native, không nuốt', () => {
+    const r = describeTuyaError(
+      Object.assign(new Error('weather sketch blew up'), { code: 'weather_sketch_error' }),
+      { classifier: fakeClassifier },
+    );
+    expect(r.code).toBe('weather_sketch_error');
+    expect(r.message).toBe('weather sketch blew up');
+    expect(r.message).not.toMatch(/Unknown error/i);
+  });
+
+  it('mã SỐ lạ + có message native → ưu tiên message native thay vì "Unknown error."', () => {
+    const r = describeTuyaError(
+      Object.assign(new Error('cloud said no'), { code: '-9999' }),
+      { classifier: fakeClassifier },
+    );
+    expect(r.message).toBe('cloud said no');
+    expect(r.message).not.toMatch(/Unknown error/i);
+  });
+});
+
+describe('tuyaError.extractCode: không cào số DƯƠNG từ message', () => {
+  it('message timeout có "8000ms" KHÔNG được thành mã lỗi 8000', () => {
+    const e = new Error('Device read timed out after 8000ms');
+    expect(extractCode(e)).toBeUndefined();
+    expect(describeTuyaError(e, { classifier: fakeClassifier }).message).toBe(
+      'Device read timed out after 8000ms',
+    );
+  });
+
+  it('vẫn cào được mã ÂM thật trong message', () => {
+    expect(extractCode(new Error('publish failed: -10001'))).toBe('-10001');
+  });
+
+  it('đọc được domain nằm trong userInfo (shape TuyaReject của Android)', () => {
+    expect(extractDomain({ userInfo: { domain: 'cloud' } })).toBe('cloud');
+  });
+});
+
+describe('tuyaError.isRetryableTuyaError', () => {
+  it('dùng chung logic với describeTuyaError', () => {
+    expect(isRetryableTuyaError({ code: 'ios_todo' })).toBe(false);
   });
 });
