@@ -181,37 +181,37 @@ export function useAppState() {
   }, []);
 
   // Optimistic UI + đẩy DP xuống thiết bị (no-op khi native vắng / chưa pair). Fail → revert.
-  const togglePower = () => {
-    const next = !device.powerOn;
-    dispatch({ type: 'dpPatch', patch: { powerOn: next } });
-    void tuyaSetPower(devId, next).then((res) => {
-      if (!res.ok) dispatch({ type: 'dpPatch', patch: { powerOn: !next } });
+  /**
+   * Bật/tắt một DP bool: optimistic ngay → lệnh trượt thì revert **và NÓI LÝ DO**.
+   * Trước đây chỉ revert im lặng ⇒ người dùng thấy công tắc "nảy về" mà không biết vì sao
+   * (khách báo "đèn bấm không ăn"). `res.error` đã đi qua describeTuyaError nên là câu đọc được.
+   */
+  const toggleBool = (
+    field: 'powerOn' | 'lightOn' | 'purifyOn' | 'freezeOn',
+    current: boolean,
+    publish: (id: string, on: boolean) => Promise<{ ok: boolean; error?: string }>,
+    fallbackError: string,
+  ) => {
+    const next = !current;
+    dispatch({ type: 'dpPatch', patch: { [field]: next } });
+    void publish(devId, next).then((res) => {
+      if (res.ok) return;
+      dispatch({ type: 'dpPatch', patch: { [field]: !next } });
+      dispatch({ type: 'controlError', error: res.error ?? fallbackError });
     });
   };
 
-  const toggleLight = () => {
-    const next = !device.lightOn;
-    dispatch({ type: 'dpPatch', patch: { lightOn: next } });
-    void tuyaSetLight(devId, next).then((res) => {
-      if (!res.ok) dispatch({ type: 'dpPatch', patch: { lightOn: !next } });
-    });
-  };
+  const togglePower = () =>
+    toggleBool('powerOn', device.powerOn, tuyaSetPower, 'Could not switch the tub on or off.');
 
-  const togglePurify = () => {
-    const next = !device.purifyOn;
-    dispatch({ type: 'dpPatch', patch: { purifyOn: next } });
-    void tuyaSetPurify(devId, next).then((res) => {
-      if (!res.ok) dispatch({ type: 'dpPatch', patch: { purifyOn: !next } });
-    });
-  };
+  const toggleLight = () =>
+    toggleBool('lightOn', device.lightOn, tuyaSetLight, 'Could not switch the light.');
 
-  const toggleFreeze = () => {
-    const next = !device.freezeOn;
-    dispatch({ type: 'dpPatch', patch: { freezeOn: next } });
-    void tuyaSetFreeze(devId, next).then((res) => {
-      if (!res.ok) dispatch({ type: 'dpPatch', patch: { freezeOn: !next } });
-    });
-  };
+  const togglePurify = () =>
+    toggleBool('purifyOn', device.purifyOn, tuyaSetPurify, 'Could not switch disinfection.');
+
+  const toggleFreeze = () =>
+    toggleBool('freezeOn', device.freezeOn, tuyaSetFreeze, 'Could not switch cooling.');
 
   // Đặt target: kẹp theo schema → optimistic (pending) ngay → publish DEBOUNCE → confirm ack / revert nếu fail.
   const setTargetTemp = (temp: number) => {

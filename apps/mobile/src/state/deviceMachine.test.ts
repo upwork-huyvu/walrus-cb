@@ -92,6 +92,24 @@ describe('deviceMachine - kết nối / loading / error (AC2, AC3)', () => {
     expect(s.error).toBe('đọc lỗi');
   });
 
+  // Lệnh điều khiển trượt: công tắc revert (dpPatch) + PHẢI có lý do hiện lên, không im lặng.
+  it('controlError đặt message mà KHÔNG đổi status (thiết bị vẫn online)', () => {
+    const online = { ...initialDeviceState, status: 'online' as const, error: null };
+    const s = deviceReducer(online, { type: 'controlError', error: 'device is offline' });
+    expect(s.status).toBe('online');
+    expect(s.error).toBe('device is offline');
+    // cùng message 2 lần → giữ NGUYÊN ref (khỏi re-render thừa)
+    expect(deviceReducer(s, { type: 'controlError', error: 'device is offline' })).toBe(s);
+  });
+
+  it('bấm lại công tắc/đổi target thì message lỗi cũ được dọn', () => {
+    const errored = deviceReducer(
+      { ...initialDeviceState, status: 'online' as const },
+      { type: 'controlError', error: 'boom' },
+    );
+    expect(deviceReducer(errored, { type: 'setTargetOptimistic', temp: 5 }).error).toBeNull();
+  });
+
   // Tín hiệu để useAppState đăng ký lại listener realtime (iOS registerDeviceListener im lặng bỏ qua
   // khi cache SDK chưa có thiết bị ⇒ listener đăng ký lúc lỗi là listener chết).
   it('connectOk tăng connectSeq mỗi lần đọc thành công', () => {

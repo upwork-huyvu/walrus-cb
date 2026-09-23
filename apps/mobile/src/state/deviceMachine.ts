@@ -79,6 +79,7 @@ export type DeviceAction =
   | { type: 'connectError'; error: string }
   | { type: 'statusChanged'; isOnline: boolean }
   | { type: 'dpPatch'; patch: DpPatch }
+  | { type: 'controlError'; error: string }
   | { type: 'setTargetOptimistic'; temp: number }
   | { type: 'ackResolved'; temp: number }
   | { type: 'ackTimeout'; temp: number; error?: string }
@@ -127,6 +128,12 @@ export function deviceReducer(state: DeviceState, action: DeviceAction): DeviceS
         pendingTarget: null,
         prevTarget: null,
       };
+
+    // Lệnh điều khiển (đèn / nguồn / khử trùng) bị thiết bị hoặc SDK từ chối. KHÔNG đổi `status` -
+    // thiết bị vẫn đang kết nối, chỉ lệnh vừa rồi trượt. Trước đây UI chỉ lặng lẽ revert công tắc nên
+    // người dùng thấy "bấm đèn không ăn" mà không biết vì sao (m1-verify-device-controls).
+    case 'controlError':
+      return state.error === action.error ? state : { ...state, error: action.error };
 
     case 'statusChanged': {
       // 'idle' = chưa kết nối; 'error' = đọc snapshot THẤT BẠI ⇒ chỉ mình `connectOk` được quyền đưa về
