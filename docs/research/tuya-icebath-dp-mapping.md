@@ -85,40 +85,53 @@ do chênh thời điểm lấy mẫu, không phải sai scale.)
 
 ### Giải mã DP raw 114 (`setting_temp_range`)
 
+> **ĐÍNH CHÍNH 2026-09-22.** Bản đầu của mục này (và của mục 115 bên dưới) đọc layout là
+> "khối °C rồi khối °F" vì chỉ có mô tả rút gọn. Bảng thuộc tính đầy đủ (property JSON khách gửi
+> 2026-09-22) liệt kê từng trường theo thứ tự ⇒ layout **xen kẽ theo sensor**. word0 (và cặp
+> word0/word1 của 114) đúng ở cả hai cách đọc nên app không đọc/ghi sai; chỉ nhánh dự phòng "sensor 1
+> chưa đặt" và phần giải thích bị sai - đã sửa code theo (`dp.ts#readRawTempRange`,
+> `device-dp.ts#readTempRange`).
+
 ```
-00960014 00960014 00960014 00960014 ffffffff ffffffff ffffffff ffffffff
+00960014 00960014 | 00960014 00960014 | ffffffff ffffffff | ffffffff ffffffff
 ```
-Mô tả chính thức: *"A **32-byte** raw value in **big-endian** format containing **upper and
-lower limits** for up to **four sensors** in **both Celsius and Fahrenheit**."*
+Mô tả chính thức: *"A total of **32 bytes** in **big-endian** format, containing **eight groups of
+upper and lower limit settings**."* rồi liệt kê theo thứ tự: *[Sensor 1 Celsius upper-limit]
+[Sensor 1 Celsius lower-limit] [Sensor 1 Fahrenheit upper-limit] [Sensor 1 Fahrenheit lower-limit]
+[Sensor 2 Celsius upper-limit] …*, mỗi trường 2 byte, *"Reporting FFFF means this option is hidden
+on the panel"*.
 
 - 64 hex = **32 byte** = **16 word 16-bit big-endian**, có dấu (two's complement — cảm biến
   xuống tới −45.0 °C, vd −2.0 °C = `ffec`).
-- **word 0..7 = khối °C**, mỗi sensor một cặp *(trên, dưới)* → sensor 1 = word0/word1.
-- **word 8..15 = khối °F**, cùng bố cục.
-- Số liệu thật: `[150,20] × 4` rồi `[ffff] × 8` ⇒ **4 sensor đều giới hạn 15.0 / 2.0 °C**,
-  phần °F **chưa đặt** (`ffff` = sentinel).
-- ⇒ **Biên cho sensor 1: min 2.0 °C, max 15.0 °C. Giá trị "trên" đứng TRƯỚC.**
+- **Mỗi sensor 4 word liền nhau: `[°C trên, °C dưới, °F trên, °F dưới]`** → sensor 1 = word 0..3,
+  sensor 2 = word 4..7, …
+- Số liệu thật: sensor 1 = `[150, 20, 150, 20]`, sensor 2 = `[150, 20, 150, 20]`, sensor 3–4 = `ffff`
+  ⇒ sensor 1–2 giới hạn **15.0 / 2.0 °C**; ô °F **lặp lại đúng số của °C** (MCU không quy đổi);
+  sensor 3–4 **ẩn**.
+- ⇒ **Biên cho sensor 1: min 2.0 °C, max 15.0 °C (word0/word1). Giá trị "trên" đứng TRƯỚC.**
 
 ### Giải mã DP raw 115 (`setting_temp`)
 
 ```
-00280028 ffffffff ffffffff ffffffff
+0028 0028 | ffff ffff | ffff ffff | ffff ffff
 ```
-Mô tả chính thức: *"raw value in big-endian format containing configured temperatures for up
-to **four sensors** in **both Celsius and Fahrenheit**."*
+Mô tả chính thức: *"A total of 8 bytes in big-endian format"* rồi liệt kê: *[Sensor 1 Celsius
+temperature setting] [Sensor 1 Fahrenheit temperature setting] [Sensor 2 Celsius temperature
+setting] [Sensor 2 Fahrenheit temperature setting] …*, mỗi trường 2 byte.
 
 - 32 hex = **16 byte** = **8 word 16-bit**: `[40, 40, ffff × 6]`.
-- **word 0..3 = setpoint °C cho sensor 1..4** · **word 4..7 = °F**.
-- ⇒ **word 0 = nhiệt độ mục tiêu °C của sensor 1 = 4.0 °C** (sensor 2 cũng 4.0; °F chưa đặt).
+- **Mỗi sensor 2 word: `[°C, °F]`** → word0 = sensor 1 °C, **word1 = sensor 1 °F**, word 2/3 =
+  sensor 2, …
+- ⇒ **word 0 = nhiệt độ mục tiêu °C của sensor 1 = 4.0 °C**; word1 (°F của sensor 1) cũng = 40 -
+  lặp số °C giống DP 114; sensor 2–4 **ẩn**.
 - 4.0 °C nằm gọn trong biên 2.0–15.0 °C của DP 114 ⇒ nhất quán.
 
-> Mô tả của hãng ghi "8-byte" cho DP 115 nhưng payload thật là **16 byte**. Con số 8 khớp với
-> **8 giá trị** (4 sensor × 2 đơn vị), và tỉ lệ 32-byte/16-byte giữa DP 114 và 115 đúng bằng
-> 2 (114 có thêm chiều *trên/dưới*) ⇒ đọc theo **16 byte / 8 word** là đúng.
+> Mô tả của hãng ghi "8 bytes" cho DP 115 nhưng liệt kê **8 trường × 2 byte = 16 byte**, khớp
+> payload thật ⇒ con số 8 là số trường, đọc theo **16 byte / 8 word** là đúng.
 
 ### Ghi setpoint an toàn
 
-Chỉ ghi đè **word 0**, giữ nguyên mọi word còn lại (kể cả `ffff` và khối °F chưa đặt):
+Chỉ ghi đè **word 0**, giữ nguyên mọi word còn lại (kể cả `ffff` và word1 = °F của sensor 1):
 
 ```
 4.0 → 7.5 °C:  00280028ffffffffffffffffffffffff
@@ -227,8 +240,8 @@ Bảng thuộc tính model `g0cv1c` đã đóng gần hết câu hỏi. Còn l�
 | # | Câu hỏi | Cách xác minh | Chặn việc gì |
 |---|---|---|---|
 | Q1 | **Bước nhảy (step)** của setpoint là bao nhiêu? DP raw không khai báo `step`. App đang tạm dùng **0.5 °C** | Đổi nhiệt độ trong Smart Life, xem word 0 nhảy theo bội số nào | Độ mịn nút +/- |
-| Q2 | Ghi word 0 mà giữ nguyên word khác có được firmware chấp nhận không? | Publish rồi chờ `onDpUpdate` phản hồi lại đúng chuỗi | Ghi target temp |
-| Q3 | Khi máy ở chế độ °F thì có phải ghi thêm word 4 không? | Đổi `setting_unit` rồi xem DP 115 | Hỗ trợ °F |
+| Q2 | Ghi word 0 mà giữ nguyên word khác (kể cả word1 = °F của sensor 1) có được firmware chấp nhận không? MCU có tự sửa word1 theo không? | Publish rồi xem echo DP 115 trong log `[DP]` | Ghi target temp |
+| Q3 | Khi máy ở chế độ °F thì có phải ghi word 1 (°F của sensor 1) thay/cùng word 0 không? | Đổi `setting_unit` rồi xem DP 115 | Hỗ trợ °F |
 | Q4 | 4 sensor là những gì (nước vào/ra/máy nén…)? Sensor 1 có đúng là nhiệt độ nước? | Đối chiếu số trên mặt máy với DP 101 | Nhãn hiển thị |
 | Q5 | `fault1..fault4` ứng với lỗi gì? | Chờ có lỗi thật, hoặc hỏi hãng | Thông điệp lỗi |
 

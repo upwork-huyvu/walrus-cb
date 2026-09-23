@@ -4,7 +4,7 @@ const TARGET = '115';
 const SENSOR = '101';
 
 describe('deviceSchema.parseTempRange - nhánh DP raw (biên thật của bồn)', () => {
-  // Bồn thật: setting_temp_range = 4 sensor × (trên 15.0, dưới 2.0) °C, khối °F chưa đặt.
+  // Bồn thật: setting_temp_range = sensor 1–2 × [°C trên 15.0, °C dưới 2.0, °F lặp lại cùng số], sensor 3–4 ẩn.
   const RANGE_HEX = '00960014009600140096001400960014ffffffffffffffffffffffffffffffff';
   const schema = JSON.stringify([
     { dpId: SENSOR, code: 'sensor_1', property: { type: 'value', min: -450, max: 999, step: 1, scale: 1, unit: '℃' } },

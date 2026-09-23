@@ -14,7 +14,7 @@ import {
 
 // ── Dữ liệu THẬT của bồn (model g0cv1c) - xem docs/research/tuya-icebath-dp-mapping.md ──
 // DP raw QUA CLOUD = base64 (App SDK = hex). base64 dưới đây tính từ chính payload hex thật.
-const RANGE_B64 = 'AJYAFACWABQAlgAUAJYAFP////////////////////8='; // 15.0/2.0 ×4 sensor
+const RANGE_B64 = 'AJYAFACWABQAlgAUAJYAFP////////////////////8='; // sensor 1–2: [15.0, 2.0] °C + °F lặp lại; 3–4 ẩn
 const TEMP_B64 = 'ACgAKP///////////////w=='; // [40,40,ffff×6] → setpoint 4.0°C
 const TEMP75_B64 = 'AEsAKP///////////////w=='; // sau khi đổi word0 → 7.5°C
 
@@ -107,6 +107,16 @@ describe('raw codec BASE64 (khác hex của App SDK)', () => {
 
   it('readTempRange đọc khối °C, bỏ qua sensor ffff', () => {
     expect(readTempRange(RANGE_B64)).toEqual({ min: 20, max: 150 });
+  });
+
+  it('readTempRange chỉ đọc cặp °C của từng sensor, không lấy cặp °F', () => {
+    // sensor1: °C chưa đặt, °F = (200,10) · sensor2: °C = (150,20) → lấy sensor2.
+    const s1Unset = wordsToBase64([0xffff, 0xffff, 200, 10, 150, 20]);
+    expect(readTempRange(s1Unset)).toEqual({ min: 20, max: 150 });
+    const onlyF = wordsToBase64([
+      0xffff, 0xffff, 200, 10, 0xffff, 0xffff, 200, 10,
+    ]);
+    expect(readTempRange(onlyF)).toBeNull();
   });
 
   it('nhiệt độ âm dùng int16 bù 2', () => {

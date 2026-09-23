@@ -145,14 +145,17 @@ export function resolveMapFromCodes(codes: string[]): DpMap {
 
 // ───────────────────────── Raw DP (mảng int16 big-endian, BASE64) ─────────────────────────
 //
-// setting_temp (DP115): 8 word; word0 = setpoint °C sensor1.
-// setting_temp_range (DP114): 16 word; word0/word1 = (trên,dưới) °C sensor1.
+// Layout XEN KẼ theo sensor (°C rồi °F), theo mô tả DP của model g0cv1c:
+// setting_temp (DP115): 8 word = [°C, °F] × 4 sensor; word0 = setpoint °C sensor1.
+// setting_temp_range (DP114): 16 word = [°C trên, °C dưới, °F trên, °F dưới] × 4 sensor;
+//   word0/word1 = (trên,dưới) °C sensor1.
 // Qua Cloud value là BASE64; nhưng STATUS có thể trả base64 HOẶC hex (chưa xác minh - Q1). Nên
 // `rawToWords` thử base64 rồi fallback hex.
 
 const UNSET_WORD = 0xffff;
 const TARGET_TEMP_WORD = 0;
-const CELSIUS_WORDS = 4; // 4 sensor ở khối °C của DP114/115
+const MAX_SENSORS = 4;
+const RANGE_WORDS_PER_SENSOR = 4; // DP114: [°C trên, °C dưới, °F trên, °F dưới]
 
 const toSigned = (w: number): number => (w >= 0x8000 ? w - 0x10000 : w);
 
@@ -228,14 +231,18 @@ export function writeTargetWord(
   return wordsToBase64(w);
 }
 
-/** DP raw setting_temp_range → biên °C (RAW) của sensor đầu tiên đang dùng. */
+/**
+ * DP raw setting_temp_range → biên °C (RAW) của sensor đầu tiên đang dùng.
+ * Chỉ đọc cặp °C (2 word đầu của mỗi sensor), không bao giờ lấy cặp °F.
+ */
 export function readTempRange(
   raw: string,
   encoding?: 'base64' | 'hex',
 ): { min: number; max: number } | null {
   const w = rawToWords(raw, encoding);
-  const last = Math.min(w.length, CELSIUS_WORDS * 2);
-  for (let i = 0; i + 1 < last; i += 2) {
+  for (let s = 0; s < MAX_SENSORS; s++) {
+    const i = s * RANGE_WORDS_PER_SENSOR;
+    if (i + 1 >= w.length) break;
     if (w[i] === UNSET_WORD || w[i + 1] === UNSET_WORD) continue;
     const a = toSigned(w[i]);
     const b = toSigned(w[i + 1]);

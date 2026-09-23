@@ -124,20 +124,22 @@ export function resolveDpMap(dpCodesJson: string): DpMap {
 // Docs Tuya (iOS + Android): "A byte array of raw type is a hexadecimal string with an even
 // number of digits" ⇒ đọc/ghi bằng HEX, không phải base64.
 //
-// Layout (theo bảng thuộc tính Tuya của model g0cv1c):
-//   setting_temp_range (114): 32 byte = 16 word big-endian.
-//     word 0..7  = ĐỘ C, mỗi sensor 1 cặp (trên, dưới) → sensor1 = word0/word1
-//     word 8..15 = ĐỘ F, cùng bố cục
-//     Bồn thật: [150,20]×4 rồi [ffff]×8 ⇒ 4 sensor đều 15.0/2.0 °C, phần °F chưa đặt.
-//   setting_temp (115): 16 byte = 8 word.
-//     word 0..3 = ĐỘ C cho sensor 1..4 · word 4..7 = ĐỘ F
-//     Bồn thật: [40,40,ffff×6] ⇒ sensor1 = sensor2 = 4.0 °C.
+// Layout theo mô tả DP trong bảng thuộc tính Tuya của model g0cv1c - XEN KẼ theo sensor, °C rồi °F:
+//   setting_temp_range (114): 32 byte = 16 word big-endian, mỗi sensor 4 word liền nhau
+//     [°C trên, °C dưới, °F trên, °F dưới] × sensor 1..4 → sensor1 °C = word0/word1
+//     Bồn thật: [150,20,150,20]×2 rồi [ffff]×8 ⇒ sensor 1–2 giới hạn 15.0/2.0 (°F lặp lại cùng số),
+//     sensor 3–4 ẩn (ffff = "hidden on the panel").
+//   setting_temp (115): 16 byte = 8 word, mỗi sensor 2 word [°C, °F] × sensor 1..4
+//     Bồn thật: [40,40,ffff×6] ⇒ sensor1 = 4.0 °C, word1 (°F của sensor1) cũng 40, sensor 2–4 ẩn.
 
 /** Word chứa setpoint °C của sensor 1 trong DP `setting_temp`. */
 export const TARGET_TEMP_SLOT = 0;
 
-/** Số sensor tối đa trong khối °C của DP raw nhiệt độ (phần còn lại là °F). */
-const CELSIUS_SENSORS = 4;
+/** Số sensor tối đa trong DP raw nhiệt độ. */
+const MAX_SENSORS = 4;
+
+/** `setting_temp_range`: số word của mỗi sensor ([°C trên, °C dưới, °F trên, °F dưới]). */
+const RANGE_WORDS_PER_SENSOR = 4;
 
 const UNSET_WORD = 0xffff; // slot chưa dùng (đọc kiểu có dấu = -1)
 
@@ -177,13 +179,14 @@ export function writeRawSlot(hex: string, slot: number, raw: number): string | n
 
 /**
  * DP raw `setting_temp_range` → biên °C của 1 sensor, đơn vị RAW.
- * Chỉ quét khối °C (word 0..2N-1); cặp của sensor chưa đặt (`ffff`) thì thử sensor kế tiếp.
+ * Chỉ đọc cặp °C (2 word đầu của mỗi sensor, bỏ cặp °F); sensor chưa đặt (`ffff`) thì thử sensor kế tiếp.
  * Tự sắp min/max nên không phụ thuộc thứ tự (trên,dưới) hay (dưới,trên).
  */
 export function readRawTempRange(hex: string, sensor = 0): { min: number; max: number } | null {
   const w = hexWords(hex);
-  const lastCelsiusWord = Math.min(w.length, CELSIUS_SENSORS * 2);
-  for (let i = Math.max(0, sensor) * 2; i + 1 < lastCelsiusWord; i += 2) {
+  for (let s = Math.max(0, sensor); s < MAX_SENSORS; s++) {
+    const i = s * RANGE_WORDS_PER_SENSOR;
+    if (i + 1 >= w.length) break;
     if (w[i] === UNSET_WORD || w[i + 1] === UNSET_WORD) continue;
     const a = toSigned(w[i]);
     const b = toSigned(w[i + 1]);

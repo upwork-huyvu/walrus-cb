@@ -202,11 +202,12 @@ describe('DP raw - đọc/ghi slot 16-bit big-endian', () => {
     expect(parseDeviceDps('{"115":"00280028"}', map, { targetTemp: 'raw' }).targetTemp).toBe(40);
   });
 
-  it('readRawTempRange bỏ qua sensor chưa đặt và chỉ đọc khối °C', () => {
-    expect(readRawTempRange('ffffffff00c8000a')).toEqual({ min: 10, max: 200 });
+  it('readRawTempRange chỉ đọc cặp °C của từng sensor, bỏ qua sensor chưa đặt', () => {
+    // sensor1: °C chưa đặt, °F = (200,10) · sensor2: °C = (150,20) → lấy sensor2.
+    expect(readRawTempRange('ffffffff00c8000a00960014')).toEqual({ min: 20, max: 150 });
     expect(readRawTempRange('ffffffffffffffff')).toBeNull();
-    // Khối °F (word 8..15) không được dùng làm biên °C.
-    expect(readRawTempRange('ffffffffffffffffffffffffffffffff02580140')).toBeNull();
+    // Cặp °F (word 2/3 của mỗi sensor) KHÔNG bao giờ được dùng làm biên °C.
+    expect(readRawTempRange('ffffffff00c8000affffffff00c8000a')).toBeNull();
   });
 });
 
