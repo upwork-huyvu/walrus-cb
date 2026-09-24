@@ -110,7 +110,7 @@ export default function TempGauge({ current, target, pending = false, range, siz
           </Text>
         </View>
         <Text style={{ fontFamily: F.body, fontSize: 15, opacity: pending ? 0.6 : 1 }}>
-          <Text style={{ color: C.muted }}>Set temperature </Text>
+          <Text style={{ color: C.muted }}>Target </Text>
           <Text style={{ color: C.ochre }}>{formatTemp(target, range)}</Text>
         </Text>
       </View>
