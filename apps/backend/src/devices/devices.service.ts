@@ -32,6 +32,38 @@ type CloudDeviceDetail = {
   product_name?: string;
   icon?: string;
 };
+
+/** `GET /v2.0/cloud/thing/{id}/shadow/properties` - giá trị DP hiện tại. */
+type CloudShadow = {
+  properties?: { code?: string; value?: unknown }[];
+};
+
+/** `GET /v2.0/cloud/thing/{id}/model` - `model` là CHUỖI JSON của thing model. */
+type CloudModelResult = { model?: string };
+type ThingModel = {
+  services?: {
+    properties?: {
+      code?: string;
+      accessMode?: string; // ro | rw | wr
+      typeSpec?: { type?: string } & Record<string, unknown>;
+    }[];
+  }[];
+};
+
+/**
+ * Thing model (v2.0) đặt tên kiểu bằng CHỮ THƯỜNG, còn specification v1.0 - thứ mà `device-dp.ts`
+ * so sánh (`type === 'Raw'`) - dùng chữ hoa. Không quy đổi thì `setting_temp` mất nhánh decode raw
+ * và setpoint đọc ra rác.
+ */
+const THING_MODEL_TYPES: Record<string, string> = {
+  value: 'Integer',
+  bool: 'Boolean',
+  enum: 'Enum',
+  string: 'String',
+  raw: 'Raw',
+  bitmap: 'Bitmap',
+  json: 'Json',
+};
 export type AdminDeviceListItem = {
   id: string;
   name: string;
@@ -163,11 +195,12 @@ export class DevicesService {
   /**
    * Đọc detail + status + specification, chịu được việc Tuya từ chối từng phần.
    *
-   * ⚠️ `/v1.0/devices/{id}/status` KHÔNG phải lúc nào cũng dùng được. Đo trên thiết bị thật
-   * (2026-09-28, siren `sgbj` "Walrus amara" đang ONLINE): Tuya trả `2003 function not support`
-   * cho `/v1.0/.../status` và `2009 not support this device` cho `/specifications`, trong khi
-   * bản `iot-03` của cả hai vẫn trả 200. Trước đây lời gọi status KHÔNG bắt lỗi nên một thiết bị
-   * đang online cũng làm cả trang chi tiết trắng thành "Couldn't load this device from Tuya".
+   * ⚠️ `/v1.0/devices/{id}/status` + `/specifications` KHÔNG dùng được cho chính con bồn. Đo trên
+   * thiết bị thật (2026-09-28, "Walrus amara" - model **g0cv1c**, đang ONLINE): Tuya trả
+   * `2003 function not support` và `2009 not support this device`, còn `/v1.0/iot-03/.../status`
+   * tuy trả 200 nhưng là MẢNG RỖNG. Endpoint duy nhất có dữ liệu thật là bộ **v2.0 cloud/thing**
+   * (`shadow/properties` cho giá trị, `model` cho schema) - trả đủ 12 DP gồm `sensor_1`(101),
+   * `setting_temp`(115), `setting_pwr`(121), `setting_clr`(122), `setting_4`(124).
    */
   private async readDeviceState(id: string): Promise<{
     detail: CloudDeviceDetail | null;
@@ -178,25 +211,77 @@ export class DevicesService {
       this.tuya
         .request<CloudDeviceDetail>({ path: `/v1.0/devices/${id}` })
         .catch(() => null),
-      this.firstOk<CloudStatusItem[]>([
-        `/v1.0/devices/${id}/status`,
-        `/v1.0/iot-03/devices/${id}/status`,
-      ]),
-      this.firstOk<CloudSpec>([
-        `/v1.0/devices/${id}/specifications`,
-        `/v1.0/iot-03/devices/${id}/specification`, // iot-03 dùng số ÍT
-      ]),
+      this.readStatus(id),
+      this.readSpec(id),
     ]);
-    return { detail, status: status ?? [], spec };
+    return { detail, status, spec };
   }
 
-  /** Thử lần lượt các endpoint tương đương, lấy cái đầu tiên trả về dữ liệu; hết thì `null`. */
-  private async firstOk<T>(paths: string[]): Promise<T | null> {
-    for (const path of paths) {
-      const res = await this.tuya.request<T>({ path }).catch(() => null);
-      if (res) return res;
+  /** Giá trị DP: `/v1.0/.../status` trước, rỗng/lỗi thì lấy shadow properties (v2.0). */
+  private async readStatus(id: string): Promise<CloudStatusItem[]> {
+    const v1 = await this.tuya
+      .request<CloudStatusItem[]>({ path: `/v1.0/devices/${id}/status` })
+      .catch(() => null);
+    if (v1?.length) return v1;
+
+    const shadow = await this.tuya
+      .request<CloudShadow>({
+        path: `/v2.0/cloud/thing/${id}/shadow/properties`,
+      })
+      .catch(() => null);
+    const props = (shadow?.properties ?? []).filter(
+      (p): p is { code: string; value: unknown } => Boolean(p.code),
+    );
+    return props.length
+      ? props.map((p) => ({ code: p.code, value: p.value }))
+      : [];
+  }
+
+  /** Schema DP: `/v1.0/.../specifications` trước, rỗng/lỗi thì quy đổi từ thing model (v2.0). */
+  private async readSpec(id: string): Promise<CloudSpec | null> {
+    const v1 = await this.tuya
+      .request<CloudSpec>({ path: `/v1.0/devices/${id}/specifications` })
+      .catch(() => null);
+    if (v1?.functions?.length || v1?.status?.length) return v1;
+
+    const res = await this.tuya
+      .request<CloudModelResult>({ path: `/v2.0/cloud/thing/${id}/model` })
+      .catch(() => null);
+    return this.thingModelToSpec(res) ?? v1;
+  }
+
+  /**
+   * Thing model → hình dạng specification mà `parseSpecification` hiểu.
+   * `accessMode: 'ro'` chỉ vào `status` (đọc được nhưng KHÔNG gửi lệnh được); còn lại vào cả
+   * `functions` để `buildCommands` cho phép điều khiển.
+   */
+  private thingModelToSpec(res: CloudModelResult | null): CloudSpec | null {
+    if (!res?.model) return null;
+    let model: ThingModel;
+    try {
+      model = JSON.parse(res.model) as ThingModel;
+    } catch {
+      return null;
     }
-    return null;
+
+    const functions: CloudSpecEntry[] = [];
+    const status: CloudSpecEntry[] = [];
+    for (const svc of model.services ?? []) {
+      for (const p of svc.properties ?? []) {
+        if (!p.code) continue;
+        const rawType = String(p.typeSpec?.type ?? '');
+        const entry: CloudSpecEntry = {
+          code: p.code,
+          type: THING_MODEL_TYPES[rawType] ?? rawType,
+          // `parseSpecification` đọc `values` như CHUỖI JSON (min/max/scale/unit) - `typeSpec`
+          // đúng hình dạng đó nên serialize thẳng là dùng được.
+          values: JSON.stringify(p.typeSpec ?? {}),
+        };
+        status.push(entry);
+        if (p.accessMode && p.accessMode !== 'ro') functions.push(entry);
+      }
+    }
+    return status.length ? { functions, status } : null;
   }
 
   /**

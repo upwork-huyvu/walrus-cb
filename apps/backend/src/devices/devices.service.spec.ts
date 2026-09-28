@@ -141,11 +141,14 @@ describe('DevicesService.listAllDevices', () => {
 });
 
 describe('DevicesService.getDevice', () => {
-  /** Tuya giả theo đúng hành vi ĐO ĐƯỢC trên siren `sgbj` đang online (2026-09-28). */
-  function makeFlakyTuya() {
+  /**
+   * Tuya giả theo đúng hành vi ĐO ĐƯỢC trên con bồn thật "Walrus amara" (model g0cv1c,
+   * 2026-09-28): endpoint v1.0 từ chối, chỉ bộ v2.0 cloud/thing có dữ liệu.
+   */
+  function makeBathTuya() {
     const request = jest.fn((req: { path: string }) => {
       const { path } = req;
-      if (path.endsWith('/v1.0/devices/dev1'))
+      if (path === '/v1.0/devices/dev1')
         return Promise.resolve({
           id: 'dev1',
           name: 'Walrus amara',
@@ -156,25 +159,101 @@ describe('DevicesService.getDevice', () => {
         return Promise.reject(new Error('code=2003 function not support'));
       if (path === '/v1.0/devices/dev1/specifications')
         return Promise.reject(new Error('code=2009 not support this device'));
-      if (path === '/v1.0/iot-03/devices/dev1/status')
-        return Promise.resolve([]);
-      if (path === '/v1.0/iot-03/devices/dev1/specification')
-        return Promise.resolve({ category: 'sgbj' });
+      if (path === '/v2.0/cloud/thing/dev1/shadow/properties')
+        return Promise.resolve({
+          properties: [
+            { code: 'sensor_1', dp_id: 101, type: 'value', value: 100 },
+            { code: 'setting_temp', dp_id: 115, type: 'raw', value: TEMP_B64 },
+            {
+              code: 'setting_temp_range',
+              dp_id: 114,
+              type: 'raw',
+              value: RANGE_B64,
+            },
+            { code: 'setting_pwr', dp_id: 121, type: 'bool', value: true },
+            { code: 'setting_4', dp_id: 124, type: 'bool', value: true },
+            { code: 'setting_clr', dp_id: 122, type: 'bool', value: false },
+          ],
+        });
+      if (path === '/v2.0/cloud/thing/dev1/model')
+        return Promise.resolve({
+          model: JSON.stringify({
+            modelId: 'g0cv1c',
+            services: [
+              {
+                properties: [
+                  {
+                    abilityId: 101,
+                    accessMode: 'ro',
+                    code: 'sensor_1',
+                    typeSpec: { type: 'value', scale: 1, unit: '℃' },
+                  },
+                  {
+                    abilityId: 115,
+                    accessMode: 'rw',
+                    code: 'setting_temp',
+                    typeSpec: { type: 'raw', maxlen: 128 },
+                  },
+                  {
+                    abilityId: 114,
+                    accessMode: 'rw',
+                    code: 'setting_temp_range',
+                    typeSpec: { type: 'raw', maxlen: 128 },
+                  },
+                  {
+                    abilityId: 121,
+                    accessMode: 'rw',
+                    code: 'setting_pwr',
+                    typeSpec: { type: 'bool' },
+                  },
+                  {
+                    abilityId: 124,
+                    accessMode: 'rw',
+                    code: 'setting_4',
+                    typeSpec: { type: 'bool' },
+                  },
+                  {
+                    abilityId: 122,
+                    accessMode: 'rw',
+                    code: 'setting_clr',
+                    typeSpec: { type: 'bool' },
+                  },
+                ],
+              },
+            ],
+          }),
+        });
       return Promise.reject(new Error(`path lạ: ${path}`));
     });
     return { request } as unknown as TuyaCloudService;
   }
 
-  // ĐÂY LÀ LỖI KHÁCH BÁO: thiết bị ONLINE nhưng mở trang chi tiết ra thì trắng thành
-  // "Couldn't load this device from Tuya" - vì lời gọi `/status` không bắt lỗi.
-  it('`/status` v1.0 hỏng → lùi sang iot-03, KHÔNG làm sập cả trang', async () => {
-    const svc = new DevicesService(makeFlakyTuya(), makeUsers());
+  // ĐÂY LÀ LỖI KHÁCH BÁO: bồn ONLINE nhưng trang chi tiết không hiện gì, dù
+  // `/v2.0/cloud/thing/{id}/shadow/properties` có đủ giá trị.
+  it('v1.0 từ chối → đọc DP từ shadow properties + thing model', async () => {
+    const svc = new DevicesService(makeBathTuya(), makeUsers());
 
     const d = await svc.getDevice('dev1');
 
     expect(d.name).toBe('Walrus amara');
     expect(d.online).toBe(true);
-    expect(d.currentTemp).toBeNull();
+    expect(d.currentTemp).toBeCloseTo(10); // sensor_1 = 100, scale 1
+    expect(d.targetTemp).toBeCloseTo(4); // setting_temp word0 = 40, scale 1
+    expect(d.power).toBe(true);
+    expect(d.light).toBe(true);
+    expect(d.purify).toBe(false);
+    expect(d.tempRange).toEqual({ min: 2, max: 15, step: 0.5, unit: '°C' });
+  });
+
+  // Quy đổi kiểu là chỗ dễ hỏng câm: thing model ghi `raw` chữ thường, còn device-dp so với
+  // `'Raw'`. Sai là setpoint rơi vào nhánh số và đọc ra rác thay vì decode word0.
+  it('quy đổi kiểu thing model chữ thường → chữ hoa (raw → Raw)', async () => {
+    const svc = new DevicesService(makeBathTuya(), makeUsers());
+
+    const d = await svc.getDevice('dev1');
+
+    expect(d.targetTemp).not.toBeNull();
+    expect(d.targetTemp).toBeCloseTo(4); // decode word0, KHÔNG phải parse base64 thành số
   });
 
   it('không đọc nổi detail → 404 chứ không trả vỏ rỗng', async () => {
