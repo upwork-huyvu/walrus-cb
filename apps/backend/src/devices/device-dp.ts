@@ -157,7 +157,21 @@ const TARGET_TEMP_WORD = 0;
 const MAX_SENSORS = 4;
 const RANGE_WORDS_PER_SENSOR = 4; // DP114: [°C trên, °C dưới, °F trên, °F dưới]
 
-const toSigned = (w: number): number => (w >= 0x8000 ? w - 0x10000 : w);
+/**
+ * Word 16-bit → số có dấu theo quy ước của model g0cv1c: **bit cao là DẤU**, 15 bit còn lại là
+ * ĐỘ LỚN - KHÔNG phải bù 2. Tuya ghi thẳng trong mô tả của CẢ DP 114 lẫn DP 115:
+ * "高位bit赋值0表示正数，赋值1表示负数" (bit cao = 0 → dương, = 1 → âm).
+ *
+ * Đọc bằng bù 2 thì giới hạn dưới THẬT của bồn (`0x803C`) ra **-3270.8°C** thay vì -6.0°C.
+ */
+const toSigned = (w: number): number => (w & 0x8000 ? -(w & 0x7fff) : w);
+
+/** Nghịch đảo của `toSigned`: số có dấu → word dấu-độ lớn (kẹp vào 15 bit độ lớn). */
+const toWord = (n: number): number => {
+  const v = Math.round(n);
+  const mag = Math.min(Math.abs(v), 0x7fff);
+  return v < 0 ? 0x8000 | mag : mag;
+};
 
 function bytesToWords(bytes: number[]): number[] {
   const out: number[] = [];
@@ -227,7 +241,7 @@ export function writeTargetWord(
 ): string | null {
   const w = rawToWords(currentRaw, encoding);
   if (w.length === 0) return null;
-  w[TARGET_TEMP_WORD] = Math.round(targetRaw) & 0xffff;
+  w[TARGET_TEMP_WORD] = toWord(targetRaw);
   return wordsToBase64(w);
 }
 

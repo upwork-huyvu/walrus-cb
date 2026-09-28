@@ -119,10 +119,20 @@ describe('raw codec BASE64 (khác hex của App SDK)', () => {
     expect(readTempRange(onlyF)).toBeNull();
   });
 
-  it('nhiệt độ âm dùng int16 bù 2', () => {
-    const neg = wordsToBase64([0xffec]); // -20 raw = -2.0°C
+  // ⚠️ ĐÃ ĐÍNH CHÍNH (2026-09-28). Test cũ khoá int16 **bù 2** - viết theo giả định, chưa có
+  // thiết bị thật. Mô tả DP của Tuya cho CẢ 114 lẫn 115 nói rõ: "高位bit赋值0表示正数，赋值1表示负数"
+  // (bit cao = dấu, 15 bit còn lại = độ lớn). Bồn thật báo `0x803C` cho giới hạn dưới: đọc theo
+  // dấu-độ lớn ra **-6.0°C**, đọc theo bù 2 ra **-3270.8°C**.
+  it('nhiệt độ âm dùng dấu-độ lớn (bit cao = dấu), KHÔNG phải bù 2', () => {
+    const neg = wordsToBase64([0x8014]); // -20 raw = -2.0°C
     expect(readTargetWord(neg)).toBe(-20);
     expect(writeTargetWord(wordsToBase64([0]), -20)).toBe(neg);
+  });
+
+  // Giá trị THẬT đọc từ bồn "Walrus amara" (model g0cv1c) ngày 2026-09-28.
+  it('giới hạn dưới thật của bồn (0x803C) = -6.0°C', () => {
+    const real = 'AJaAPACWgDwAloA8AJaAPP////////////////////8=';
+    expect(readTempRange(real)).toEqual({ min: -60, max: 150 });
   });
 
   it('auto-detect: hex vẫn đọc được nếu không phải base64 hợp lệ', () => {
