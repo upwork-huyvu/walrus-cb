@@ -65,14 +65,21 @@ function makeTuya(overrides?: {
 
 function makeUsers(): UsersService {
   return {
-    listUsers: jest.fn(() =>
-      Promise.resolve({
-        list: [{ uid: 'u1', username: 'imax', nick_name: 'iMax' }],
-        total: 1,
-        has_more: false,
-        page_no: 1,
-        page_size: 100,
-      }),
+    loadRoster: jest.fn(() =>
+      Promise.resolve([
+        {
+          info: { uid: 'u1', username: 'imax', nick_name: 'iMax' },
+          devices: [
+            {
+              id: 'dev1',
+              name: 'Bath',
+              online: true,
+              product_id: 'p1',
+              status: STATUS,
+            },
+          ],
+        },
+      ]),
     ),
     getUserDevices: jest.fn(() =>
       Promise.resolve([
@@ -105,6 +112,27 @@ describe('DevicesService.listAllDevices', () => {
         targetTemp: 4,
       },
     ]);
+  });
+
+  // `devices: null` = đọc thiết bị của user đó hỏng. Phải bỏ qua user, không được ném lỗi làm
+  // trắng cả trang /devices của những user còn lại.
+  it('user đọc thiết bị hỏng (devices null) → bỏ qua, không ném lỗi', async () => {
+    const { tuya } = makeTuya();
+    const users = {
+      loadRoster: jest.fn(() =>
+        Promise.resolve([
+          { info: { uid: 'broken' }, devices: null },
+          {
+            info: { uid: 'u1', nick_name: 'iMax' },
+            devices: [{ id: 'dev1', name: 'Bath', online: true, status: [] }],
+          },
+        ]),
+      ),
+    } as unknown as UsersService;
+
+    const list = await new DevicesService(tuya, users).listAllDevices();
+
+    expect(list.map((d) => d.id)).toEqual(['dev1']);
   });
 });
 

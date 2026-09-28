@@ -23,7 +23,8 @@ export type UserRow = {
   create_time?: number;
   nick_name?: string;
   avatar?: string;
-  business?: { deviceCount?: number };
+  /** `deviceCount === null` = backend không đếm được (Tuya lỗi), KHÁC 0 (chưa pair máy nào). */
+  business?: { deviceCount?: number | null };
 };
 
 /**
@@ -181,8 +182,7 @@ export default function UsersBrowser({
             ) : (
               shown.map((u) => {
                 const name = u.nick_name || u.username || u.email || u.mobile || 'No name';
-                const deviceCount = u.business?.deviceCount ?? 0;
-                const active = deviceCount > 0;
+                const deviceCount = u.business?.deviceCount ?? null;
                 return (
                   <tr
                     key={u.uid}
@@ -212,16 +212,29 @@ export default function UsersBrowser({
                       </div>
                     </td>
                     <td className="break">{u.email ?? <span className="muted">—</span>}</td>
-                    <td className="num">{deviceCount}</td>
+                    <td className="num">
+                      {deviceCount ?? <span className="muted">—</span>}
+                    </td>
                     <td>
                       {/* ⚠️ Tuya KHÔNG trả trạng thái tài khoản. Suy từ việc có thiết bị hay chưa -
-                          nói rõ trong tooltip để người dùng không hiểu là trạng thái thật của Tuya. */}
-                      <span
-                        className={`badge ${active ? 'success' : ''}`}
-                        title="Derived from paired devices — Tuya does not expose an account status"
-                      >
-                        {active ? 'Active' : 'Inactive'}
-                      </span>
+                          nói rõ trong tooltip để người dùng không hiểu là trạng thái thật của Tuya.
+                          Đếm hụt (null) phải hiện "Unknown": gán bừa "Inactive" cho khách đang có
+                          bồn chạy là sai nguy hiểm hơn hẳn việc thú nhận không đếm được. */}
+                      {deviceCount === null ? (
+                        <span
+                          className="badge"
+                          title="Couldn’t read this user’s devices from Tuya"
+                        >
+                          Unknown
+                        </span>
+                      ) : (
+                        <span
+                          className={`badge ${deviceCount > 0 ? 'success' : ''}`}
+                          title="Derived from paired devices — Tuya does not expose an account status"
+                        >
+                          {deviceCount > 0 ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
                     </td>
                     <td>
                       <div className="cell-main">{fmtEpoch(u.create_time)}</div>

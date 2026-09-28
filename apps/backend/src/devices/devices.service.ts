@@ -31,8 +31,6 @@ type CloudDeviceDetail = {
   product_name?: string;
   icon?: string;
 };
-type EnrichedUser = { uid: string; username?: string; nick_name?: string };
-
 export type AdminDeviceListItem = {
   id: string;
   name: string;
@@ -82,34 +80,32 @@ export class DevicesService {
     private readonly users: UsersService,
   ) {}
 
-  /** Tất cả thiết bị của mọi user (duyệt users → devices). Dedupe theo id; owner đính kèm. */
+  /**
+   * Tất cả thiết bị của mọi user. Dedupe theo id; owner đính kèm.
+   *
+   * Dùng `loadRoster()` của UsersService - chính danh sách user đầy đủ mà trang `/users` hiển
+   * thị, và đã kèm sẵn thiết bị nên không phải gọi lại `/users/{uid}/devices` lần hai.
+   */
   async listAllDevices(): Promise<AdminDeviceListItem[]> {
+    const roster = await this.users.loadRoster();
     const out: AdminDeviceListItem[] = [];
     const seen = new Set<string>();
-    let page = 1;
-    for (let guard = 0; guard < 20; guard++) {
-      const res = await this.users.listUsers({ page_no: page, page_size: 100 });
-      for (const raw of res.list) {
-        const u = raw as EnrichedUser;
-        const devices = await this.users.getUserDevices(u.uid).catch(() => []);
-        for (const d of devices) {
-          if (!d.id || seen.has(d.id)) continue;
-          seen.add(d.id);
-          const temps = this.decodeListTemps(d.status);
-          out.push({
-            id: d.id,
-            name: d.name ?? '',
-            online: !!d.online,
-            productId: d.product_id,
-            ownerUid: u.uid,
-            ownerName: u.nick_name || u.username,
-            currentTemp: temps.currentTemp,
-            targetTemp: temps.targetTemp,
-          });
-        }
+    for (const { info, devices } of roster) {
+      for (const d of devices ?? []) {
+        if (!d.id || seen.has(d.id)) continue;
+        seen.add(d.id);
+        const temps = this.decodeListTemps(d.status);
+        out.push({
+          id: d.id,
+          name: d.name ?? '',
+          online: !!d.online,
+          productId: d.product_id,
+          ownerUid: info.uid,
+          ownerName: info.nick_name || info.username,
+          currentTemp: temps.currentTemp,
+          targetTemp: temps.targetTemp,
+        });
       }
-      if (!res.has_more) break;
-      page += 1;
     }
     return out;
   }

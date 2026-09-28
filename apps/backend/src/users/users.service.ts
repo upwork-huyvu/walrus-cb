@@ -17,6 +17,38 @@ export type DeletionResult = {
   error?: string;
 };
 
+/** Một user của app kèm thiết bị của họ - snapshot dùng chung cho `/users` và `/admin/devices`. */
+export type UserRosterEntry = {
+  info: TuyaUserInfo;
+  /** `null` = gọi Tuya lỗi. KHÁC HẲN `[]` (user thật sự chưa pair máy nào). */
+  devices: TuyaUserDevice[] | null;
+};
+
+/** Trần quét roster - chặn một app đông user làm nổ số request sang Tuya. */
+const MAX_ROSTER = 500;
+/** Số request Tuya chạy song song khi dựng roster (Tuya có rate limit). */
+const ROSTER_CONCURRENCY = 8;
+
+/** `Promise.all` có trần song song - giữ số kết nối tới Tuya trong tầm kiểm soát. */
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  );
+  return out;
+}
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -28,82 +60,137 @@ export class UsersService {
     private readonly config: AppConfigService,
   ) {}
 
-  /** Danh sách user (Tuya Cloud) + ghép business data (số device mapping). */
+  /**
+   * Danh sách user + số thiết bị (đếm THẲNG từ Tuya).
+   *
+   * Phân trang TẠI CHỖ chứ không đẩy `page_no` sang Tuya: roster phải gom từ hai nguồn rồi mới
+   * sắp xếp được, nên `total`/`has_more` chỉ đúng khi đã có đủ danh sách. Đổi lại con số hiển
+   * thị luôn khớp số dòng thật - quy mô app tính bằng chục user nên chi phí không đáng kể.
+   */
   async listUsers(query: ListUsersQueryDto) {
-    const schema = this.config.require('TUYA_APP_SCHEMA');
-    const result = await this.tuya.request<TuyaUserListResult>({
-      method: 'GET',
-      path: `/v2.0/apps/${schema}/users`,
-      query: {
-        page_no: query.page_no,
-        page_size: query.page_size,
-        username: query.username,
-      },
-    });
-
-    // Loại user đã bấm xoá khỏi danh sách chính - chúng nằm ở "thùng rác" (`GET /users/deleted`).
-    // Tuya `pre-delete` có ân hạn 7 ngày nên user VẪN nằm trong response của Tuya suốt thời gian đó;
-    // không lọc thì admin bấm xoá xong vẫn thấy nguyên si, đúng cái khiến QA tưởng xoá hỏng.
-    const deletedUids = new Set(await this.jobs.listDeletedUids());
-    const list = (result.list ?? []).filter((u) => !deletedUids.has(u.uid));
-    const uids = list.map((u) => u.uid);
-    const [counts, infos] = await Promise.all([
-      this.deviceCounts(uids),
-      this.enrichInfos(uids),
-    ]);
+    const roster = await this.loadRoster();
+    // `username` của Tuya là tra khớp CHÍNH XÁC và ném `2006 user not exist` khi trượt (→ 500).
+    // Lọc tại chỗ giữ đúng ngữ nghĩa đó mà không bao giờ dựng lỗi.
+    const matched = query.username
+      ? roster.filter((e) => e.info.username === query.username)
+      : roster;
+    const start = (query.page_no - 1) * query.page_size;
+    const page = matched.slice(start, start + query.page_size);
 
     return {
-      list: list.map((u) => ({
-        ...u,
-        ...(infos.get(u.uid) ?? {}),
-        business: { deviceCount: counts.get(u.uid) ?? 0 },
+      list: page.map((e) => ({
+        ...e.info,
+        // `null` = không đếm được (Tuya lỗi). Để `0` ở đây thì admin hiện "Inactive" cho một
+        // khách đang có bồn chạy - sai nguy hiểm hơn là thú nhận không biết.
+        business: { deviceCount: e.devices ? e.devices.length : null },
       })),
-      // Trừ đi phần đã xoá để con số khớp với những gì thực sự hiển thị. Tuya vẫn đếm cả user
-      // đang trong ân hạn, nên dùng thẳng `result.total` sẽ luôn lớn hơn số dòng thấy được.
-      total: Math.max(0, (result.total ?? list.length) - deletedUids.size),
-      has_more: result.has_more ?? false,
+      total: matched.length,
+      has_more: start + page.length < matched.length,
       page_no: query.page_no,
       page_size: query.page_size,
     };
   }
 
   /**
-   * nick_name/avatar chỉ có ở endpoint detail (/users/{uid}/infos) - list của Tuya không trả.
-   * Gọi song song per-uid (tối đa page_size request); user nào lỗi thì bỏ qua, không chặn list.
+   * Ảnh chụp TOÀN BỘ user của app (profile + thiết bị), người đăng ký mới nhất đứng trước.
+   *
+   * ⚠️ KHÔNG chỉ dựa vào `GET /v2.0/apps/{schema}/users`. Đo trên hệ thống thật (2026-09-28):
+   * endpoint đó chỉ trả 2/6 user còn sống của app - 4 người đăng ký khoảng 03/08→17/08 bị Tuya
+   * bỏ sót dù `/v1.0/users/{uid}/infos` vẫn đọc bình thường, và một trong số đó đang có bồn
+   * ONLINE. Nên roster = danh sách Tuya ∪ uid mà backend đã tự lưu (push token, reminder).
    */
-  private async enrichInfos(
-    uids: string[],
-  ): Promise<Map<string, Pick<TuyaUserInfo, 'nick_name' | 'avatar'>>> {
-    const map = new Map<string, Pick<TuyaUserInfo, 'nick_name' | 'avatar'>>();
-    const settled = await Promise.allSettled(
-      uids.map((uid) =>
-        this.tuya.request<TuyaUserInfo>({
-          method: 'GET',
-          path: `/v1.0/users/${uid}/infos`,
-        }),
-      ),
-    );
-    settled.forEach((s, i) => {
-      if (s.status === 'fulfilled' && s.value) {
-        map.set(uids[i], {
-          nick_name: s.value.nick_name,
-          avatar: s.value.avatar,
-        });
-      }
+  async loadRoster(): Promise<UserRosterEntry[]> {
+    const uids = await this.rosterUids();
+    const entries = await mapLimit(uids, ROSTER_CONCURRENCY, async (uid) => {
+      const info = await this.tuya
+        .request<TuyaUserInfo>({ path: `/v1.0/users/${uid}/infos` })
+        .catch(() => null);
+      // Tuya từ chối đọc (uid của app SDK cũ, hoặc data center đã bị khoá) → không có gì để
+      // hiển thị; bỏ hẳn khỏi danh sách thay vì đẩy ra một dòng trống không bấm được.
+      if (!info) return null;
+      const devices = await this.getUserDevices(uid).catch(() => null);
+      return { info: { ...info, uid }, devices };
     });
-    return map;
+    return entries
+      .filter((e): e is UserRosterEntry => e !== null)
+      .sort((a, b) => (b.info.create_time ?? 0) - (a.info.create_time ?? 0));
   }
 
-  /** Chi tiết user (Tuya) + business data (device mappings). */
+  /** uid cần hiển thị: Tuya ∪ backend, đã trừ user trong thùng rác, chặn trên bằng MAX_ROSTER. */
+  private async rosterUids(): Promise<string[]> {
+    const [fromTuya, fromDb, deleted] = await Promise.all([
+      this.appUserUids(),
+      this.knownUids(),
+      this.jobs.listDeletedUids(),
+    ]);
+    // Tuya `pre-delete` có ân hạn 7 ngày nên user VẪN nằm trong response suốt thời gian đó;
+    // không lọc thì admin bấm xoá xong vẫn thấy nguyên si. `seen` kiêm luôn dedupe hai nguồn.
+    const seen = new Set(deleted);
+    const out: string[] = [];
+    for (const uid of [...fromTuya, ...fromDb]) {
+      if (seen.has(uid)) continue;
+      seen.add(uid);
+      out.push(uid);
+      if (out.length >= MAX_ROSTER) break;
+    }
+    return out;
+  }
+
+  /** uid từ `GET /v2.0/apps/{schema}/users` (duyệt hết trang). Lỗi → rỗng, để nguồn DB gánh. */
+  private async appUserUids(): Promise<string[]> {
+    const schema = this.config.require('TUYA_APP_SCHEMA');
+    const uids: string[] = [];
+    const maxPages = Math.ceil(MAX_ROSTER / 100);
+    for (let page = 1; page <= maxPages; page++) {
+      const res = await this.tuya
+        .request<TuyaUserListResult>({
+          method: 'GET',
+          path: `/v2.0/apps/${schema}/users`,
+          query: { page_no: page, page_size: 100 },
+        })
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.warn(`Danh sách user của app lỗi: ${message}`);
+          return null;
+        });
+      if (!res) break;
+      uids.push(...(res.list ?? []).map((u) => u.uid));
+      if (!res.has_more) break;
+    }
+    return uids;
+  }
+
+  /**
+   * uid mà chính backend đã lưu: ai đăng ký push token hoặc đặt nhắc bảo trì thì chắc chắn đã
+   * đăng nhập app thật - kể cả khi danh sách của Tuya bỏ sót họ.
+   */
+  private async knownUids(): Promise<string[]> {
+    if (!this.config.get('DATABASE_URL')) return [];
+    try {
+      const [tokens, reminders] = await Promise.all([
+        this.prisma.pushToken.findMany({
+          select: { tuyaUid: true },
+          distinct: ['tuyaUid'],
+        }),
+        this.prisma.deviceReminder.findMany({
+          select: { tuyaUid: true },
+          distinct: ['tuyaUid'],
+        }),
+      ]);
+      return [...tokens, ...reminders].map((r) => r.tuyaUid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Không đọc được uid từ DB: ${message}`);
+      return [];
+    }
+  }
+
+  /** Chi tiết user (Tuya). */
   async getUser(uid: string) {
-    const info = await this.tuya.request<TuyaUserInfo>({
+    return this.tuya.request<TuyaUserInfo>({
       method: 'GET',
       path: `/v1.0/users/${uid}/infos`,
     });
-    const deviceMappings = this.config.get('DATABASE_URL')
-      ? await this.prisma.deviceMapping.findMany({ where: { tuyaUid: uid } })
-      : [];
-    return { ...info, business: { deviceMappings } };
   }
 
   /**
@@ -258,19 +345,5 @@ export class UsersService {
         error: message,
       };
     }
-  }
-
-  private async deviceCounts(uids: string[]): Promise<Map<string, number>> {
-    const map = new Map<string, number>();
-    if (uids.length === 0 || !this.config.get('DATABASE_URL')) return map;
-    const grouped = await this.prisma.deviceMapping.groupBy({
-      by: ['tuyaUid'],
-      where: { tuyaUid: { in: uids } },
-      _count: { _all: true },
-    });
-    for (const g of grouped) {
-      map.set(g.tuyaUid, g._count._all);
-    }
-    return map;
   }
 }

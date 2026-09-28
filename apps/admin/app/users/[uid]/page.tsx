@@ -17,8 +17,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-type DeviceMapping = { id: string; deviceId: string; homeId?: string | null };
-
 type UserDetail = {
   uid: string;
   username?: string;
@@ -31,7 +29,6 @@ type UserDetail = {
   update_time?: number;
   time_zone_id?: string;
   temp_unit?: number;
-  business?: { deviceMappings?: DeviceMapping[] };
 };
 
 /** Khớp `AdminUserDeviceItem` của backend (devices.service.ts). */
@@ -87,7 +84,6 @@ export default async function UserDetailPage({
   const name = displayName(u);
   const list = devices ?? [];
   const online = list.filter((d) => d.online).length;
-  const mappings = u.business?.deviceMappings ?? [];
   const unit = tempUnit(u.temp_unit);
 
   return (
@@ -208,12 +204,6 @@ export default async function UserDetailPage({
                   <i className="dot offline" /> Offline devices
                 </span>
                 <b>{devices === null ? '—' : list.length - online}</b>
-              </li>
-              <li>
-                <span>
-                  <IconBox size={15} /> Device mappings
-                </span>
-                <b>{mappings.length}</b>
               </li>
               <li>
                 <span>
