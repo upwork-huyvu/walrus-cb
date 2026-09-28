@@ -155,8 +155,23 @@ function hexWords(hex: string): number[] {
 const wordsToHex = (w: number[]): string =>
   w.map((x) => (x & 0xffff).toString(16).padStart(4, '0')).join('');
 
-// Nhiệt độ có thể ÂM (cảm biến tới -45.0°C) ⇒ int16 bù 2.
-const toSigned = (w: number): number => (w >= 0x8000 ? w - 0x10000 : w);
+/**
+ * Nhiệt độ có thể ÂM (cảm biến tới -45.0°C). Quy ước dấu của model g0cv1c là **DẤU-ĐỘ LỚN**:
+ * bit cao là dấu, 15 bit còn lại là độ lớn - KHÔNG phải bù 2. Tuya ghi thẳng trong mô tả của
+ * CẢ DP 114 lẫn DP 115: "高位bit赋值0表示正数，赋值1表示负数".
+ *
+ * Bồn thật báo `0x803C` cho giới hạn dưới: đọc dấu-độ lớn ra **-6.0°C**, đọc bù 2 ra **-3270.8°C**.
+ * (Payload cũ ghi ở đầu file `[150,20,...]` toàn số dương nên hai cách đọc trùng nhau - vì thế
+ * bug này nằm im tới khi gặp bồn có giới hạn dưới âm.)
+ */
+const toSigned = (w: number): number => (w & 0x8000 ? -(w & 0x7fff) : w);
+
+/** Nghịch đảo của `toSigned`: số có dấu → word dấu-độ lớn (kẹp vào 15 bit độ lớn). */
+const toWord = (n: number): number => {
+  const v = Math.round(n);
+  const mag = Math.min(Math.abs(v), 0x7fff);
+  return v < 0 ? 0x8000 | mag : mag;
+};
 
 /** Đọc 1 slot của DP raw → giá trị RAW (chưa chia scale). Slot trống/hex hỏng ⇒ null. */
 export function readRawSlot(hex: string, slot: number = TARGET_TEMP_SLOT): number | null {
@@ -173,7 +188,7 @@ export function readRawSlot(hex: string, slot: number = TARGET_TEMP_SLOT): numbe
 export function writeRawSlot(hex: string, slot: number, raw: number): string | null {
   const w = hexWords(hex);
   if (w.length === 0 || slot < 0 || slot >= w.length) return null;
-  w[slot] = Math.round(raw) & 0xffff;
+  w[slot] = toWord(raw);
   return wordsToHex(w);
 }
 

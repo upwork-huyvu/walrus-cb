@@ -183,9 +183,20 @@ describe('DP raw - đọc/ghi slot 16-bit big-endian', () => {
     expect(readRawSlot(TEMP_HEX, 99)).toBeNull();
   });
 
-  it('nhiệt độ âm dùng int16 bù 2', () => {
-    expect(readRawSlot('ffec', 0)).toBe(-20); // -2.0 °C
-    expect(writeRawSlot('0000', 0, -20)).toBe('ffec');
+  // ⚠️ ĐÃ ĐÍNH CHÍNH (2026-09-28). Test cũ khoá int16 **bù 2** - viết theo giả định khi chưa có
+  // bồn nào báo giới hạn âm. Mô tả DP của Tuya cho CẢ 114 lẫn 115 nói rõ:
+  // "高位bit赋值0表示正数，赋值1表示负数" (bit cao = dấu, 15 bit còn lại = độ lớn).
+  it('nhiệt độ âm dùng dấu-độ lớn (bit cao = dấu), KHÔNG phải bù 2', () => {
+    expect(readRawSlot('8014', 0)).toBe(-20); // -2.0 °C
+    expect(writeRawSlot('0000', 0, -20)).toBe('8014');
+  });
+
+  // Giới hạn THẬT đọc từ bồn "Walrus amara" (g0cv1c): 0096 = 15.0°C, 803c = -6.0°C.
+  it('giới hạn dưới âm thật của bồn (803c) = -6.0°C', () => {
+    expect(readRawTempRange('0096803c0096803c0096803c0096803c')).toEqual({
+      min: -60,
+      max: 150,
+    });
   });
 
   it('hex hỏng / lẻ word → null (caller phải từ chối publish)', () => {
