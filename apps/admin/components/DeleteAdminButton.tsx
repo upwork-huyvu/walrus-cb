@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { deleteAdmin } from '@/app/admins/actions';
+import { deleteAdmin } from '@/app/(dashboard)/admins/actions';
 
 export default function DeleteAdminButton({
   id,

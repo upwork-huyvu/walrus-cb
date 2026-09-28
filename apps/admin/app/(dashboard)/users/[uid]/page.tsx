@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import { apiGet } from '@/lib/api';
 import DeleteButton from '@/components/DeleteButton';
 import CopyButton from '@/components/CopyButton';
@@ -89,10 +89,10 @@ export default async function UserDetailPage({
   return (
     <main className="page-wide">
       <div className="detail-top">
-        <Link href="/users" className="back-link">
+        <AppLink href="/users" className="back-link">
           <IconArrowLeft />
           Back to users
-        </Link>
+        </AppLink>
         <DeleteButton uid={uid} />
       </div>
 
@@ -245,9 +245,9 @@ export default async function UserDetailPage({
             <IconBox size={16} /> Devices ({devices === null ? '—' : list.length})
           </h2>
           {list.length > 0 ? (
-            <Link href={`/users/${uid}/devices`} className="btn btn-sm view-btn">
+            <AppLink href={`/users/${uid}/devices`} className="btn btn-sm view-btn">
               View all devices <IconArrowRight />
-            </Link>
+            </AppLink>
           ) : null}
         </div>
 
@@ -264,9 +264,9 @@ export default async function UserDetailPage({
                 </span>
                 <div className="device-body">
                   <div className="device-head">
-                    <Link href={`/devices/${d.id}`} className="cell-main">
+                    <AppLink href={`/devices/${d.id}`} className="cell-main">
                       {d.name || 'Device'}
-                    </Link>
+                    </AppLink>
                     <span className={`badge ${d.online ? 'success' : ''}`}>
                       {d.online ? 'Online' : 'Offline'}
                     </span>

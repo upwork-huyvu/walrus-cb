@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
-import { sendPushAction, type SendPushState } from '@/app/notifications/actions';
+import { sendPushAction, type SendPushState } from '@/app/(dashboard)/notifications/actions';
 import { initialOf } from '@/lib/format';
 
 export type Recipient = {

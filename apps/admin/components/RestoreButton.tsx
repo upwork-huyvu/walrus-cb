@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { restoreUser } from '@/app/users/deleted/actions';
+import { restoreUser } from '@/app/(dashboard)/users/deleted/actions';
 
 /**
  * Khôi phục user khỏi thùng rác. Không hỏi xác nhận: đây là hành động AN TOÀN và đảo ngược được

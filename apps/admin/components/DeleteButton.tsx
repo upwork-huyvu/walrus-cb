@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { deleteUser } from '@/app/users/[uid]/actions';
+import { deleteUser } from '@/app/(dashboard)/users/[uid]/actions';
 
 export default function DeleteButton({ uid }: { uid: string }) {
   const [pending, startTransition] = useTransition();

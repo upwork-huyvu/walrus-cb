@@ -1,5 +1,5 @@
 import { unstable_rethrow } from 'next/navigation';
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import CreateTemplateForm from '@/components/CreateTemplateForm';
 import { apiGet, getActiveProvider } from '@/lib/api';
 
@@ -57,7 +57,7 @@ export default async function TemplatesPage() {
             Templates apply only to <strong>Tuya App Push</strong>. New templates need Tuya review (≤2 business days).
           </p>
         </div>
-        <Link href="/notifications">← Send notifications</Link>
+        <AppLink href="/notifications">← Send notifications</AppLink>
       </div>
 
       {isFcm ? (
@@ -67,7 +67,7 @@ export default async function TemplatesPage() {
           </p>
           <p className="muted" style={{ fontSize: 13, marginTop: 10, marginBottom: 0 }}>
             Compose free-form on the{' '}
-            <Link href="/notifications">Send notifications</Link> page (Title / Body / Image / Deeplink).
+            <AppLink href="/notifications">Send notifications</AppLink> page (Title / Body / Image / Deeplink).
             Templates are only needed for Tuya App Push (backend <code>NOTIFICATION_PROVIDER=tuya</code>).
           </p>
         </div>

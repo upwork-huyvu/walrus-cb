@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import { apiGet } from '@/lib/api';
 import OnlineChip from '@/components/OnlineChip';
 import { IconEye } from '@/components/Icons';
@@ -65,14 +65,14 @@ export default async function DevicesPage() {
               <tr key={d.id}>
                 <td>
                   <div className="cell-main">
-                    <Link href={`/devices/${d.id}`}>{d.name || 'Device'}</Link>
+                    <AppLink href={`/devices/${d.id}`}>{d.name || 'Device'}</AppLink>
                   </div>
                   <div className="cell-sub" title={d.id}>
                     {d.id}
                   </div>
                 </td>
                 <td>
-                  <Link href={`/users/${d.ownerUid}`}>{d.ownerName || d.ownerUid}</Link>
+                  <AppLink href={`/users/${d.ownerUid}`}>{d.ownerName || d.ownerUid}</AppLink>
                 </td>
                 <td>
                   <OnlineChip online={d.online} />
@@ -80,10 +80,10 @@ export default async function DevicesPage() {
                 <td className="num">{fmtTemp(d.currentTemp)}</td>
                 <td className="num">{fmtTemp(d.targetTemp)}</td>
                 <td className="right">
-                  <Link href={`/devices/${d.id}`} className="btn btn-sm view-btn">
+                  <AppLink href={`/devices/${d.id}`} className="btn btn-sm view-btn">
                     <IconEye />
                     Control
-                  </Link>
+                  </AppLink>
                 </td>
               </tr>
             ))

@@ -689,6 +689,7 @@ main.page-wide {
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
+  position: relative; /* mốc cho .progress-bar khi đang đổi trang */
 }
 /* Bảng nằm TRONG card → bỏ viền/bo góc riêng, không thì thành khung lồng khung. */
 .table-card .data-table {
@@ -1505,4 +1506,113 @@ form.card > button[type='submit'] {
 /* Khối công cụ quản trị ở cuối trang Settings (thùng rác) - tách khỏi bảng phía trên. */
 .admin-tool {
   margin-top: 16px;
+}
+/* ---------- Phản hồi điều hướng (components/Pending.tsx) ---------- */
+/* Khác skeleton ở trên: skeleton của `loading.tsx` chỉ chạy khi đổi SEGMENT, và chỉ hiện sau khi
+   server trả về nhịp đầu tiên. Ba khối dưới đây lấp hai khoảng còn trống: lúc vừa bấm mà server
+   chưa kịp trả gì, và lúc điều hướng cùng segment (bấm sang trang 2 của /users). */
+
+/* Dải sáng chạy qua lại. Cố ý KHÔNG đếm phần trăm: không biết server mất bao lâu, mà thanh giả
+   vờ bò tới 90% rồi đứng hình thì còn mất tin tưởng hơn là không có. */
+@keyframes progress-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+/* Thanh toàn cục ở mép trên màn hình - bật cho MỌI lượt điều hướng (link lẫn router.push).
+   `fixed` + z-index cao hơn drawer (60) để không bị sidebar ở màn hẹp che mất. */
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 100;
+}
+.route-progress.on {
+  opacity: 1;
+}
+.route-progress.on::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  animation: progress-slide 0.9s ease-in-out infinite;
+}
+
+/* Bản cục bộ: gắn ở mép trên một khối (khối cha phải `position: relative`), dùng cho bảng đang
+   đổi trang - nhìn thẳng vào chỗ dữ liệu sắp đổi, không phải liếc lên đỉnh màn hình. */
+.progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 2;
+}
+.progress-bar.on {
+  opacity: 1;
+}
+.progress-bar.on::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 25%;
+  background: var(--gold);
+  animation: progress-slide 1s ease-in-out infinite;
+}
+
+/* Dữ liệu cũ mờ đi trong lúc chờ trang mới: vẫn giữ ngữ cảnh, nhưng nhìn là biết chưa phải số
+   mới. `pointer-events: none` chặn bấm tiếp vào hàng giữa chừng. */
+.table-card.is-pending .table-scroll {
+  opacity: 0.45;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+/* Vòng xoay trên chính mục menu vừa bấm - để biết đã bấm trúng cái nào khi route mới tải chậm. */
+@keyframes nav-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.link-spinner {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  margin-left: auto;
+  border-radius: 50%;
+  border: 2px solid var(--gold-ring);
+  border-top-color: var(--gold);
+  animation: nav-spin 0.6s linear infinite;
+}
+
+/* Giảm chuyển động: giữ chỉ báo TĨNH chứ không bỏ hẳn - vẫn phải biết là đang tải. */
+@media (prefers-reduced-motion: reduce) {
+  .route-progress.on::before,
+  .progress-bar.on::before {
+    animation: none;
+    width: 100%;
+    opacity: 0.55;
+  }
+  .route-progress.on::before {
+    background: var(--gold);
+  }
+  .link-spinner {
+    animation: none;
+    border-top-color: var(--gold-ring);
+  }
 }

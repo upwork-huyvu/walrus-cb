@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import { apiGet } from '@/lib/api';
 import { IconDevice, IconEye, IconShield, IconUsers } from '@/components/Icons';
 
@@ -100,10 +100,10 @@ export default async function DashboardPage() {
                 <td className="cell-main">{r.name}</td>
                 <td className="muted break">{r.what}</td>
                 <td className="right">
-                  <Link href={r.href} className="btn btn-sm view-btn">
+                  <AppLink href={r.href} className="btn btn-sm view-btn">
                     <IconEye />
                     Open
-                  </Link>
+                  </AppLink>
                 </td>
               </tr>
             ))}

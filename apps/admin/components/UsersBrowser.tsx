@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { avatarTone, fmtEpoch, initialOf } from '@/lib/format';
+import { ProgressBar, useReportNavPending } from './Pending';
 import {
   IconChevronLeft,
   IconChevronRight,
@@ -70,13 +71,25 @@ export default function UsersBrowser({
     });
   }, [rows, q, sortDesc]);
 
+  // Đổi trang/kích thước trang là điều hướng CÙNG segment ⇒ Next.js KHÔNG chạy `loading.tsx`.
+  // Bọc trong transition để tự biết lúc nào server còn đang trả dữ liệu mà báo cho người dùng,
+  // nếu không bảng đứng im vài giây và nút trông như chết.
+  const [isPending, startTransition] = useTransition();
+
+  // Đẩy luôn lên thanh tiến trình toàn cục của shell, để phản hồi giống hệt lúc bấm link.
+  useReportNavPending(isPending);
+
+  const navigate = (href: string) => {
+    startTransition(() => router.push(href));
+  };
+
   const go = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
     for (const [k, v] of Object.entries(patch)) {
       if (v === null) next.delete(k);
       else next.set(k, v);
     }
-    router.push(`/users?${next.toString()}`);
+    navigate(`/users?${next.toString()}`);
   };
 
   const from = shown.length === 0 ? 0 : (page - 1) * size + 1;
@@ -149,7 +162,8 @@ export default function UsersBrowser({
         </div>
       </div>
 
-      <section className="table-card">
+      <section className={`table-card${isPending ? ' is-pending' : ''}`}>
+        <ProgressBar active={isPending} />
         <div className="table-scroll">
         <table className="data-table">
           <thead>
@@ -187,10 +201,10 @@ export default function UsersBrowser({
                   <tr
                     key={u.uid}
                     className="row-link"
-                    onClick={() => router.push(`/users/${u.uid}`)}
+                    onClick={() => navigate(`/users/${u.uid}`)}
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') router.push(`/users/${u.uid}`);
+                      if (e.key === 'Enter') navigate(`/users/${u.uid}`);
                     }}
                   >
                     <td>
@@ -259,20 +273,27 @@ export default function UsersBrowser({
                 : `Showing ${from} to ${to} of ${total} users`}
           </span>
           <div className="pager-right">
+            {/* Khoá lúc đang tải: bấm dồn nhiều trang liên tiếp chỉ đẻ ra request chồng nhau,
+                và trang cuối cùng thắng có thể không phải trang bấm sau cùng. */}
             <button
               type="button"
               className="icon-btn"
-              disabled={page <= 1}
+              disabled={page <= 1 || isPending}
               onClick={() => go({ page: String(page - 1) })}
               aria-label="Previous page"
             >
               <IconChevronLeft />
             </button>
-            <PageNumbers page={page} lastPage={lastPage} onGo={(p) => go({ page: String(p) })} />
+            <PageNumbers
+              page={page}
+              lastPage={lastPage}
+              disabled={isPending}
+              onGo={(p) => go({ page: String(p) })}
+            />
             <button
               type="button"
               className="icon-btn"
-              disabled={!hasMore}
+              disabled={!hasMore || isPending}
               onClick={() => go({ page: String(page + 1) })}
               aria-label="Next page"
             >
@@ -281,6 +302,7 @@ export default function UsersBrowser({
             <label className="page-size">
               <select
                 value={SIZES.includes(size) ? size : 10}
+                disabled={isPending}
                 onChange={(e) => go({ size: e.target.value, page: null })}
                 aria-label="Rows per page"
               >
@@ -302,10 +324,12 @@ export default function UsersBrowser({
 function PageNumbers({
   page,
   lastPage,
+  disabled = false,
   onGo,
 }: {
   page: number;
   lastPage: number;
+  disabled?: boolean;
   onGo: (p: number) => void;
 }) {
   const nums: (number | '…')[] = [];
@@ -330,6 +354,7 @@ function PageNumbers({
             key={n}
             type="button"
             className={`page-num${n === page ? ' on' : ''}`}
+            disabled={disabled}
             onClick={() => onGo(n)}
             aria-current={n === page ? 'page' : undefined}
           >

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import { apiGet, getActiveProvider } from '@/lib/api';
 import { IconArrowRight, IconTrash } from '@/components/Icons';
 
@@ -85,9 +85,9 @@ export default async function SettingsPage() {
         <p className="page-sub" style={{ margin: '0 0 16px' }}>
           After seven days Tuya removes the account on its own and it can no longer be restored.
         </p>
-        <Link href="/users/deleted" className="btn btn-sm view-btn">
+        <AppLink href="/users/deleted" className="btn btn-sm view-btn">
           Open deleted users <IconArrowRight />
-        </Link>
+        </AppLink>
       </section>
     </main>
   );

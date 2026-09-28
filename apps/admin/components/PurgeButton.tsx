@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { purgeUser } from '@/app/users/deleted/actions';
+import { purgeUser } from '@/app/(dashboard)/users/deleted/actions';
 import { IconTrash } from './Icons';
 
 /**

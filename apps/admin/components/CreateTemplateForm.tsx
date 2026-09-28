@@ -4,7 +4,7 @@ import { useActionState } from 'react';
 import {
   createTemplateAction,
   type CreateTemplateState,
-} from '@/app/notifications/templates/actions';
+} from '@/app/(dashboard)/notifications/templates/actions';
 
 const initialState: CreateTemplateState = {};
 

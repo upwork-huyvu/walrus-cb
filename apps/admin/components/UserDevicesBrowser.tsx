@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { fmtEpoch } from '@/lib/format';
+import AppLink from './AppLink';
 import CopyButton from './CopyButton';
 import {
   IconArrowLeft,
@@ -89,10 +89,10 @@ export default function UserDevicesBrowser({
 
   return (
     <>
-      <Link href={`/users/${uid}`} className="back-link">
+      <AppLink href={`/users/${uid}`} className="back-link">
         <IconArrowLeft />
         Back to user detail
-      </Link>
+      </AppLink>
 
       <div className="page-head">
         <div>
@@ -169,9 +169,9 @@ export default function UserDevicesBrowser({
                       <span className="device-thumb sm">
                         <IconDevice size={17} />
                       </span>
-                      <Link href={`/devices/${d.id}`} className="cell-main">
+                      <AppLink href={`/devices/${d.id}`} className="cell-main">
                         {d.name || 'Device'}
-                      </Link>
+                      </AppLink>
                     </div>
                   </td>
                   <td>

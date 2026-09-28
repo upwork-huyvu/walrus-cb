@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import { apiGet } from '@/lib/api';
 import { avatarTone, fmtEpoch, initialOf } from '@/lib/format';
 import PurgeButton from '@/components/PurgeButton';
@@ -30,10 +30,10 @@ export default async function DeletedUsersPage() {
 
   return (
     <main className="page-wide">
-      <Link href="/users" className="back-link">
+      <AppLink href="/users" className="back-link">
         <IconArrowLeft />
         Back to users
-      </Link>
+      </AppLink>
 
       <div className="page-head">
         <div>

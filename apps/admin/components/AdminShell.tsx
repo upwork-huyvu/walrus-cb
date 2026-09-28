@@ -16,6 +16,7 @@ import {
   IconTemplate,
   IconUsers,
 } from './Icons';
+import { LinkSpinner, NavProgress } from './Pending';
 
 // Shell dashboard dùng chung. Sidebar GIM CỨNG: `position: sticky; top: 0; height: 100vh` trong
 // globals.css (.sidebar) + `overflow-y: auto` riêng cho vùng nav → trang dài bao nhiêu thì menu vẫn
@@ -109,6 +110,9 @@ export default function AdminShell({
 
   return (
     <div className={`shell${open ? ' nav-open' : ''}`}>
+      {/* Thanh chạy mép trên: bật NGAY khi bấm, trước cả khi server kịp trả nhịp đầu tiên. */}
+      <NavProgress />
+
       {/* Thanh trên CHỈ hiện ở màn hẹp (CSS ẩn từ 900px trở lên) - desktop vẫn là sidebar gim. */}
       <div className="mobile-bar">
         <button
@@ -161,6 +165,8 @@ export default function AdminShell({
                     <Icon size={18} />
                   </span>
                   {label}
+                  {/* Phải nằm TRONG <Link> - useLinkStatus đọc link tổ tiên gần nhất. */}
+                  <LinkSpinner />
                 </Link>
               ))}
             </div>

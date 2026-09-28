@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { deleteUser } from '@/app/users/[uid]/actions';
+import { deleteUser } from '@/app/(dashboard)/users/[uid]/actions';
 
 /** Nút xoá gọn cho từng dòng bảng user (cùng server action với trang detail). */
 export default function DeleteUserRowButton({

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import OnlineChip from './OnlineChip';
-import { sendDeviceCommand, type ControlInput } from '@/app/devices/[id]/actions';
+import { sendDeviceCommand, type ControlInput } from '@/app/(dashboard)/devices/[id]/actions';
 
 export type DeviceDetail = {
   id: string;

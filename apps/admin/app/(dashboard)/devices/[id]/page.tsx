@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import AppLink from '@/components/AppLink';
 import { apiGet } from '@/lib/api';
 import DeviceControlPanel, { type DeviceDetail } from '@/components/DeviceControlPanel';
 
@@ -15,7 +15,7 @@ export default async function DeviceDetailPage({
   return (
     <main>
       <div style={{ marginBottom: 8 }}>
-        <Link href="/devices">← Back to devices</Link>
+        <AppLink href="/devices">← Back to devices</AppLink>
       </div>
 
       {device === null ? (
