@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { mapLimit } from '../common/map-limit';
 import { AppConfigService } from '../config/app-config.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
@@ -28,26 +29,6 @@ export type UserRosterEntry = {
 const MAX_ROSTER = 500;
 /** Số request Tuya chạy song song khi dựng roster (Tuya có rate limit). */
 const ROSTER_CONCURRENCY = 8;
-
-/** `Promise.all` có trần song song - giữ số kết nối tới Tuya trong tầm kiểm soát. */
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const out = new Array<R>(items.length);
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]);
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, worker),
-  );
-  return out;
-}
 
 @Injectable()
 export class UsersService {

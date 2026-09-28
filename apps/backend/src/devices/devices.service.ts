@@ -4,8 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { mapLimit } from '../common/map-limit';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
 import { UsersService } from '../users/users.service';
+import type { TuyaUserDevice, TuyaUserInfo } from '../users/tuya-user.types';
 import { ControlDeviceDto } from './dto/control-device.dto';
 import {
   buildCommands,
@@ -50,6 +52,9 @@ type ThingModel = {
   }[];
 };
 
+/** Số thiết bị đọc bù nhiệt độ song song cho màn danh sách (Tuya có rate limit). */
+const LIST_TEMP_CONCURRENCY = 8;
+
 /**
  * Thing model (v2.0) đặt tên kiểu bằng CHỮ THƯỜNG, còn specification v1.0 - thứ mà `device-dp.ts`
  * so sánh (`type === 'Raw'`) - dùng chữ hoa. Không quy đổi thì `setting_temp` mất nhánh decode raw
@@ -64,6 +69,7 @@ const THING_MODEL_TYPES: Record<string, string> = {
   bitmap: 'Bitmap',
   json: 'Json',
 };
+
 export type AdminDeviceListItem = {
   id: string;
   name: string;
@@ -121,26 +127,26 @@ export class DevicesService {
    */
   async listAllDevices(): Promise<AdminDeviceListItem[]> {
     const roster = await this.users.loadRoster();
-    const out: AdminDeviceListItem[] = [];
+    const rows: { device: TuyaUserDevice; owner: TuyaUserInfo }[] = [];
     const seen = new Set<string>();
     for (const { info, devices } of roster) {
       for (const d of devices ?? []) {
         if (!d.id || seen.has(d.id)) continue;
         seen.add(d.id);
-        const temps = this.decodeListTemps(d.status);
-        out.push({
-          id: d.id,
-          name: d.name ?? '',
-          online: !!d.online,
-          productId: d.product_id,
-          ownerUid: info.uid,
-          ownerName: info.nick_name || info.username,
-          currentTemp: temps.currentTemp,
-          targetTemp: temps.targetTemp,
-        });
+        rows.push({ device: d, owner: info });
       }
     }
-    return out;
+
+    const temps = await this.listTemps(rows.map((r) => r.device));
+    return rows.map(({ device, owner }) => ({
+      id: device.id,
+      name: device.name ?? '',
+      online: !!device.online,
+      productId: device.product_id,
+      ownerUid: owner.uid,
+      ownerName: owner.nick_name || owner.username,
+      ...(temps.get(device.id) ?? { currentTemp: null, targetTemp: null }),
+    }));
   }
 
   /**
@@ -149,26 +155,55 @@ export class DevicesService {
    * hẳn khi chỉ cần xem thiết bị của một người.
    */
   async listByUser(uid: string): Promise<AdminUserDeviceItem[]> {
-    const devices = await this.users.getUserDevices(uid);
-    return (devices ?? [])
-      .filter((d) => Boolean(d.id))
-      .map((d) => {
-        const temps = this.decodeListTemps(d.status);
-        return {
-          id: d.id,
-          name: d.name ?? '',
-          online: !!d.online,
-          productId: d.product_id,
-          productName: d.product_name,
-          icon: d.icon,
-          currentTemp: temps.currentTemp,
-          targetTemp: temps.targetTemp,
-          timeZone: d.time_zone,
-          createTime: d.create_time,
-          updateTime: d.update_time,
-          activeTime: d.active_time,
-        };
-      });
+    const devices = (await this.users.getUserDevices(uid)).filter((d) =>
+      Boolean(d.id),
+    );
+    const temps = await this.listTemps(devices);
+    return devices.map((d) => ({
+      id: d.id,
+      name: d.name ?? '',
+      online: !!d.online,
+      productId: d.product_id,
+      productName: d.product_name,
+      icon: d.icon,
+      timeZone: d.time_zone,
+      createTime: d.create_time,
+      updateTime: d.update_time,
+      activeTime: d.active_time,
+      ...(temps.get(d.id) ?? { currentTemp: null, targetTemp: null }),
+    }));
+  }
+
+  /**
+   * Nhiệt độ cho các màn DANH SÁCH.
+   *
+   * `GET /users/{uid}/devices` chỉ kèm `status` cho MỘT SỐ thiết bị - cảm biến PIR có, nhưng
+   * chính con bồn `g0cv1c` thì KHÔNG ⇒ cột Current/Target trống trơn trong khi trang chi tiết
+   * lại hiện đủ. Thiếu thì đọc bù qua `readStatus` (rơi về shadow properties); thiết bị nào đã
+   * có `status` kèm sẵn thì KHÔNG tốn thêm request nào.
+   */
+  private async listTemps(
+    devices: { id: string; status?: CloudStatusItem[] }[],
+  ): Promise<
+    Map<string, { currentTemp: number | null; targetTemp: number | null }>
+  > {
+    const out = new Map<
+      string,
+      { currentTemp: number | null; targetTemp: number | null }
+    >();
+    const missing: string[] = [];
+    for (const d of devices) {
+      if (d.status?.length) out.set(d.id, this.decodeListTemps(d.status));
+      else missing.push(d.id);
+    }
+
+    const fetched = await mapLimit(missing, LIST_TEMP_CONCURRENCY, (id) =>
+      this.readStatus(id).then((status) => ({ id, status })),
+    );
+    for (const { id, status } of fetched) {
+      out.set(id, this.decodeListTemps(status));
+    }
+    return out;
   }
 
   /** Chi tiết 1 thiết bị: status + specification + online → model đã decode. */

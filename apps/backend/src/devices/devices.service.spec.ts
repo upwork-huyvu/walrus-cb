@@ -118,6 +118,36 @@ describe('DevicesService.listAllDevices', () => {
     ]);
   });
 
+  // LỖI KHÁCH BÁO: `/users/{uid}/devices` không kèm `status` cho con bồn (PIR thì có) ⇒ cột
+  // Current/Target trống trơn ở màn list, dù trang chi tiết hiện đủ.
+  it('thiết bị thiếu `status` inline → đọc bù, cột nhiệt độ có giá trị', async () => {
+    const { tuya } = makeTuya();
+    const users = {
+      loadRoster: jest.fn(() =>
+        Promise.resolve([
+          {
+            info: { uid: 'u1', nick_name: 'iMax' },
+            devices: [{ id: 'dev1', name: 'Bath', online: true }], // KHÔNG có status
+          },
+        ]),
+      ),
+    } as unknown as UsersService;
+
+    const list = await new DevicesService(tuya, users).listAllDevices();
+
+    expect(list[0].currentTemp).toBeCloseTo(6.4);
+    expect(list[0].targetTemp).toBeCloseTo(4);
+  });
+
+  // Đọc bù phải là ĐƯỜNG DỰ PHÒNG: có status kèm sẵn thì không được tốn thêm request nào.
+  it('đã có `status` inline → KHÔNG gọi thêm Tuya', async () => {
+    const { tuya, request } = makeTuya();
+
+    await new DevicesService(tuya, makeUsers()).listAllDevices();
+
+    expect(request).not.toHaveBeenCalled();
+  });
+
   // `devices: null` = đọc thiết bị của user đó hỏng. Phải bỏ qua user, không được ném lỗi làm
   // trắng cả trang /devices của những user còn lại.
   it('user đọc thiết bị hỏng (devices null) → bỏ qua, không ném lỗi', async () => {
