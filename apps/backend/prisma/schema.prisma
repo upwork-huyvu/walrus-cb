@@ -16,11 +16,23 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+/// Vai trò admin.
+/// - `SUPERADMIN`: DUY NHẤT một người (ép bằng unique index một phần trong migration
+///   `20260928120000_add_admin_roles`), là người duy nhất được thêm/gỡ admin.
+/// - `ADMIN`: dùng dashboard bình thường, chỉ tự đổi được mật khẩu của mình.
+enum AdminRole {
+  SUPERADMIN
+  ADMIN
+
+  @@map("admin_role")
+}
+
 /// Tài khoản admin (auth qua Supabase Auth ở C3) - map tối thiểu.
 model AdminUser {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
+  id        String    @id @default(uuid())
+  email     String    @unique
+  role      AdminRole @default(ADMIN)
+  createdAt DateTime  @default(now())
 
   @@map("admin_users")
 }
