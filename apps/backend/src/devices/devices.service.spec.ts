@@ -1,4 +1,8 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import type { TuyaCloudService } from '../tuya/tuya-cloud.service';
 import type { UsersService } from '../users/users.service';
@@ -137,6 +141,55 @@ describe('DevicesService.listAllDevices', () => {
 });
 
 describe('DevicesService.getDevice', () => {
+  /** Tuya giả theo đúng hành vi ĐO ĐƯỢC trên siren `sgbj` đang online (2026-09-28). */
+  function makeFlakyTuya() {
+    const request = jest.fn((req: { path: string }) => {
+      const { path } = req;
+      if (path.endsWith('/v1.0/devices/dev1'))
+        return Promise.resolve({
+          id: 'dev1',
+          name: 'Walrus amara',
+          online: true,
+          product_id: 'p1',
+        });
+      if (path === '/v1.0/devices/dev1/status')
+        return Promise.reject(new Error('code=2003 function not support'));
+      if (path === '/v1.0/devices/dev1/specifications')
+        return Promise.reject(new Error('code=2009 not support this device'));
+      if (path === '/v1.0/iot-03/devices/dev1/status')
+        return Promise.resolve([]);
+      if (path === '/v1.0/iot-03/devices/dev1/specification')
+        return Promise.resolve({ category: 'sgbj' });
+      return Promise.reject(new Error(`path lạ: ${path}`));
+    });
+    return { request } as unknown as TuyaCloudService;
+  }
+
+  // ĐÂY LÀ LỖI KHÁCH BÁO: thiết bị ONLINE nhưng mở trang chi tiết ra thì trắng thành
+  // "Couldn't load this device from Tuya" - vì lời gọi `/status` không bắt lỗi.
+  it('`/status` v1.0 hỏng → lùi sang iot-03, KHÔNG làm sập cả trang', async () => {
+    const svc = new DevicesService(makeFlakyTuya(), makeUsers());
+
+    const d = await svc.getDevice('dev1');
+
+    expect(d.name).toBe('Walrus amara');
+    expect(d.online).toBe(true);
+    expect(d.currentTemp).toBeNull();
+  });
+
+  it('không đọc nổi detail → 404 chứ không trả vỏ rỗng', async () => {
+    const tuya = {
+      request: jest.fn(() =>
+        Promise.reject(new Error('code=1106 permission deny')),
+      ),
+    } as unknown as TuyaCloudService;
+    const svc = new DevicesService(tuya, makeUsers());
+
+    await expect(svc.getDevice('gone')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
   it('decode status theo spec + online từ detail', async () => {
     const { tuya } = makeTuya();
     const svc = new DevicesService(tuya, makeUsers());

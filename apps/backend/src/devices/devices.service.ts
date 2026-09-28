@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { TuyaCloudService } from '../tuya/tuya-cloud.service';
 import { UsersService } from '../users/users.service';
@@ -140,26 +141,62 @@ export class DevicesService {
 
   /** Chi tiết 1 thiết bị: status + specification + online → model đã decode. */
   async getDevice(id: string): Promise<AdminDeviceDetail> {
-    const [detail, status, specRes] = await Promise.all([
-      this.tuya
-        .request<CloudDeviceDetail>({ path: `/v1.0/devices/${id}` })
-        .catch(() => null),
-      this.tuya.request<CloudStatusItem[]>({
-        path: `/v1.0/devices/${id}/status`,
-      }),
-      this.tuya
-        .request<CloudSpec>({ path: `/v1.0/devices/${id}/specifications` })
-        .catch(() => null),
-    ]);
+    const { detail, status, spec: specRes } = await this.readDeviceState(id);
+    // Không đọc nổi cả detail = thiết bị thực sự ngoài tầm với (thuộc app SDK cũ → 1106).
+    // Trả vỏ rỗng `name:''/online:false` thì admin tưởng thiết bị tồn tại mà hỏng, tệ hơn 404.
+    if (!detail) {
+      throw new NotFoundException(
+        'Không đọc được thiết bị này từ Tuya (có thể thuộc tài khoản của app SDK cũ).',
+      );
+    }
     const spec = parseSpecification(specRes);
     const model = decodeStatus(status, spec);
     return {
       ...model,
       id,
-      name: detail?.name ?? '',
-      online: detail?.online ?? false,
-      productId: detail?.product_id,
+      name: detail.name ?? '',
+      online: detail.online ?? false,
+      productId: detail.product_id,
     };
+  }
+
+  /**
+   * Đọc detail + status + specification, chịu được việc Tuya từ chối từng phần.
+   *
+   * ⚠️ `/v1.0/devices/{id}/status` KHÔNG phải lúc nào cũng dùng được. Đo trên thiết bị thật
+   * (2026-09-28, siren `sgbj` "Walrus amara" đang ONLINE): Tuya trả `2003 function not support`
+   * cho `/v1.0/.../status` và `2009 not support this device` cho `/specifications`, trong khi
+   * bản `iot-03` của cả hai vẫn trả 200. Trước đây lời gọi status KHÔNG bắt lỗi nên một thiết bị
+   * đang online cũng làm cả trang chi tiết trắng thành "Couldn't load this device from Tuya".
+   */
+  private async readDeviceState(id: string): Promise<{
+    detail: CloudDeviceDetail | null;
+    status: CloudStatusItem[];
+    spec: CloudSpec | null;
+  }> {
+    const [detail, status, spec] = await Promise.all([
+      this.tuya
+        .request<CloudDeviceDetail>({ path: `/v1.0/devices/${id}` })
+        .catch(() => null),
+      this.firstOk<CloudStatusItem[]>([
+        `/v1.0/devices/${id}/status`,
+        `/v1.0/iot-03/devices/${id}/status`,
+      ]),
+      this.firstOk<CloudSpec>([
+        `/v1.0/devices/${id}/specifications`,
+        `/v1.0/iot-03/devices/${id}/specification`, // iot-03 dùng số ÍT
+      ]),
+    ]);
+    return { detail, status: status ?? [], spec };
+  }
+
+  /** Thử lần lượt các endpoint tương đương, lấy cái đầu tiên trả về dữ liệu; hết thì `null`. */
+  private async firstOk<T>(paths: string[]): Promise<T | null> {
+    for (const path of paths) {
+      const res = await this.tuya.request<T>({ path }).catch(() => null);
+      if (res) return res;
+    }
+    return null;
   }
 
   /**
@@ -179,17 +216,7 @@ export class DevicesService {
       throw new BadRequestException('Không có lệnh nào để gửi.');
     }
 
-    const [detail, status, specRes] = await Promise.all([
-      this.tuya
-        .request<CloudDeviceDetail>({ path: `/v1.0/devices/${id}` })
-        .catch(() => null),
-      this.tuya.request<CloudStatusItem[]>({
-        path: `/v1.0/devices/${id}/status`,
-      }),
-      this.tuya
-        .request<CloudSpec>({ path: `/v1.0/devices/${id}/specifications` })
-        .catch(() => null),
-    ]);
+    const { detail, status, spec: specRes } = await this.readDeviceState(id);
 
     if (detail?.online === false) {
       throw new ConflictException(
