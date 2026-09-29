@@ -3,12 +3,12 @@ import { Linking, Pressable, SafeAreaView, ScrollView, StatusBar, Text, View } f
 import { F, useTheme } from '../theme';
 import type { Navigate } from '../navigation';
 import type { AppState } from '../state/useAppState';
+import { SUPPORT_EMAIL } from '../config/legal';
 
 type Props = { navigate: Navigate; state: AppState };
 
 // TAB Help - FAQ theo design (câu hỏi accordion: mở = ochre + ⌄, đóng = trắng + ›; section CAPS).
 // Nội dung: copy client cung cấp (4 nhóm) + card "Still need help?" → email support.
-const SUPPORT_EMAIL = 'support@walruswellness.com';
 
 type QA = { q: string; a: string };
 type Section = { title: string; items: QA[] };
@@ -83,6 +83,10 @@ const FAQ: Section[] = [
       {
         q: 'How do I change my password?',
         a: 'Go to Account in the app settings. Tap "Change password" to update your credentials. If you signed in with Google or Apple, password management is handled by those providers.',
+      },
+      {
+        q: 'I forgot my password - how do I get back in?',
+        a: 'On the sign-in screen, choose "Sign in with email" and tap "Forgot password?". We\'ll email you a verification code so you can set a new password.',
       },
       {
         q: 'How do I sign out?',

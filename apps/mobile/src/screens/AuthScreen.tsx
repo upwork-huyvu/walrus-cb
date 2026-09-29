@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -23,6 +24,7 @@ import { signInApple } from '../services/appleAuth';
 import CountryPicker from '../components/CountryPicker';
 import { GoogleLogo, AppleLogo } from '../components/BrandLogos';
 import { DEFAULT_COUNTRY_CODE } from '../config/countries';
+import { PRIVACY_POLICY_URL, TERMS_URL } from '../config/legal';
 import { getIntroSeen } from '../state/introFlag';
 
 // Màn auth theo design:
@@ -248,6 +250,29 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
     </View>
   );
 
+  // Đồng ý điều khoản khi tạo tài khoản / đăng nhập lần đầu - store review cần thấy Terms + Privacy
+  // ngay tại điểm tạo tài khoản, không chỉ nằm sâu trong Account.
+  const openLink = (url: string) => {
+    void Linking.openURL(url).catch(() => {
+      /* không có trình duyệt - bỏ qua */
+    });
+  };
+  const legalNotice = (
+    <Text
+      style={{ fontFamily: F.body, color: C.muted, fontSize: 11, lineHeight: 17, textAlign: 'center', marginTop: 18 }}
+    >
+      By continuing, you agree to our{' '}
+      <Text style={{ color: C.ochre }} onPress={() => openLink(TERMS_URL)}>
+        Terms and Conditions
+      </Text>{' '}
+      and{' '}
+      <Text style={{ color: C.ochre }} onPress={() => openLink(PRIVACY_POLICY_URL)}>
+        Privacy Policy
+      </Text>
+      .
+    </Text>
+  );
+
   const errorText = error ? (
     <Text style={{ fontFamily: F.body, color: '#e06c5a', fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
       {error}
@@ -326,6 +351,7 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
             {isWelcome
               ? footerLink('Already have an account?', 'Sign in', () => navigate('auth'))
               : footerLink("Don't have an account?", 'Sign up', () => switchView('register'))}
+            {legalNotice}
           </View>
         </SafeAreaView>
       </View>
@@ -362,7 +388,16 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
                 secure: !showConfirm,
                 accessory: { label: showConfirm ? 'HIDE' : 'SHOW', onPress: () => setShowConfirm((s) => !s) },
               })
-            : null}
+            : (
+              <Pressable
+                onPress={() => navigate('forgot-password')}
+                disabled={busy}
+                hitSlop={8}
+                style={{ alignSelf: 'flex-end', marginTop: -14, marginBottom: 22 }}
+              >
+                <Text style={{ fontFamily: F.body, color: C.ochre, fontSize: 13 }}>Forgot password?</Text>
+              </Pressable>
+            )}
 
           <CountryPicker value={country} onChange={setCountry} disabled={busy} />
 
@@ -389,6 +424,7 @@ export default function AuthScreen({ navigate, onAuthed, variant = 'signin' }: P
                 variant === 'welcome' ? navigate('auth') : switchView('email-signin'),
               )
             : footerLink("Don't have an account?", 'Sign up', () => switchView('register'))}
+          {isRegister ? legalNotice : null}
         </ScrollView>
       </SafeAreaView>
     </View>

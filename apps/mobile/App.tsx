@@ -31,6 +31,7 @@ import HomeManagementScreen from './src/screens/HomeManagementScreen';
 import NotificationsScreen from './src/screens/NotificationsScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
+import LegalScreen from './src/screens/LegalScreen';
 import ReminderScreen from './src/screens/ReminderScreen';
 import ShopScreen from './src/screens/ShopScreen';
 import HelpScreen from './src/screens/HelpScreen';
@@ -67,6 +68,7 @@ const TABBED: Partial<Record<ScreenName, TabKey>> = {
   notifications: 'account',
   profile: 'account',
   'change-password': 'account',
+  legal: 'account',
 };
 
 export default function App() {
@@ -405,8 +407,23 @@ export default function App() {
       break;
     case 'change-password':
       currentScreen = (
-        <ChangePasswordScreen navigate={navigate} state={state} user={auth.user} onSignOut={handleSignOut} />
+        <ChangePasswordScreen navigate={navigate} state={state} user={auth.user} onDone={handleSignOut} />
       );
+      break;
+    case 'forgot-password':
+      // Chưa đăng nhập → không có phiên để sign out; xong chỉ quay về màn đăng nhập.
+      currentScreen = (
+        <ChangePasswordScreen
+          navigate={navigate}
+          state={state}
+          user={null}
+          mode="forgot"
+          onDone={() => setScreen('auth')}
+        />
+      );
+      break;
+    case 'legal':
+      currentScreen = <LegalScreen navigate={navigate} state={state} />;
       break;
     case 'device-detail':
       currentScreen = (

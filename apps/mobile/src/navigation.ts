@@ -23,6 +23,8 @@ export type ScreenName =
   | 'notifications' // Account → thông báo
   | 'profile' // Account → cấu hình thông tin + đăng xuất
   | 'change-password' // Profile → đổi password (Tuya reset qua OTP email)
+  | 'forgot-password' // Sign in (email) → quên mật khẩu: cùng flow OTP reset, KHÔNG cần đăng nhập
+  | 'legal' // Account → Privacy & terms (mở trang chính sách trên website)
   | 'device-test' // (DEV) Account → test raw Tuya Cloud endpoints của thiết bị
   | 'pairing'
   | 'home'

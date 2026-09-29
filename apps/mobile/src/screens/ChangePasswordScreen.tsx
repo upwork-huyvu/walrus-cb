@@ -21,13 +21,18 @@ type Props = {
   navigate: Navigate;
   state: AppState;
   user: AuthUser | null;
-  onSignOut: () => void;
+  // Xong → về đăng nhập. 'change': phải sign out phiên hiện tại; 'forgot': chưa có phiên, chỉ điều hướng.
+  onDone: () => void;
+  // 'change' = Profile → Change password (đang đăng nhập) · 'forgot' = Sign in → Forgot password (chưa).
+  mode?: 'change' | 'forgot';
 };
 
-// Account → Change password. Tuya App SDK chỉ hỗ trợ RESET qua OTP email (không có đổi bằng
-// password cũ khi đang login - verify spec NativeTuyaAuth). Google/Apple: provider quản lý password.
-// Flow: SEND CODE (type 3 = reset) → code + new password → resetPassword → sign out để login lại.
-export default function ChangePasswordScreen({ navigate, state, user, onSignOut }: Props) {
+// Account → Change password VÀ Sign in → Forgot password: cùng một flow. Tuya App SDK chỉ hỗ trợ RESET
+// qua OTP email (không có đổi bằng password cũ khi đang login - verify spec NativeTuyaAuth), và flow
+// đó không cần phiên đăng nhập ⇒ dùng lại được cho quên mật khẩu. Google/Apple: provider quản lý password.
+// Flow: SEND CODE (type 3 = reset) → code + new password → resetPassword → đăng nhập lại.
+export default function ChangePasswordScreen({ navigate, state, user, onDone, mode = 'change' }: Props) {
+  const isForgot = mode === 'forgot';
   const C = useTheme();
   const [email, setEmail] = useState(user?.email ?? '');
   const [country, setCountry] = useState(DEFAULT_COUNTRY_CODE);
@@ -126,6 +131,8 @@ export default function ChangePasswordScreen({ navigate, state, user, onSignOut 
 
   // Đổi xong → bắt đăng nhập lại bằng password mới (phiên cũ có thể bị Tuya kick sau reset).
   if (done) {
+    const doneTitle = isForgot ? 'Password reset.' : 'Password changed.';
+    const doneAction = isForgot ? 'Sign in' : 'Sign in again';
     return (
       <View style={{ flex: 1, backgroundColor: C.bg }}>
         <StatusBar barStyle={state.isDark ? 'light-content' : 'dark-content'} />
@@ -145,16 +152,16 @@ export default function ChangePasswordScreen({ navigate, state, user, onSignOut 
             <Text style={{ color: C.ochre, fontSize: 30 }}>✓</Text>
           </View>
           <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 26, marginBottom: 8 }}>
-            Password changed.
+            {doneTitle}
           </Text>
           <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 13, textAlign: 'center', marginBottom: 30 }}>
-            Sign in again with your new password.
+            Sign in with your new password.
           </Text>
           <Pressable
-            onPress={onSignOut}
+            onPress={onDone}
             style={{ backgroundColor: C.ochre, borderRadius: 14, paddingVertical: 16, paddingHorizontal: 48 }}
           >
-            <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15 }}>Sign in again</Text>
+            <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15 }}>{doneAction}</Text>
           </Pressable>
         </SafeAreaView>
       </View>
@@ -166,13 +173,20 @@ export default function ChangePasswordScreen({ navigate, state, user, onSignOut 
       <StatusBar barStyle={state.isDark ? 'light-content' : 'dark-content'} />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginTop: 24, marginBottom: 16, gap: 14 }}>
-          <Pressable onPress={() => navigate('profile')} hitSlop={12}>
+          <Pressable onPress={() => navigate(isForgot ? 'auth' : 'profile')} hitSlop={12}>
             <Text style={{ color: C.muted, fontSize: 20 }}>←</Text>
           </Pressable>
-          <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 22 }}>Change password</Text>
+          <Text style={{ fontFamily: F.headline, color: C.white, fontSize: 22 }}>
+            {isForgot ? 'Reset password' : 'Change password'}
+          </Text>
         </View>
 
         <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+          {isForgot ? (
+            <Text style={{ fontFamily: F.body, color: C.muted, fontSize: 14, lineHeight: 21, marginBottom: 22 }}>
+              Enter the email you signed up with. We'll send you a code to set a new password.
+            </Text>
+          ) : null}
           {/* Google/Apple: password do provider quản lý */}
           <View
             style={{
@@ -228,7 +242,9 @@ export default function ChangePasswordScreen({ navigate, state, user, onSignOut 
                 opacity: canSubmit ? 1 : 0.5,
               }}
             >
-              <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15 }}>Change password</Text>
+              <Text style={{ fontFamily: F.body, color: C.white, fontSize: 15 }}>
+                {isForgot ? 'Reset password' : 'Change password'}
+              </Text>
             </Pressable>
           )}
         </ScrollView>

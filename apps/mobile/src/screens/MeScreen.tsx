@@ -12,6 +12,7 @@ const MENU: { glyph: string; label: string; screen: ScreenName }[] = [
   { glyph: '⌂', label: 'Home management', screen: 'home-management' },
   { glyph: '✉', label: 'Notifications', screen: 'notifications' },
   { glyph: '⚙', label: 'Profile settings', screen: 'profile' },
+  { glyph: '§', label: 'Privacy & terms', screen: 'legal' },
   // DEV-only: test raw Tuya Cloud endpoints của thiết bị (không lọt bản release).
   ...(typeof __DEV__ !== 'undefined' && __DEV__
     ? [{ glyph: '⚗', label: 'Device API test', screen: 'device-test' as ScreenName }]
