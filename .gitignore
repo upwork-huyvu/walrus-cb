@@ -43,3 +43,6 @@ packages/*/lib/
 docs/pdf/
 .claude
 
+
+# Handover doc chứa mật khẩu/secret - KHÔNG commit
+docs/handover/
