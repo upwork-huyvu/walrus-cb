@@ -390,12 +390,10 @@ it is not on any package registry.
 | `CLAUDE.md` | Project rules, stack decisions, hard constraints |
 | `dev-workflow/INDEX.md` | **The single answer to "where is the project?"** — one row per feature with its phase and status |
 | `dev-workflow/<feature>/` | Per-feature `plan.md`, `context.md` (decisions and findings) and `progress.md` (run log) |
-| `docs/research/` | Deep notes on Tuya's SDK and cloud API, with citations. Read the relevant one **before** touching pairing, device control or push |
-| `docs/audit/` | Code-quality reviews |
 
-`docs/research/` is unusually valuable here. Tuya's documentation is thin and occasionally wrong;
-these notes record what was verified against the real SDK and the real cloud, including places
-where the official docs contradict observed behaviour.
+For Tuya itself, the official docs (https://developer.tuya.com) are thin and occasionally wrong.
+The `context.md` of the relevant feature under `dev-workflow/` records what was verified against
+the real SDK and the real cloud, including places where the docs contradict observed behaviour.
 
 ### The other documents in `docs/`
 
@@ -436,7 +434,7 @@ If you are joining as a developer, in this order:
 1. `CLAUDE.md` — the rules
 2. This file
 3. `dev-workflow/INDEX.md` — what is in flight right now
-4. The `docs/research/` note for whatever area you are about to touch
+4. The `dev-workflow/<feature>/context.md` for whatever area you are about to touch
 5. The code for that area
 
 If you are joining to test, go straight to `docs/qa-testing-guide.md`.

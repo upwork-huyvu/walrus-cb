@@ -66,7 +66,6 @@ và theo doc Tuya còn *"supports routers that can process data using both 2.4 G
 
 ## Liên quan
 
-- Nghiên cứu đầy đủ (có trích dẫn): [`docs/research/tuya-wifi-ez-pairing-failure.md`](../../docs/research/tuya-wifi-ez-pairing-failure.md)
 - Feature: [`dev-workflow/m1-fix-wifi-pairing/`](../../dev-workflow/m1-fix-wifi-pairing/)
 - Quyền đã có sẵn trong `Info.plist`: `NSLocalNetworkUsageDescription`, `NSLocationWhenInUseUsageDescription`.
   ⚠️ Local Network nếu user từng bấm **Deny** thì iOS **không hỏi lại** → phải vào Settings bật thủ công.

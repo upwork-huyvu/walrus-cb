@@ -44,7 +44,7 @@ npm run db:deploy      # áp migration ở CI/prod
 - Runtime serverless dùng **pooled** (pgbouncer), migrate dùng **direct**.
 
 ## Tuya Cloud OpenAPI
-- Ký HMAC-SHA256 theo [docs/research/tuya-cloud-openapi-signing.md](../../docs/research/tuya-cloud-openapi-signing.md).
+- Ký HMAC-SHA256 theo mục "Signature" trong tài liệu Tuya Cloud API (https://developer.tuya.com).
 - `TuyaTokenService.getAccessToken()` lấy/cache/refresh token; `TuyaCloudService.request()`
   gọi business API (ký kèm access_token). Unit test ký: `src/tuya/tuya-sign.spec.ts`.
 

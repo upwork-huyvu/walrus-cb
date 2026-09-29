@@ -1,7 +1,6 @@
 # Sign in with Apple - setup checklist (mobile iOS)
 
 > Để nút **"Continue with Apple"** đăng nhập được (qua Tuya `loginByAuth2WithType:@"ap"`).
-> Research: [docs/research/tuya-ios-third-party-login.md](../../docs/research/tuya-ios-third-party-login.md).
 > Code phía app + lib đã XONG (B1–B4). Còn lại = capability + việc console + build iOS (Mac).
 
 ## Nguyên tắc 1 phút

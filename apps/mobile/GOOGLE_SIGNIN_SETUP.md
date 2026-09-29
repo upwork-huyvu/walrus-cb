@@ -1,7 +1,6 @@
 # Google Sign-In - setup checklist (mobile)
 
 > Để nút **"Continue with Google"** đăng nhập được (qua Tuya `thirdLogin(idToken, 'gg')`).
-> Nền tảng research: [docs/research/tuya-google-login.md](../../docs/research/tuya-google-login.md).
 > Code phía app đã XONG (B1–B4). Còn lại = điền client id + việc console.
 
 ## Nguyên tắc 1 phút
