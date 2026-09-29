@@ -64,7 +64,7 @@ The Tuya security SDK files are generated per app identity (iOS bundle ID, Andro
 ## 3. Backend (NestJS)
 
 **Folder:** `apps/backend` · **Local URL:** `http://localhost:3006` · **Production:**
-https://walrus-backend.vercel.app
+https://walrus-backend-six.vercel.app
 
 ### Setup
 
@@ -129,7 +129,7 @@ npm run lint         # ESLint (auto-fixes)
 ## 4. Admin dashboard (Next.js)
 
 **Folder:** `apps/admin` · **Local URL:** `http://localhost:3000` · **Production:**
-https://walrus-cb.vercel.app
+https://walrus-admin-web.vercel.app
 
 ### Setup
 
@@ -143,7 +143,7 @@ npm install
 
 ```bash
 API_BASE_URL=http://localhost:3006     # local backend
-# API_BASE_URL=https://walrus-backend.vercel.app   # or the production backend
+# API_BASE_URL=https://walrus-backend-six.vercel.app   # or the production backend
 ```
 
 `API_BASE_URL` is read on the server only; the browser never calls the backend directly.
@@ -170,7 +170,7 @@ There are no unit tests for the admin; verify changes in the browser.
 
 ### Production (Vercel)
 
-A separate Vercel project from the backend. Set `API_BASE_URL=https://walrus-backend.vercel.app`
+A separate Vercel project from the backend. Set `API_BASE_URL=https://walrus-backend-six.vercel.app`
 in its environment variables and redeploy after any change.
 
 ---
@@ -195,7 +195,7 @@ npm install
 
 | Variable | Value |
 |---|---|
-| `API_BASE_URL` | Local: `http://<your-Mac-IP>:3006` (find the IP with `ipconfig getifaddr en0`; `localhost` does not work from a phone) · Production: `https://walrus-backend.vercel.app` |
+| `API_BASE_URL` | Local: `http://<your-Mac-IP>:3006` (find the IP with `ipconfig getifaddr en0`; `localhost` does not work from a phone) · Production: `https://walrus-backend-six.vercel.app` |
 | `PUSH_API_KEY` | Same value as the backend's `PUSH_API_KEY`. Leave empty to skip push registration |
 | `MOCK_DEVICES` | `true` shows a simulated tub for UI work without hardware. **Must be `false` for real use and store builds** |
 

@@ -39,7 +39,7 @@ that is a Pass — raise a doc-update note, not a bug.
 | Env | Admin web | Backend | Use for |
 |---|---|---|---|
 | Local | `http://localhost:3000` | `http://localhost:3006` | Feature testing, debugging |
-| Production | `https://walrus-cb.vercel.app` | `https://walrus-backend.vercel.app` | Release verification |
+| Production | `https://walrus-admin-web.vercel.app` | `https://walrus-backend-six.vercel.app` | Release verification |
 
 Local requires both servers running: `npm run start` in `apps/backend`, `npm run dev` in
 `apps/admin`.
