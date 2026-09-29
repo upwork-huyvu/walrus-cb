@@ -5,7 +5,7 @@ export {};
 function load(nativeTuya: Record<string, unknown> | null, isMock = false) {
   const renameMockDevice = jest.fn();
   jest.resetModules();
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () =>
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () =>
     nativeTuya ? { Tuya: nativeTuya } : (() => { throw new Error('no native'); })(),
   );
   jest.doMock('./home', () => ({

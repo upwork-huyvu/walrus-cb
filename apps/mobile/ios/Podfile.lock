@@ -2530,7 +2530,7 @@ DEPENDENCIES:
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNWifi (from `../node_modules/react-native-wifi-reborn`)
   - ThingSmartCryption (from `./ios_core_sdk`)
-  - "TurboTuya (from `../node_modules/@jimmy-vu/react-native-turbo-tuya`)"
+  - "TurboTuya (from `../node_modules/@jimmy2k/react-native-turbo-tuya`)"
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -2780,7 +2780,7 @@ EXTERNAL SOURCES:
   ThingSmartCryption:
     :path: "./ios_core_sdk"
   TurboTuya:
-    :path: "../node_modules/@jimmy-vu/react-native-turbo-tuya"
+    :path: "../node_modules/@jimmy2k/react-native-turbo-tuya"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2942,7 +2942,7 @@ SPEC CHECKSUMS:
   ThingSmartTimerKit: 6f853f74d67585bd6bf107bdcb2ff5f7511c4883
   ThingSmartUtil: 3e3a22c12c4adbb8255ea430666d75db74b0fbb8
   ThingStorageGroupInterface: 7e22974edeb958aec212bee785d2e43f59e2e5a2
-  TurboTuya: 95047a1389155e5c60e5b96a3a8c28984eeeaf56
+  TurboTuya: 98eeb4a653de4ded61aa1f025f1d2d3005f5c5fc
   Yoga: e83c3121d079541e69f3c5c623faaaf933fb5812
   YYModel: 2a7fdd96aaa4b86a824e26d0c517de8928c04b30
 

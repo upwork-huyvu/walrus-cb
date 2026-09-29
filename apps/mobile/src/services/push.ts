@@ -26,7 +26,7 @@ try {
 }
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  tuyaLib = require('@jimmy-vu/react-native-turbo-tuya');
+  tuyaLib = require('@jimmy2k/react-native-turbo-tuya');
 } catch {
   tuyaLib = null;
 }

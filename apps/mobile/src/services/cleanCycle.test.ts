@@ -29,7 +29,7 @@ function load(makeNative: ((calls: string[]) => Record<string, any>) | null, opt
     return opts.setPurifyResult ?? { ok: true };
   });
 
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () =>
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () =>
     native ? { Tuya: native } : (() => { throw new Error('no native'); })(),
   );
   jest.doMock('./tuya', () => ({ setPurify }));

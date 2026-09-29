@@ -149,7 +149,7 @@ export function nextOccurrence(time: string, now: Date): number | null {
 
 let lib: any = null;
 try {
-  lib = require('@jimmy-vu/react-native-turbo-tuya');
+  lib = require('@jimmy2k/react-native-turbo-tuya');
 } catch {
   lib = null;
 }

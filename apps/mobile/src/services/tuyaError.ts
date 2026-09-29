@@ -93,7 +93,7 @@ function stripPrefix(s: string): string {
 let libClassifier: Classifier | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  libClassifier = require('@jimmy-vu/react-native-turbo-tuya').TuyaErrors ?? null;
+  libClassifier = require('@jimmy2k/react-native-turbo-tuya').TuyaErrors ?? null;
 } catch {
   libClassifier = null;
 }

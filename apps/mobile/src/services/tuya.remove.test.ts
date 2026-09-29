@@ -2,7 +2,7 @@ export {};
 
 function load(removeDevice?: jest.Mock, getHomeDeviceList = jest.fn().mockResolvedValue([])) {
   jest.resetModules();
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () => ({
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () => ({
     Tuya: { removeDevice },
   }));
   jest.doMock('./home', () => ({

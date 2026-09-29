@@ -33,7 +33,7 @@ const nativeError = (code: string, message = code) => Object.assign(new Error(me
 
 function load(native: Record<string, unknown>) {
   jest.resetModules();
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () => ({
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () => ({
     Tuya: { getDeviceSnapshot: jest.fn().mockResolvedValue(SNAPSHOT), ...native },
   }));
   jest.doMock('./deviceLog', () => ({

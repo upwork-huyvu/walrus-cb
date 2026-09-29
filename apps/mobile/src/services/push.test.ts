@@ -50,7 +50,7 @@ function load(opts: LoadOpts = {}) {
   }));
   const registerDevice = opts.registerDevice ?? jest.fn().mockResolvedValue(undefined);
   const unregisterDevice = opts.unregisterDevice ?? jest.fn().mockResolvedValue(undefined);
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () => ({
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () => ({
     Tuya: { registerDevice, unregisterDevice },
   }));
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require

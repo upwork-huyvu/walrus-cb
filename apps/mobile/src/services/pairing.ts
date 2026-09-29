@@ -38,7 +38,7 @@ export type Subscription = { remove(): void };
 let lib: any = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-  lib = require('@jimmy-vu/react-native-turbo-tuya');
+  lib = require('@jimmy2k/react-native-turbo-tuya');
 } catch {
   lib = null;
 }

@@ -2,7 +2,7 @@ export {}; // module scope
 
 function load(nativeTuya: any | null) {
   jest.resetModules();
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () =>
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () =>
     nativeTuya ? { Tuya: nativeTuya } : (() => { throw new Error('no native'); })(),
   );
   // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
@@ -84,7 +84,7 @@ describe('deviceNeedsWifi - route combo (hỏi Wi-Fi) vs BLE thuần (pair thẳ
 /** Mock cả module (khác `load` ở trên: cho phép bơm thêm TuyaErrors). */
 function loadModule(mod: any | null) {
   jest.resetModules();
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () =>
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () =>
     mod ? mod : (() => { throw new Error('no native'); })(),
   );
   return require('./pairing');

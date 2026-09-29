@@ -3,7 +3,7 @@ export {}; // đánh dấu module scope (tránh trùng tên global với test kh
 
 function load(nativeTuya: any | null, mockDevices = false, onHomeChange?: (listener: (event: unknown) => void) => unknown) {
   jest.resetModules();
-  jest.doMock('@jimmy-vu/react-native-turbo-tuya', () =>
+  jest.doMock('@jimmy2k/react-native-turbo-tuya', () =>
     nativeTuya ? { Tuya: nativeTuya, onHomeChange } : (() => { throw new Error('no native'); })(),
   );
   // Cờ MOCK_DEVICES cố định theo case (mặc định TẮT để test hành vi thật, độc lập config/mock.ts).
