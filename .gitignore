@@ -22,17 +22,15 @@ node_modules/
 **/security-algorithm*.aar
 **/ios_core_sdk.tar.gz
 **/ThingSmartCryption*
-packages/tuya-react-native/example/ios/Build/
-packages/tuya-react-native/example/android/app/libs/
 
 # build outputs
 **/dist/
-packages/*/lib/
 **/.next/
 **/*.tsbuildinfo
 
-# LƯU Ý: example/android/gradle.properties hiện chứa THING_SMART_APPKEY/SECRET (dev).
-# Trước khi commit, chuyển 2 key đó sang ~/.gradle/gradle.properties (global, ngoài repo).
+# Lib Tuya đã tách repo + lên npm (@jimmy2k/react-native-turbo-tuya). Còn sót file local
+# (key, security .aar) trong packages/ → chặn cả thư mục để không lỡ commit.
+packages/
 
 # Google OAuth client downloads - client_secret*.json chứa secret, KHÔNG commit
 **/client_secret*.json
