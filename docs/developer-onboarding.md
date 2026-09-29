@@ -346,6 +346,10 @@ Vercel's environment, not the repo, and **changing a variable there requires a r
 
 ## 10. Running it locally
 
+> **Full step-by-step guide:** [`running-the-apps.md`](running-the-apps.md) — prerequisites, the
+> secret files each app needs, run/test/build commands per app, release builds and troubleshooting.
+> The summary below is the short version.
+
 ```bash
 # Backend — http://localhost:3006
 cd apps/backend && npm install && npm run start
@@ -365,8 +369,8 @@ from the repo.
 
 | App | Command |
 |---|---|
-| mobile | `npx tsc --noEmit` · `npx jest` (~311 tests) · `npx eslint .` |
-| backend | `npx tsc --noEmit` · `npx jest` (~101 tests) |
+| mobile | `npx tsc --noEmit` · `npx jest` (~438 tests) · `npx eslint .` |
+| backend | `npx tsc --noEmit` · `npx jest` (~128 tests) |
 | admin | `npx tsc --noEmit` · `npx eslint .` |
 
 The admin has **no unit tests**; it is verified by typecheck, lint and manual/browser testing.
@@ -401,6 +405,7 @@ where the official docs contradict observed behaviour.
 | `admin-website.md` | Admin technical reference: architecture, APIs, triage |
 | `admin-user-guide.md` | Admin manual for non-technical operators |
 | `qa-testing-guide.md` | Full QA guide, including testing without a physical tub |
+| `running-the-apps.md` | How to set up, run, test and build each app |
 
 Planning artefacts under `dev-workflow/` are written in Vietnamese; code and the documents above
 are in English.
