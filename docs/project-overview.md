@@ -146,6 +146,8 @@ There is a **notification history** in the app and an unread badge on the accoun
 | **Time zone** | Editable |
 | **Dark mode** | Toggle |
 | **Change password** | Sends a code by email, then asks the customer to sign in again |
+| **Forgot password** | From the email sign-in screen: a code by email, then a new password |
+| **Privacy & terms** | Opens the Walrus Privacy Policy and Terms and Conditions; also linked on the sign-up screens |
 | **Delete account** | Removes the account |
 | **Homes** | A "home" groups the customer's devices; they can create and rename one |
 
@@ -238,6 +240,8 @@ their app moments later.
 | | Sign in with Apple (iOS) | ✅ Built |
 | | Stay signed in across restarts | ✅ Built |
 | | Change password (from inside the app) | ✅ Built |
+| | Forgot password (from the sign-in screen) | ✅ Built |
+| | Privacy Policy and Terms links in the app | ✅ Built |
 | | Delete account | ✅ Built |
 | **Onboarding** | Intro and questionnaire | ✅ Built |
 | | Home creation | ✅ Built |

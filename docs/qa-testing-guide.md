@@ -217,13 +217,14 @@ app as a signed-in user.
 
 #### Password reset — read this before testing
 
-The app has **no "Forgot password" link on the sign-in screen**. Changing a password is only
-possible **from inside the app**, under Profile → Change password, which requires you to already
-be signed in.
+There are two ways to set a new password, and both use the same email code:
 
-Test that flow (it sends a code to your email, then signs you out so you can sign in again with the
-new password). Also note it as a product gap: a customer who forgets their password has no path to
-recovery in the app.
+- **Signed in:** Profile → Change password. When it succeeds the app signs you out so you can sign
+  in again with the new password.
+- **Signed out:** Sign in with email → **Forgot password?**. When it succeeds you return to the
+  sign-in screen.
+
+Only email accounts have a Walrus password. Google and Apple accounts are managed by those providers.
 
 #### Pairing screens without a tub
 
@@ -416,7 +417,7 @@ Capture, in this order:
 | AUTH-14 | Session | Survives restart | Signed in | Force-quit the app, reopen | Still signed in | No | P1 | |
 | AUTH-15 | Session | Sign out | Signed in | Profile → sign out | Returns to sign-in; reopening does not restore the session | No | P2 | |
 | AUTH-16 | Password | Change password | Signed in | Profile → Change password → request code → enter code + new password | Succeeds; app signs you out; new password works, old one does not | No | P1 | |
-| AUTH-17 | Password | No recovery when locked out | Signed out | Look for a "Forgot password" option on the sign-in screen | **None exists** — record as a product gap, not a crash | No | P2 | |
+| AUTH-17 | Password | Forgot password | Signed out, email account | Sign in with email → Forgot password? → enter email → send code → enter code + new password | "Password reset." → Sign in; new password works, old one does not | No | P1 | |
 | AUTH-18 | Account | Delete account | A throwaway account | Profile → delete/cancel account → confirm | Account removed; it disappears from the admin user list | No | P2 | |
 | AUTH-19 | Network | Sign in with no connectivity | Airplane mode | Attempt to sign in | Readable network error; no crash, no infinite spinner | No | P1 | |
 | AUTH-20 | Loading | Double submit | On sign-in | Tap the button twice rapidly | Only one attempt; button disables while working | No | P2 | |
@@ -745,20 +746,19 @@ Read this before filing. Each item is either deliberate or already known.
 |---|---|---|
 | 1 | **The cleaning panel and its schedule do nothing to the tub** | Interface only; never connected to the appliance. Test it as UI |
 | 2 | **There is no temperature or power scheduling** | Not implemented |
-| 3 | **No "Forgot password" on the sign-in screen** | Password change only exists inside the app for a signed-in user. Worth raising as a product gap, but it is not a defect |
-| 4 | **Google sign-in on Android may fail with a developer configuration error** | The Google project needs the app's package name and signing fingerprint registered. Confirm the current status with the developers before filing |
-| 5 | **Tracking history disappears after a reinstall** | It is stored on the phone, not on the account |
-| 6 | **The tub has no separate freeze/cooling toggle** | Power is the chiller on/off on this model. Its absence is correct |
-| 7 | **A 5 GHz network cannot pair** | Hardware limit of the tub. Android blocks it with a message; iOS can only warn, because iOS does not expose the band |
-| 8 | **iOS asks for Local Network permission only once** | If it was denied, it must be re-enabled in iOS Settings; the app cannot ask again |
-| 9 | **Brand fonts fall back to the system font** | The font files were never linked into the native projects. Known cosmetic issue |
-| 10 | **Admin search only filters the page you are on** | Tuya's API cannot search by email or customer ID. Raise rows-per-page to widen it |
-| 11 | **Admin `Status` and `User source` are derived, not fetched** | Tuya provides neither. A brand-new account reads `Inactive` — correct |
-| 12 | **Admin cannot add an administrator** | Requires a developer to act on the database |
-| 13 | **Nothing stops an admin revoking their own access** | Known gap. Keep two admin accounts |
-| 14 | **"No devices found on any user account."** | Correct whenever no customer has paired a tub |
-| 15 | **The admin notification recipient picker lists at most 100 customers** | Beyond that, *Send to all* is the only option |
-| 16 | **Admin errors show a blank page with a reference number** | The real cause is only in the server logs. Include that number in your report |
+| 3 | **Google sign-in on Android may fail with a developer configuration error** | The Google project needs the app's package name and signing fingerprint registered. Confirm the current status with the developers before filing |
+| 4 | **Tracking history disappears after a reinstall** | It is stored on the phone, not on the account |
+| 5 | **The tub has no separate freeze/cooling toggle** | Power is the chiller on/off on this model. Its absence is correct |
+| 6 | **A 5 GHz network cannot pair** | Hardware limit of the tub. Android blocks it with a message; iOS can only warn, because iOS does not expose the band |
+| 7 | **iOS asks for Local Network permission only once** | If it was denied, it must be re-enabled in iOS Settings; the app cannot ask again |
+| 8 | **Brand fonts fall back to the system font** | The font files were never linked into the native projects. Known cosmetic issue |
+| 9 | **Admin search only filters the page you are on** | Tuya's API cannot search by email or customer ID. Raise rows-per-page to widen it |
+| 10 | **Admin `Status` and `User source` are derived, not fetched** | Tuya provides neither. A brand-new account reads `Inactive` — correct |
+| 11 | **Admin cannot add an administrator** | Requires a developer to act on the database |
+| 12 | **Nothing stops an admin revoking their own access** | Known gap. Keep two admin accounts |
+| 13 | **"No devices found on any user account."** | Correct whenever no customer has paired a tub |
+| 14 | **The admin notification recipient picker lists at most 100 customers** | Beyond that, *Send to all* is the only option |
+| 15 | **Admin errors show a blank page with a reference number** | The real cause is only in the server logs. Include that number in your report |
 
 ---
 

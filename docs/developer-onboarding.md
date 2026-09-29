@@ -282,7 +282,6 @@ Read this before promising anything to the client.
 |---|---|
 | **Cleaning schedule / "run clean cycle"** | The screen exists and animates, but it is **interface only** — it sends nothing to the tub. The code says so explicitly |
 | **Temperature or power scheduling** | Not implemented at all |
-| **Forgot password** | There is no recovery path from the sign-in screen. Password change only works from *inside* the app, for an already signed-in user |
 | **Adding an admin from the UI** | Requires a manual database insert |
 | **Notification history in admin** | Sent messages are not listed anywhere in the dashboard |
 | **Rooms / device permissions** | In the M2 brief; not in the app |
