@@ -49,6 +49,6 @@
 - `services/appleAuth.ts`: `signInApple()` → `{identityToken,user,email,fullName}`; guard iOS-only
   (`appleAvailable`), mock trong Metro; lỗi có mã (`CANCELLED`/`NOT_SUPPORTED`/`NO_ID_TOKEN`).
 - `services/auth.ts`: `thirdLogin(token,'ap',extra)` build extraInfo JSON từ credential.
-- `packages/tuya-react-native/ios/Auth/TuyaAuth.mm`: `thirdLogin` → `loginByAuth2WithType:` +
+- `ios/Auth/TuyaAuth.mm` của lib `@jimmy2k/react-native-turbo-tuya` (repo riêng): `thirdLogin` → `loginByAuth2WithType:` +
   `NSJSONSerialization` parse extraInfo string → NSDictionary. **⚠️ verify chữ ký selector +
   kiểu accessToken trong `ThingSmartUser.h` khi build.**

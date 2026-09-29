@@ -15,7 +15,7 @@ your week if nobody tells you about them.
 
 1. [What this project is](#1-what-this-project-is)
 2. [Commercial scope](#2-commercial-scope)
-3. [The four codebases](#3-the-four-codebases)
+3. [The codebases](#3-the-codebases)
 4. [How the pieces talk to each other](#4-how-the-pieces-talk-to-each-other)
 5. [Feature inventory — mobile app](#5-feature-inventory--mobile-app)
 6. [Feature inventory — admin dashboard](#6-feature-inventory--admin-dashboard)
@@ -73,7 +73,7 @@ and wonder why M1 contains so much.
 
 ---
 
-## 3. The four codebases
+## 3. The codebases
 
 ```
 cool-bath/
@@ -81,18 +81,24 @@ cool-bath/
 │   ├── mobile/     React Native CLI app (iOS + Android)   ← the customer's app
 │   ├── backend/    NestJS API on Vercel                   ← admin's data source
 │   └── admin/      Next.js dashboard                       ← internal staff tool
-├── packages/
-│   └── tuya-react-native/   Custom native module wrapping Tuya's SDK
 ├── docs/           Research notes, guides, this file
 ├── dev-workflow/   Per-feature planning and status
 └── CLAUDE.md       Project rules and conventions
+
+Separate repository, installed from npm:
+    @jimmy2k/react-native-turbo-tuya   Custom native module wrapping Tuya's SDK
 ```
 
-### `packages/tuya-react-native` — the piece people underestimate
+### `@jimmy2k/react-native-turbo-tuya` — the piece people underestimate
 
-Published as `@jimmy-vu/react-native-turbo-tuya`, this is **written for this project**, not an
-off-the-shelf dependency. It is a React Native **TurboModule** bridge over Tuya's native Smart Life
-SDK for both platforms, in Kotlin and Objective-C++.
+Source: https://github.com/huyquocvq-lang/react-native-turbo-tuya · npm:
+https://www.npmjs.com/package/@jimmy2k/react-native-turbo-tuya
+
+This library is **written for this project**, not an off-the-shelf dependency. It is a React
+Native **TurboModule** bridge over Tuya's native Smart Life SDK for both platforms, in Kotlin and
+Objective-C++. It used to live in this repo under `packages/tuya-react-native` (older planning notes
+in `dev-workflow/` still point there); it now has its own repository and the mobile app depends on
+the published npm version.
 
 It exposes twelve modules:
 
@@ -103,8 +109,9 @@ Not all of them are wired into the app — the app currently uses Core, Auth, Ho
 and Message. The rest were built out while mapping the SDK's surface.
 
 **Why this matters to you:** anything touching pairing, device control or Tuya login goes through
-native code in this package. Changing it means rebuilding the app, not just reloading JavaScript.
-A large amount of the project's difficulty lives here.
+native code in this library. Changing it means editing the library's own repository, publishing a
+new npm version, bumping it in `apps/mobile/package.json`, running `pod install`, and rebuilding the
+app — not just reloading JavaScript. A large amount of the project's difficulty lives here.
 
 ---
 
