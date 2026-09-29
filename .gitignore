@@ -28,9 +28,6 @@ node_modules/
 **/.next/
 **/*.tsbuildinfo
 
-# Lib Tuya đã tách repo + lên npm (@jimmy2k/react-native-turbo-tuya). Còn sót file local
-# (key, security .aar) trong packages/ → chặn cả thư mục để không lỡ commit.
-packages/
 
 # Google OAuth client downloads - client_secret*.json chứa secret, KHÔNG commit
 **/client_secret*.json
