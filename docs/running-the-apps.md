@@ -54,7 +54,7 @@ document) and put them at these exact paths:
 | `apps/mobile/android/secrets.properties` | Mobile (Android) — Tuya keys + release signing | `apps/mobile/android/secrets.properties.example` |
 | `apps/mobile/android/app/google-services.json` | Mobile (Android) — Firebase | — |
 | `apps/mobile/android/app/libs/security-algorithm-*.aar` | Mobile (Android) — Tuya security SDK | — (download from Tuya console) |
-| `apps/mobile/android/app/walrus-release.keystore` | Mobile (Android) — release builds only | — |
+| `apps/mobile/android/app/walrus-release.keystore` | Mobile (Android) — signs both debug and release builds | — |
 
 The Tuya security SDK files are generated per app identity (iOS bundle ID, Android package name
 + signing SHA-256). Files from another app will not work.
@@ -246,8 +246,9 @@ npm run lint
 ### Release builds
 
 **Android** — needs `walrus-release.keystore` and the `WALRUS_RELEASE_*` values in
-`secrets.properties` (without them, release builds silently fall back to the debug key, which the
-Play Store will reject):
+`secrets.properties`. With them, **debug and release builds are signed with the same key**, so only
+one SHA-1 / SHA-256 has to be registered with Google and Tuya (see `android/SIGNING.md`). Without
+them, both fall back to the debug key, which Tuya and the Play Store will reject:
 
 ```bash
 cd apps/mobile/android
@@ -292,7 +293,7 @@ The phone and the Mac must be on the **same network** for the app to reach the l
 | `pod install` fails with an encoding error | Run it as `LANG=en_US.UTF-8 pod install` |
 | Android build: duplicate class errors | iCloud created `name 2.ext` copies. Move the repo out of iCloud, delete the copies, clean the build (`cd android && ./gradlew clean`) |
 | Changed `.env` but the app still uses the old value | Restart Metro with `--reset-cache` and rebuild |
-| Google sign-in on Android fails with `DEVELOPER_ERROR` | The Google OAuth client does not have this build's SHA-1 (debug and release keys differ) |
+| Google sign-in on Android fails with `DEVELOPER_ERROR` | The Google OAuth client does not have this build's SHA-1. Local builds use the `walrus-release` key; apps installed from Google Play use Google's app signing key — both must be registered (`android/SIGNING.md`) |
 | Pairing never finds the tub | Phone on a 5 GHz network, or (iOS) Local Network permission declined — re-enable it in Settings |
 
 More background on each of these: `docs/developer-onboarding.md`, section 12.

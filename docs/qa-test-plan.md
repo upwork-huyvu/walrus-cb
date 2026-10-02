@@ -279,7 +279,7 @@ ID, steps, expected vs actual, and — for mobile — `adb logcat` output or the
 
 | # | Behaviour | Why |
 |---|---|---|
-| 1 | Google sign-in on Android fails with `DEVELOPER_ERROR` | The Android OAuth client needs the current package name **and** the signing SHA-1. Debug and release builds have different SHA-1s. Verify the console entry before failing `TC-AUTH-06` |
+| 1 | Google sign-in on Android fails with `DEVELOPER_ERROR` | The Android OAuth client needs the current package name **and** the signing SHA-1. Local debug and release builds share one key; builds installed from Google Play are re-signed by Google and have a different SHA-1. Verify the console entry before failing `TC-AUTH-06` |
 | 2 | Admin search only filters the page you are on | Tuya's user API matches usernames exactly and cannot search email or uid. Raise rows-per-page to widen the net |
 | 3 | The `Status` column and `User source` row are **derived**, not fetched | Tuya exposes no account status; source is read off the username prefix. A new account with no device shows `Inactive` — that is correct |
 | 4 | Admin cannot add a new admin | By design — create the Supabase user and insert into `admin_users` |

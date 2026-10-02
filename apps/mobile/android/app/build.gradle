@@ -117,12 +117,16 @@ android {
             }
         }
     }
+    // Debug và release ký CÙNG keystore walrus-release khi có secrets → chỉ MỘT bộ SHA-1/SHA-256 phải
+    // đăng ký ở Tuya (security SDK) + Google OAuth; bản debug không còn DEVELOPER_ERROR khi Google
+    // Sign-In, và cài debug đè lên bản release được. Thiếu secrets (dev khác/CI) → cả hai về debug.keystore.
+    def walrusSigning = secret("WALRUS_RELEASE_STORE_FILE") ? signingConfigs.release : signingConfigs.debug
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig walrusSigning
         }
         release {
-            signingConfig secret("WALRUS_RELEASE_STORE_FILE") ? signingConfigs.release : signingConfigs.debug
+            signingConfig walrusSigning
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

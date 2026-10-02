@@ -15,11 +15,11 @@
 | Client | Định danh bằng | Dùng để |
 |---|---|---|
 | **Web** ⭐ | (không cần native) | `webClientId` - idToken audience; **dán vào Tuya** (cả 2 nền) |
-| **Android** | package `com.walrus.wellnesscb` + **SHA-1** | Google verify app Android (KHÔNG điền vào code) |
+| **Android** | package `com.walrus.android.wellness` + **SHA-1** | Google verify app Android (KHÔNG điền vào code) |
 | **iOS** | Bundle ID `com.walrus.wellness` | Google verify app iOS + reversed-id URL scheme |
 
 - OAuth Consent Screen: user type **External**.
-- SHA-1 (Android): debug + release - lấy trong [android/SIGNING.md](android/SIGNING.md).
+- SHA-1 (Android): debug và release dùng CHUNG một key + thêm SHA-1 của Play App Signing - lấy trong [android/SIGNING.md](android/SIGNING.md).
   Phải **khớp** SHA đã đăng ký trên Tuya.
 
 ## 2) Điền client id (dev) - public, commit thẳng
